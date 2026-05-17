@@ -3625,7 +3625,6 @@ function _confirmarAchadoSugerido(idx){
   fbAutoSave('salvar');
   document.getElementById('aud-sug-'+idx)?.remove();
   toast(`Achado "${s.titulo}" adicionado.`,'var(--teal)');
-  rDetalhe();
 }
 
 function _confirmarTodosAchadosSugeridos(){
@@ -3635,12 +3634,12 @@ function _confirmarTodosAchadosSugeridos(){
   lista.forEach((s,i)=>{
     if(!document.getElementById('aud-sug-'+i)) return;
     p.auditoria.achados_list.push({titulo:s.titulo,tipo:s.tipo||'Observação',descricao:s.descricao||'',evidencia:s.evidencia||'',criterio:s.criterio||'',data:now(),anexos:[]});
+    document.getElementById('aud-sug-'+i)?.remove();
     count++;
   });
   if(!count){ toast('Nenhum achado pendente para confirmar.','var(--amber)'); return; }
   fbAutoSave('salvar');
-  toast(`${count} achado(s) confirmado(s).`,'var(--teal)');
-  rDetalhe();
+  toast(`${count} achado(s) confirmado(s). Acesse a aba Achados para visualizar.`,'var(--teal)');
 }
 
 async function iaDescreverAchado(){
