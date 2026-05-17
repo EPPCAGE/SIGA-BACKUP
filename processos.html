@@ -6135,7 +6135,7 @@ const ACOES = {
             <textarea class="fi" id="aud-a-desc" style="min-height:60px" placeholder="Descreva o achado ou a possível causa..."></textarea>
           </div>
           <div class="fg"><label class="fl">Evidência</label><input class="fi" id="aud-a-evid" placeholder="Documento, observação, entrevista..."></div>
-          <div class="fg"><label class="fl">Recomendação / critério infringido</label><input class="fi" id="aud-a-crit" placeholder="Recomendação de melhoria ou critério não atendido"></div>
+          <div class="fg"><label class="fl">Recomendação / critério infringido</label><textarea class="fi" id="aud-a-crit" style="min-height:72px;resize:vertical" placeholder="Recomendação de melhoria ou critério não atendido"></textarea></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button type="button" class="btn" id="aud-a-save-btn" onclick="adicionarAchadoAuditoria()">＋ Registrar achado</button>
             <button type="button" class="btn" id="aud-a-cancel-btn" onclick="_limparFormularioAchado()" style="display:none">Cancelar</button>
