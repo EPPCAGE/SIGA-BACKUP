@@ -3874,17 +3874,17 @@ function _checkFollowupAlertas(){
       const paraAuditor = isEP() || usuarioLogado?.perfil==='gestor';
       const prazoFmt = a.prazo_acao.split('-').reverse().join('/');
       if(fu.status==='evidencia_enviada' && paraAuditor){
-        const item = {id:Date.now()+i+Math.random(), para:usuarioLogado.nome, para_email:usuarioLogado.email,
+        const item = {id:Date.now()+i+crypto.getRandomValues(new Uint32Array(1))[0], para:usuarioLogado.nome, para_email:usuarioLogado.email,
           acao:`📎 Evidência aguardando validação: "${a.titulo}" — ${p.nome}`,
           proc_nome:p.nome, prazo:'', de:'Sistema', data:now(), lida:false};
         notifs.unshift(item);
       } else if(vencido && paraAuditor){
-        const item = {id:Date.now()+i+Math.random(), para:usuarioLogado.nome, para_email:usuarioLogado.email,
+        const item = {id:Date.now()+i+crypto.getRandomValues(new Uint32Array(1))[0], para:usuarioLogado.nome, para_email:usuarioLogado.email,
           acao:`⚠ Ação em atraso (prazo ${prazoFmt}): "${a.titulo}" — responsável: ${a.responsavel_acao||'—'} · ${p.nome}`,
           proc_nome:p.nome, prazo:a.prazo_acao, de:'Sistema', data:now(), lida:false};
         notifs.unshift(item);
       } else if(vencido && !paraAuditor && a.responsavel_acao===usuarioLogado.nome){
-        const item = {id:Date.now()+i+Math.random(), para:usuarioLogado.nome, para_email:usuarioLogado.email,
+        const item = {id:Date.now()+i+crypto.getRandomValues(new Uint32Array(1))[0], para:usuarioLogado.nome, para_email:usuarioLogado.email,
           acao:`⚠ Sua ação corretiva venceu (prazo ${prazoFmt}): "${a.acao_corretiva}" — ${p.nome}. Registre a evidência de implementação.`,
           proc_nome:p.nome, prazo:a.prazo_acao, de:'Sistema', data:now(), lida:false};
         notifs.unshift(item);
