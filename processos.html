@@ -12169,14 +12169,14 @@ function _subArqItemHTML(mid, pid, s){
         ${slBadge}
         ${sCriticoBadge}
       </span>
-      ${(isEP()||usuarioLogado?.perfil==='gestor')?`<span class="arq-subitem-actions">
-        <button type="button" class="btn" style="font-size:10px;padding:2px 7px" onclick="event.stopPropagation();abrirIdeiasProc('${s.id}')">💡 Ideias</button>
-        ${isEP()?`<button type="button" class="btn" style="font-size:10px;padding:2px 7px" onclick="event.stopPropagation();editSubArqFull('${mid}','${pid}','${s.id}')">✎ Editar</button>
-        <button type="button" class="btn" style="font-size:10px;padding:2px 6px;color:var(--red)" onclick="event.stopPropagation();remSubArq('${mid}','${pid}','${s.id}')" aria-label="Remover subprocesso">×</button>`:''}
+      ${isEP()?`<span class="arq-subitem-actions">
+        <button type="button" class="btn" style="font-size:10px;padding:2px 7px" onclick="event.stopPropagation();editSubArqFull('${mid}','${pid}','${s.id}')">✎ Editar</button>
+        <button type="button" class="btn" style="font-size:10px;padding:2px 6px;color:var(--red)" onclick="event.stopPropagation();remSubArq('${mid}','${pid}','${s.id}')" aria-label="Remover subprocesso">×</button>
       </span>`:''}
     </div>
     <div id="arq-ssub-${s.id}" style="display:none;padding:.6rem 1.2rem .8rem 2.2rem;background:var(--surf);border-top:1px dashed var(--bdr)">
       ${metaFieldsReadonly(s)}
+      ${(isEP()||usuarioLogado?.perfil==='gestor')?`<div style="display:flex;justify-content:flex-end;margin-top:.5rem"><button type="button" class="btn" style="font-size:10px;padding:2px 9px" onclick="abrirIdeiasProc('${s.id}')">💡 Ideias</button></div>`:''}
     </div>
   </div>`;
 }
@@ -12215,15 +12215,15 @@ function procArqHTML(mid,p){
         ${_procArqStatusBadge(p, hasSubs, linked, pMapeadoBg, pMapeadoTxt, pMapeadoBorderColor, pMapeadoLabel)}
         ${pCriticoBadge}
       </span>
-      ${(isEP()||usuarioLogado?.perfil==='gestor')?`<span class="arq-proc-actions">
-        <button type="button" class="btn" style="font-size:10px;padding:2px 7px" onclick="event.stopPropagation();abrirIdeiasProc('${p.id}')">💡 Ideias</button>
-        ${isEP()?`<button type="button" class="btn" style="font-size:10px;padding:2px 7px" onclick="event.stopPropagation();novoSubArq('${mid}','${p.id}')">+ Sub</button>
+      ${isEP()?`<span class="arq-proc-actions">
+        <button type="button" class="btn" style="font-size:10px;padding:2px 7px" onclick="event.stopPropagation();novoSubArq('${mid}','${p.id}')">+ Sub</button>
         <button type="button" class="btn" style="font-size:10px;padding:2px 7px" onclick="event.stopPropagation();editProcArq('${mid}','${p.id}')">✎ Editar</button>
-        <button type="button" class="btn" style="font-size:10px;padding:2px 7px;color:var(--red);border-color:var(--red-b)" onclick="event.stopPropagation();removerProcArq('${mid}','${p.id}')">× Apagar</button>`:''}
+        <button type="button" class="btn" style="font-size:10px;padding:2px 7px;color:var(--red);border-color:var(--red-b)" onclick="event.stopPropagation();removerProcArq('${mid}','${p.id}')">× Apagar</button>
       </span>`:''}
     </div>
     <div id="arq-sub-${p.id}" style="display:none;background:var(--surf2);border:1px solid var(--bdr);border-top:none;border-radius:0 0 var(--r) var(--r)">
       ${bodyHTML}
+      ${(isEP()||usuarioLogado?.perfil==='gestor')?`<div style="display:flex;justify-content:flex-end;padding:.5rem .8rem .6rem"><button type="button" class="btn" style="font-size:10px;padding:2px 9px" onclick="abrirIdeiasProc('${p.id}')">💡 Ideias</button></div>`:''}
     </div>
   </div>`;
 }
