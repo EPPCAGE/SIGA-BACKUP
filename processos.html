@@ -1296,10 +1296,6 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
     <svg viewBox="0 0 16 16" fill="none"><path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" stroke-width="1.4"/><path d="M5 6h6M5 9h4M5 12h2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="12" cy="12" r="3" fill="var(--surf)" stroke="currentColor" stroke-width="1.4"/><path d="M11 12l.8.8L13 11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
     Análise de Aderência <span class="nav-cnt" id="nb-aud-cnt">0</span>
   </button>
-  <button type="button" class="nav-btn" onclick="go('ideias',this)" id="nb-ideias" style="display:none">
-    <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="6" r="4" stroke="currentColor" stroke-width="1.4"/><path d="M6 10c0 1.1.9 2 2 2s2-.9 2-2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M8 12v2M6.5 14h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-    Banco de Ideias <span class="nav-cnt" id="nb-ideias-cnt" style="display:none">0</span>
-  </button>
   <button type="button" class="nav-btn" onclick="go('publicacoes',this)" id="nb-pub">
     <svg viewBox="0 0 16 16" fill="none"><path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" stroke-width="1.4"/><path d="M10 2v3h3" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M5 8h6M5 11h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
     Publicações
@@ -1980,24 +1976,6 @@ Não responda este e-mail.</pre>
 
 <div id="page-admin" class="page"></div>
 <div id="page-avisos" class="page"></div>
-<div id="page-ideias" class="page"><div style="padding:2rem">
-  <div class="ph" style="margin-bottom:1.5rem">
-    <div>
-      <div class="page-t">Banco de Ideias</div>
-      <div class="page-s">Ideias de melhoria registradas pelos responsáveis dos processos</div>
-    </div>
-  </div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem">
-    <select class="fi" id="ideias-filtro-status" style="width:auto;min-width:150px" onchange="rBancoIdeias()">
-      <option value="">Todos os status</option>
-      <option value="nova">Nova</option>
-      <option value="em_analise">Em análise</option>
-      <option value="implementada">Implementada</option>
-      <option value="descartada">Descartada</option>
-    </select>
-  </div>
-  <div id="banco-ideias-lista"><div style="color:var(--ink3);font-size:13px">Carregando...</div></div>
-</div></div>
 
 <!-- TRILHAS DE CAPACITAÇÃO -->
 <div id="page-trilhas" class="page"><div style="padding:2rem">
@@ -2527,10 +2505,10 @@ function go(page,btn){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('on'));
   document.getElementById('page-'+page).classList.add('on');
   if(btn)btn.classList.add('on');
-  ({fila:rFila,meusprocessos:rMeusProc,dashboard:rDash,processos:renderProcs,arq:rArq,solicitacoes:rSolicitacoes,faq:rFaq,indicadores:()=>{rInd();},notificacoes:()=>{rNotif();},auditoria:rAuditoria,publicacoes:()=>{rPub();},admin:renderAdmin,plano:rPlano,avisos:rAvisos,trilhas:rTrilhas,ideias:rBancoIdeias}[page]||function(){})();
+  ({fila:rFila,meusprocessos:rMeusProc,dashboard:rDash,processos:renderProcs,arq:rArq,solicitacoes:rSolicitacoes,faq:rFaq,indicadores:()=>{rInd();},notificacoes:()=>{rNotif();},auditoria:rAuditoria,publicacoes:()=>{rPub();},admin:renderAdmin,plano:rPlano,avisos:rAvisos,trilhas:rTrilhas}[page]||function(){})();
   // Mobile: close drawer, update title
   if(globalThis.innerWidth<=720){mobClose();}
-  const ttl={fila:'Minhas tarefas',meusprocessos:'Meus Processos',dashboard:'Painel geral',processos:'Processos',arq:'Arquitetura',solicitacoes:'Solicitações',faq:'Base de FAQs',indicadores:'Indicadores',plano:'PAT',notificacoes:'Notificações',auditoria:'Análise de Aderência',publicacoes:'Publicações',admin:'Usuários',avisos:'Avisos',detalhe:'Processo',trilhas:'Trilhas de capacitação',ideias:'Banco de Ideias'};
+  const ttl={fila:'Minhas tarefas',meusprocessos:'Meus Processos',dashboard:'Painel geral',processos:'Processos',arq:'Arquitetura',solicitacoes:'Solicitações',faq:'Base de FAQs',indicadores:'Indicadores',plano:'PAT',notificacoes:'Notificações',auditoria:'Análise de Aderência',publicacoes:'Publicações',admin:'Usuários',avisos:'Avisos',detalhe:'Processo',trilhas:'Trilhas de capacitação'};
   const el=document.getElementById('mob-page-title');if(el)el.textContent=ttl[page]||'SIGA 2.0';
 }
 // Re-renderiza a página ativa sem alterar a navegação.
@@ -3479,16 +3457,24 @@ async function _carregarIdeiasProc(arqId){
       el.innerHTML = '<div style="font-size:13px;color:var(--ink3);text-align:center;padding:1.5rem">Nenhuma ideia registrada ainda. Seja o primeiro!</div>';
       return;
     }
+    const canManage = isEP() || usuarioLogado?.perfil === 'gestor';
     el.innerHTML = result.docs.map(d=>{
       const v = d.data;
       const data = v.criadoEm ? new Date(v.criadoEm).toLocaleDateString('pt-BR') : '';
+      const sOpts = Object.entries(_IDEIA_STATUS_LABELS).map(([sv,sl])=>`<option value="${sv}" ${v.status===sv?'selected':''}>${sl}</option>`).join('');
       return `<div style="border:1px solid var(--bdr);border-radius:var(--r);padding:.75rem;margin-bottom:.5rem">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;flex-wrap:wrap">
           <div style="font-size:11px;font-weight:600;color:var(--ink3)">${esc(v.autorNome)} · ${data}</div>
-          <span style="font-size:10px;font-weight:600;padding:1px 8px;border-radius:99px;background:var(--bg3);color:${_IDEIA_STATUS_COLORS[v.status]||'var(--ink3)'}">${_IDEIA_STATUS_LABELS[v.status]||v.status}</span>
+          ${canManage
+            ? `<select class="fi" style="width:auto;font-size:11px;padding:2px 8px" onchange="atualizarStatusIdeia('${d.id}',this.value)">${sOpts}</select>`
+            : `<span style="font-size:10px;font-weight:600;padding:1px 8px;border-radius:99px;background:var(--bg3);color:${_IDEIA_STATUS_COLORS[v.status]||'var(--ink3)'}">${_IDEIA_STATUS_LABELS[v.status]||v.status}</span>`}
         </div>
-        <div style="font-size:13px;color:var(--ink);white-space:pre-wrap">${esc(v.texto)}</div>
-        ${v.comentarioEP?`<div style="font-size:11.5px;color:var(--ink3);margin-top:6px;padding-top:6px;border-top:1px solid var(--bdr)"><strong>Resposta EP:</strong> ${esc(v.comentarioEP)}</div>`:''}
+        <div style="font-size:13px;color:var(--ink);white-space:pre-wrap;margin-bottom:${canManage?'6px':'0'}">${esc(v.texto)}</div>
+        ${canManage?`<div style="display:flex;gap:6px;align-items:center;margin-top:4px">
+          <input type="text" class="fi" style="flex:1;font-size:11px;padding:3px 8px" placeholder="Comentário (opcional)" value="${esc(v.comentarioEP||'')}" id="ep-coment-${d.id}">
+          <button type="button" class="btn" style="font-size:11px;padding:3px 8px;flex-shrink:0" onclick="salvarComentarioEP('${d.id}')">Salvar</button>
+        </div>`:''}
+        ${!canManage&&v.comentarioEP?`<div style="font-size:11.5px;color:var(--ink3);margin-top:6px;padding-top:6px;border-top:1px solid var(--bdr)"><strong>Resposta EP:</strong> ${esc(v.comentarioEP)}</div>`:''}
       </div>`;
     }).join('');
   } catch(e){
@@ -3528,51 +3514,6 @@ async function salvarIdeia(arqId){
   }
 }
 
-async function rBancoIdeias(){
-  const el = document.getElementById('banco-ideias-lista');
-  if(!el) return;
-  el.innerHTML = '<div style="color:var(--ink3);font-size:13px">Carregando...</div>';
-  try {
-    const result = await ideiasRepository.list();
-    const filtroStatus = document.getElementById('ideias-filtro-status')?.value||'';
-    const docs = filtroStatus ? result.docs.filter(d=>d.data.status===filtroStatus) : result.docs;
-    if(!docs.length){
-      el.innerHTML = '<div style="font-size:13px;color:var(--ink3);text-align:center;padding:2rem">Nenhuma ideia encontrada.</div>';
-      return;
-    }
-    const byProc = {};
-    docs.forEach(d=>{
-      const k = d.data.arqId;
-      if(!byProc[k]) byProc[k]={nome:d.data.procNome||k,ideias:[]};
-      byProc[k].ideias.push(d);
-    });
-    const statusOpts = Object.entries(_IDEIA_STATUS_LABELS).map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
-    el.innerHTML = Object.entries(byProc).map(([arqId,grupo])=>`
-      <div class="card" style="margin-bottom:1rem">
-        <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid var(--bdr)">${esc(grupo.nome)}</div>
-        ${grupo.ideias.map(d=>{
-          const v=d.data;
-          const data=v.criadoEm?new Date(v.criadoEm).toLocaleDateString('pt-BR'):'';
-          const sOpts=Object.entries(_IDEIA_STATUS_LABELS).map(([sv,sl])=>`<option value="${sv}" ${v.status===sv?'selected':''}>${sl}</option>`).join('');
-          return `<div style="padding:.75rem;background:var(--bg3);border-radius:var(--r);margin-bottom:.5rem">
-            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">
-              <div style="font-size:11px;font-weight:600;color:var(--ink3)">${esc(v.autorNome)} · ${data}</div>
-              <select class="fi" style="width:auto;font-size:11px;padding:2px 8px" onchange="atualizarStatusIdeia('${d.id}',this.value)">
-                ${sOpts}
-              </select>
-            </div>
-            <div style="font-size:13px;color:var(--ink);white-space:pre-wrap;margin-bottom:6px">${esc(v.texto)}</div>
-            <div style="display:flex;gap:6px;align-items:center">
-              <input type="text" class="fi" style="flex:1;font-size:11px;padding:3px 8px" placeholder="Comentário EP (opcional)" value="${esc(v.comentarioEP||'')}" id="ep-coment-${d.id}">
-              <button type="button" class="btn" style="font-size:11px;padding:3px 8px;flex-shrink:0" onclick="salvarComentarioEP('${d.id}')">Salvar</button>
-            </div>
-          </div>`;
-        }).join('')}
-      </div>`).join('');
-  } catch(e){
-    el.innerHTML = '<div style="color:var(--red);font-size:13px">Erro ao carregar banco de ideias.</div>';
-  }
-}
 
 async function atualizarStatusIdeia(ideiaId, status){
   try {
@@ -3669,8 +3610,6 @@ function aplicarPermissoes(){
   const nbTrilhas = document.getElementById('nb-trilhas');
   if(nbTrilhas) nbTrilhas.style.display = usuarioLogado?.perfil === 'dono' ? 'none' : '';
   document.querySelectorAll('.ep-only').forEach(el=>{ el.style.display=isEP()?'':'none'; });
-  const nbIdeias = document.getElementById('nb-ideias');
-  if(nbIdeias) nbIdeias.style.display = (isEP() || usuarioLogado?.perfil === 'gestor') ? '' : 'none';
 }
 
 function buildArqStatsHTML(f){
@@ -12230,9 +12169,10 @@ function _subArqItemHTML(mid, pid, s){
         ${slBadge}
         ${sCriticoBadge}
       </span>
-      ${isEP()?`<span class="arq-subitem-actions">
-        <button type="button" class="btn" style="font-size:10px;padding:2px 7px" onclick="event.stopPropagation();editSubArqFull('${mid}','${pid}','${s.id}')">✎ Editar</button>
-        <button type="button" class="btn" style="font-size:10px;padding:2px 6px;color:var(--red)" onclick="event.stopPropagation();remSubArq('${mid}','${pid}','${s.id}')" aria-label="Remover subprocesso">×</button>
+      ${(isEP()||usuarioLogado?.perfil==='gestor')?`<span class="arq-subitem-actions">
+        <button type="button" class="btn" style="font-size:10px;padding:2px 7px" onclick="event.stopPropagation();abrirIdeiasProc('${s.id}')">💡 Ideias</button>
+        ${isEP()?`<button type="button" class="btn" style="font-size:10px;padding:2px 7px" onclick="event.stopPropagation();editSubArqFull('${mid}','${pid}','${s.id}')">✎ Editar</button>
+        <button type="button" class="btn" style="font-size:10px;padding:2px 6px;color:var(--red)" onclick="event.stopPropagation();remSubArq('${mid}','${pid}','${s.id}')" aria-label="Remover subprocesso">×</button>`:''}
       </span>`:''}
     </div>
     <div id="arq-ssub-${s.id}" style="display:none;padding:.6rem 1.2rem .8rem 2.2rem;background:var(--surf);border-top:1px dashed var(--bdr)">
@@ -12275,10 +12215,11 @@ function procArqHTML(mid,p){
         ${_procArqStatusBadge(p, hasSubs, linked, pMapeadoBg, pMapeadoTxt, pMapeadoBorderColor, pMapeadoLabel)}
         ${pCriticoBadge}
       </span>
-      ${isEP()?`<span class="arq-proc-actions">
-        <button type="button" class="btn" style="font-size:10px;padding:2px 7px" onclick="event.stopPropagation();novoSubArq('${mid}','${p.id}')">+ Sub</button>
+      ${(isEP()||usuarioLogado?.perfil==='gestor')?`<span class="arq-proc-actions">
+        <button type="button" class="btn" style="font-size:10px;padding:2px 7px" onclick="event.stopPropagation();abrirIdeiasProc('${p.id}')">💡 Ideias</button>
+        ${isEP()?`<button type="button" class="btn" style="font-size:10px;padding:2px 7px" onclick="event.stopPropagation();novoSubArq('${mid}','${p.id}')">+ Sub</button>
         <button type="button" class="btn" style="font-size:10px;padding:2px 7px" onclick="event.stopPropagation();editProcArq('${mid}','${p.id}')">✎ Editar</button>
-        <button type="button" class="btn" style="font-size:10px;padding:2px 7px;color:var(--red);border-color:var(--red-b)" onclick="event.stopPropagation();removerProcArq('${mid}','${p.id}')">× Apagar</button>
+        <button type="button" class="btn" style="font-size:10px;padding:2px 7px;color:var(--red);border-color:var(--red-b)" onclick="event.stopPropagation();removerProcArq('${mid}','${p.id}')">× Apagar</button>`:''}
       </span>`:''}
     </div>
     <div id="arq-sub-${p.id}" style="display:none;background:var(--surf2);border:1px solid var(--bdr);border-top:none;border-radius:0 0 var(--r) var(--r)">
