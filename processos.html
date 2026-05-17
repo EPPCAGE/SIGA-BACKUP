@@ -1332,7 +1332,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
 <!-- Inactivity auto-logout warning -->
 <div id="inactivity-warning" role="alertdialog" aria-modal="false" aria-label="Aviso de inatividade">
   <div class="iw-title">⏱ Sessão inativa</div>
-  <div class="iw-body">Você será desconectado por inatividade em <strong><span id="inactivity-countdown">30</span> segundos</strong>.</div>
+  <div class="iw-body">Você será desconectado por inatividade em <strong><span id="inactivity-countdown">60</span> segundos</strong>.</div>
   <button type="button" class="iw-btn" onclick="_keepSessionAlive()">Continuar conectado</button>
 </div>
 
@@ -2035,17 +2035,23 @@ Não responda este e-mail.</pre>
 // ── Sessão única ─────────────────────────────────────────────────────────────
 let _sessionUnsub = null;
 
+let _sessaoInicializando = false;
 async function _iniciarSessaoUnica(uid) {
   if (!fbReady()) return;
+  if (_sessaoInicializando) return;
+  _sessaoInicializando = true;
+  // Cancela listener anterior antes do write para evitar comparação com sid stale.
+  if (_sessionUnsub) { _sessionUnsub(); _sessionUnsub = null; }
   const { onSnapshot } = fb();
   const sid = crypto.randomUUID();
   lsSet('siga_sid', sid);
   try {
     await sessoesRepository.set(uid, { sid, ts: new Date().toISOString() });
-    if (_sessionUnsub) _sessionUnsub();
     _sessionUnsub = onSnapshot(sessoesRepository.ref(uid), snap => {
       if (!snap.exists()) return;
-      if (snap.data().sid !== lsGet('siga_sid')) {
+      const localSid = lsGet('siga_sid');
+      if (!localSid) return; // localStorage indisponível — não deslogar
+      if (snap.data().sid !== localSid) {
         if (_sessionUnsub) { _sessionUnsub(); _sessionUnsub = null; }
         lsRemove('siga_sid');
         doLogout().then(() =>
@@ -2055,6 +2061,8 @@ async function _iniciarSessaoUnica(uid) {
     });
   } catch (e) {
     console.warn('Sessão única: erro ao registrar.', e.message);
+  } finally {
+    _sessaoInicializando = false;
   }
 }
 
@@ -17803,13 +17811,18 @@ function _bootShowLoginScreen(){
 async function _bootRestoreSession(){
   if(fbReady()){
     const {auth, onAuthStateChanged} = fb();
+    let _authNullTimer = null;
     onAuthStateChanged(auth, async firebaseUser => {
       const btn = document.querySelector('.login-btn');
       if(btn){ btn.textContent='Entrar'; btn.disabled=false; }
       if(firebaseUser){
+        clearTimeout(_authNullTimer);
         await _bootRestoreFirebaseUser(auth, firebaseUser);
       } else if(usuarioLogado){
-        doLogout();
+        // Aguarda 4s antes de efetivar o logout por null no auth state.
+        // Evita deslogar em caso de flap momentâneo de rede ou re-auth interno do Firebase.
+        clearTimeout(_authNullTimer);
+        _authNullTimer = setTimeout(() => { if(usuarioLogado) doLogout(); }, 4000);
       } else {
         _bootShowLoginScreen();
       }

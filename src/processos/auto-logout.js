@@ -1,7 +1,7 @@
 (function initAutoLogout(globalScope){
-  const INACTIVITY_MS   = 15 * 60 * 1000; // 15 min até logout
-  const INACTIVITY_WARN = 30 * 1000;       // aviso 30s antes
-  const INACT_EVENTS = ['mousemove','mousedown','keydown','touchstart','scroll','click'];
+  const INACTIVITY_MS   = 30 * 60 * 1000; // 30 min até logout
+  const INACTIVITY_WARN = 60 * 1000;       // aviso 60s antes
+  const INACT_EVENTS = ['mousemove','mousedown','keydown','touchstart','scroll','click','input','wheel','pointermove'];
 
   let _inactTimer    = null;
   let _inactWarnTimer = null;
@@ -10,7 +10,7 @@
   function _showInactivityWarning(){
     const w = document.getElementById('inactivity-warning');
     if(!w) return;
-    let secs = 30;
+    let secs = 60;
     const el = document.getElementById('inactivity-countdown');
     if(el) el.textContent = secs;
     w.style.display = 'flex';
@@ -37,13 +37,21 @@
     if(typeof globalScope.doLogout === 'function') await globalScope.doLogout();
   }
 
+  function _onVisibilityChange(){
+    if(document.visibilityState === 'visible') _resetInactivityTimer();
+  }
+
   function _startInactivityWatch(){
     INACT_EVENTS.forEach(e => document.addEventListener(e, _resetInactivityTimer, {passive: true}));
+    document.addEventListener('visibilitychange', _onVisibilityChange);
+    window.addEventListener('focus', _resetInactivityTimer);
     _resetInactivityTimer();
   }
 
   function _stopInactivityWatch(){
     INACT_EVENTS.forEach(e => document.removeEventListener(e, _resetInactivityTimer));
+    document.removeEventListener('visibilitychange', _onVisibilityChange);
+    window.removeEventListener('focus', _resetInactivityTimer);
     clearTimeout(_inactTimer);
     clearTimeout(_inactWarnTimer);
     clearInterval(_inactInterval);
