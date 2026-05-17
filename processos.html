@@ -3507,7 +3507,7 @@ async function salvarIdeia(arqId){
   try {
     await ideiasRepository.add({
       arqId, procNome: nomeProc, texto,
-      autorUid: usuarioLogado.uid,
+      autorUid: fb().auth.currentUser?.uid || null,
       autorNome: usuarioLogado.nome || usuarioLogado.email,
       criadoEm: new Date().toISOString(),
       status: 'nova'
