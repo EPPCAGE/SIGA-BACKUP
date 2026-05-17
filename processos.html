@@ -2610,6 +2610,18 @@ function updCounts(){
   const audCnt=processos.filter(p=>p.etapa==='auditoria'||(p.auditoria?.concluida===true)).length;
   const audEl=document.getElementById('nb-aud-cnt');
   if(audEl) audEl.textContent=audCnt;
+  // Follow-up: conta ações com evidência pendente de validação ou em atraso
+  const hoje=new Date().toISOString().slice(0,10);
+  const fuPend=processos.reduce((acc,p)=>{
+    return acc+(p.auditoria?.achados_list||[]).filter(a=>{
+      if(!a.acao_corretiva) return false;
+      const s=a.followup?.status||'aguardando';
+      return s==='evidencia_enviada'||(s!=='implementada'&&a.prazo_acao&&a.prazo_acao<hoje);
+    }).length;
+  },0);
+  const fuCntEl=document.getElementById('aud7-cnt');
+  if(fuCntEl){fuCntEl.textContent=fuPend;fuCntEl.style.display=fuPend>0?'':'none';}
+  _checkFollowupAlertas();
 }
 
 // ═══════════════════════════════════════════
@@ -3316,6 +3328,33 @@ function rMeusProc(){
       : '';
   }
   if(!minhas.length){ listEl.innerHTML = ''; updCounts(); return; }
+  // Follow-up: ações corretivas de auditoria atribuídas a este usuário
+  const _fuPendDono = [];
+  const _hoje = new Date().toISOString().slice(0,10);
+  processos.forEach(pr=>{
+    (pr.auditoria?.achados_list||[]).forEach((a,i)=>{
+      if(!a.acao_corretiva) return;
+      const s = a.followup?.status||'aguardando';
+      if(s==='implementada') return;
+      if(a.responsavel_acao && a.responsavel_acao===usuarioLogado.nome)
+        _fuPendDono.push({pr,a,i,vencido:a.prazo_acao&&a.prazo_acao<_hoje});
+    });
+  });
+  if(_fuPendDono.length && subEl){
+    const fuHtml = _fuPendDono.map(({pr,a,i,vencido})=>`
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding:.6rem .75rem;background:var(--bg3);border-radius:var(--r);margin-bottom:.4rem;flex-wrap:wrap">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;color:var(--ink)">${esc(a.titulo)}</div>
+          <div style="font-size:11px;color:var(--ink3)">${esc(pr.nome)} · Prazo: ${a.prazo_acao?a.prazo_acao.split('-').reverse().join('/'):'—'}
+            ${vencido?'<span style="color:var(--red);font-weight:600"> · Em atraso</span>':''}</div>
+        </div>
+        <button type="button" class="btn btn-p" style="font-size:11px;padding:2px 10px;flex-shrink:0" onclick="abrirRegistrarEvidencia(${pr.id},${i})">📎 Registrar evidência</button>
+      </div>`).join('');
+    subEl.insertAdjacentHTML('afterend', `<div class="card" style="border-left:4px solid var(--amber,#d97706);margin-bottom:1rem">
+      <div class="card-t" style="margin-bottom:.5rem;color:var(--amber,#d97706)">⚠ Ações de follow-up pendentes</div>
+      ${fuHtml}
+    </div>`);
+  }
 
   listEl.innerHTML = minhas.map(u=>{
     const proc = u.proc;
@@ -3533,6 +3572,326 @@ async function salvarComentarioEP(ideiaId){
   } catch(e){
     toast('Erro ao salvar comentário.','var(--red)');
   }
+}
+// ── IA: SUGESTÃO DE ACHADOS E DESCRIÇÃO ─────────────────────────────────────
+async function iaSugerirAchados(){
+  const p=curProc; if(!p?.auditoria) return;
+  const aud=p.auditoria;
+  const comResposta=(aud.questoes||[]).filter(q=>q.resposta?.trim());
+  if(!comResposta.length){ toast('Preencha as respostas às questões antes de sugerir achados.','var(--amber)'); return; }
+  const targetEl=document.getElementById('aud-ia-sugestoes');
+  const payload={
+    processo:p.nome, area:p.area||'',
+    auditoria_objetivo:aud.objetivo||'',
+    auditoria_criterios:aud.criterios||'',
+    questoes:comResposta.map(q=>({questao:q.questao, criterio:q.criterio||'', resposta:q.resposta}))
+  };
+  const result=await chamarIA('sugerir_achados', payload, targetEl);
+  if(!result) return;
+  try {
+    const lista=JSON.parse(result.replace(/```json|```/g,'').trim());
+    if(!Array.isArray(lista)) throw new Error('Formato inválido');
+    window._achSugestoes=lista;
+    if(!lista.length){ targetEl.innerHTML='<div class="ib ibg" style="margin-bottom:.5rem">A IA não identificou achados relevantes com base nas respostas fornecidas.</div>'; return; }
+    const TC={'Não conformidade':'var(--red)','Observação':'#d97706','Ponto de melhoria':'var(--blue)','Conformidade':'var(--teal)'};
+    targetEl.innerHTML=`<div style="background:var(--bg3);border-radius:var(--r);padding:.75rem;margin-bottom:.75rem">
+      <div style="font-size:12px;font-weight:600;color:var(--ink);margin-bottom:.6rem">✦ ${lista.length} achado(s) sugerido(s) pela IA — confirme os que se aplicam</div>
+      <div id="aud-ia-sug-lista">
+        ${lista.map((s,i)=>`<div id="aud-sug-${i}" style="border:1px solid var(--bdr);border-left:3px solid ${TC[s.tipo]||'var(--ink3)'};border-radius:var(--r);padding:.65rem;margin-bottom:.4rem;background:var(--surf)">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:3px">
+            <div style="font-size:12.5px;font-weight:600;color:var(--ink)">${esc(s.titulo)}</div>
+            <span style="font-size:10px;padding:1px 7px;border-radius:99px;background:var(--bg3);color:${TC[s.tipo]||'var(--ink3)'};font-weight:600;flex-shrink:0">${esc(s.tipo)}</span>
+          </div>
+          <div style="font-size:12px;color:var(--ink3);margin-bottom:2px">${esc(s.descricao)}</div>
+          <div style="font-size:11px;color:var(--ink3)">Evidência: ${esc(s.evidencia||'—')} · Critério: ${esc(s.criterio||'—')}</div>
+          <div class="btn-row" style="margin-top:.45rem">
+            <button type="button" class="btn btn-p" style="font-size:11px" onclick="_confirmarAchadoSugerido(${i})">✓ Confirmar</button>
+            <button type="button" class="btn" style="font-size:11px" onclick="document.getElementById('aud-sug-${i}').remove()">Descartar</button>
+          </div>
+        </div>`).join('')}
+      </div>
+      <button type="button" class="btn" style="font-size:11px;margin-top:.25rem" onclick="_confirmarTodosAchadosSugeridos()">✓ Confirmar todos</button>
+    </div>`;
+  } catch(e){
+    if(targetEl) targetEl.innerHTML=`<div class="ai-result"><div class="ai-result-lbl">⚠ Erro</div>${esc(e.message)}</div>`;
+  }
+}
+
+function _confirmarAchadoSugerido(idx){
+  const s=(window._achSugestoes||[])[idx]; if(!s) return;
+  const p=curProc; if(!p?.auditoria) return;
+  if(!p.auditoria.achados_list) p.auditoria.achados_list=[];
+  p.auditoria.achados_list.push({titulo:s.titulo,tipo:s.tipo||'Observação',descricao:s.descricao||'',evidencia:s.evidencia||'',criterio:s.criterio||'',data:now(),anexos:[]});
+  fbAutoSave('salvar');
+  document.getElementById('aud-sug-'+idx)?.remove();
+  toast(`Achado "${s.titulo}" adicionado.`,'var(--teal)');
+  rDetalhe();
+}
+
+function _confirmarTodosAchadosSugeridos(){
+  const lista=window._achSugestoes||[]; const p=curProc; if(!p?.auditoria) return;
+  if(!p.auditoria.achados_list) p.auditoria.achados_list=[];
+  let count=0;
+  lista.forEach((s,i)=>{
+    if(!document.getElementById('aud-sug-'+i)) return;
+    p.auditoria.achados_list.push({titulo:s.titulo,tipo:s.tipo||'Observação',descricao:s.descricao||'',evidencia:s.evidencia||'',criterio:s.criterio||'',data:now(),anexos:[]});
+    count++;
+  });
+  if(!count){ toast('Nenhum achado pendente para confirmar.','var(--amber)'); return; }
+  fbAutoSave('salvar');
+  toast(`${count} achado(s) confirmado(s).`,'var(--teal)');
+  rDetalhe();
+}
+
+async function iaDescreverAchado(){
+  const titulo=document.getElementById('aud-a-titulo')?.value.trim();
+  const tipo=document.getElementById('aud-a-tipo')?.value||'Observação';
+  if(!titulo){ toast('Preencha o título do achado antes de gerar a descrição.','var(--amber)'); return; }
+  const btn=document.getElementById('aud-ia-desc-btn');
+  if(btn){ btn.disabled=true; btn.textContent='⏳'; }
+  const p=curProc;
+  const result=await chamarIA('descrever_achado',{processo:p?.nome||'',area:p?.area||'',titulo,tipo,criterios:p?.auditoria?.criterios||''},null);
+  if(btn){ btn.disabled=false; btn.textContent='✦ Sugerir com IA'; }
+  if(!result) return;
+  try {
+    const data=JSON.parse(result.replace(/```json|```/g,'').trim());
+    const descEl=document.getElementById('aud-a-desc');
+    const evidEl=document.getElementById('aud-a-evid');
+    const critEl=document.getElementById('aud-a-crit');
+    const temConteudo=descEl?.value.trim();
+    const preencher=()=>{
+      if(data.descricao&&descEl) descEl.value=data.descricao;
+      if(data.evidencia&&evidEl) evidEl.value=data.evidencia;
+      if(data.criterio&&critEl) critEl.value=data.criterio;
+      toast('Campos preenchidos com sugestão da IA.','var(--teal)');
+    };
+    temConteudo ? confirmar('Substituir o conteúdo atual pela sugestão da IA?',preencher,'Substituir',false) : preencher();
+  } catch(e){
+    toast('Erro ao processar resposta da IA: '+e.message,'var(--red)');
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── FOLLOW-UP DE AUDITORIA ───────────────────────────────────────────────────
+function rAbaFollowup(p, aud){
+  const hoje = new Date().toISOString().slice(0,10);
+  const comAcao = (aud.achados_list||[]).map((a,i)=>({a,i})).filter(({a})=>a.acao_corretiva);
+  if(!comAcao.length) return '<div class="ib ibsl">Nenhuma ação corretiva registrada no plano de ação. Preencha a aba <strong>Plano de Ação</strong> primeiro.</div>';
+
+  const _fs = a => a.followup?.status||'aguardando';
+  const _venc = a => a.prazo_acao && a.prazo_acao < hoje && _fs(a) !== 'implementada';
+  const _prazoFmt = d => d ? d.split('-').reverse().join('/') : '—';
+
+  const grupos = [
+    { key:'evidencia_enviada', label:'🔵 Evidência enviada — aguardando validação', cor:'var(--blue)',
+      items: comAcao.filter(({a})=>_fs(a)==='evidencia_enviada') },
+    { key:'atrasado', label:'🔴 Em atraso — prazo vencido', cor:'var(--red)',
+      items: comAcao.filter(({a})=>_venc(a)&&_fs(a)!=='evidencia_enviada') },
+    { key:'aguardando', label:'🟡 Aguardando implementação', cor:'#d97706',
+      items: comAcao.filter(({a})=>{ const s=_fs(a); return (s==='aguardando'||s==='rejeitada')&&!_venc(a); }) },
+    { key:'implementada', label:'✅ Implementadas', cor:'var(--teal)',
+      items: comAcao.filter(({a})=>_fs(a)==='implementada') },
+  ];
+
+  const card = ({a,i}) => {
+    const fu = a.followup||{};
+    const st = _fs(a);
+    const venc = _venc(a);
+    const lembreteFmt = fu.lembrete_enviado_em ? new Date(fu.lembrete_enviado_em).toLocaleDateString('pt-BR') : null;
+    let extra = '';
+    if(st==='rejeitada') extra = `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:var(--r);padding:.45rem .7rem;margin-top:.4rem;font-size:12px;color:var(--red)"><strong>Rejeição:</strong> ${esc(fu.rejeicao_motivo||'')}</div>`;
+    if(st==='evidencia_enviada') extra = `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--r);padding:.45rem .7rem;margin-top:.4rem;font-size:12px"><div style="font-weight:600;color:var(--teal);margin-bottom:2px">Evidência por ${esc(fu.evidencia_por||'')} · ${fu.evidencia_data?new Date(fu.evidencia_data).toLocaleDateString('pt-BR'):''}</div><div style="white-space:pre-wrap;color:var(--ink)">${esc(fu.evidencia_texto||'')}</div></div>`;
+    if(st==='implementada') extra = `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--r);padding:.45rem .7rem;margin-top:.4rem;font-size:12px"><div style="font-weight:600;color:var(--teal)">✓ Implementada em ${fu.validacao_data?new Date(fu.validacao_data).toLocaleDateString('pt-BR'):''} · ${esc(fu.validacao_por||'')}</div>${fu.evidencia_texto?`<div style="color:var(--ink3);margin-top:2px;white-space:pre-wrap">${esc(fu.evidencia_texto)}</div>`:''}</div>`;
+    let btns = '';
+    if(st==='evidencia_enviada'){
+      btns = `<div class="btn-row" style="margin-top:.5rem"><button type="button" class="btn btn-p" style="font-size:11px" onclick="validarEvidenciaFollowup(${p.id},${i})">✓ Validar</button><button type="button" class="btn" style="font-size:11px;color:var(--red);border-color:var(--red-b)" onclick="rejeitarEvidenciaFollowup(${p.id},${i})">✗ Rejeitar</button></div>`;
+    } else if(st!=='implementada'){
+      btns = `<div class="btn-row" style="margin-top:.5rem">${lembreteFmt?`<span style="font-size:10px;color:var(--ink3);align-self:center">Lembrete: ${lembreteFmt}</span>`:''}<button type="button" class="btn" style="font-size:11px" onclick="enviarLembreteFollowup(${p.id},${i})">✉ Lembrete</button><button type="button" class="btn btn-p" style="font-size:11px" onclick="abrirRegistrarEvidencia(${p.id},${i})">📎 Registrar evidência</button></div>`;
+    }
+    return `<div style="border:1px solid var(--bdr);border-radius:var(--r);padding:.75rem;margin-bottom:.5rem;${venc?'border-left:3px solid var(--red);':''}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:3px">
+        <div style="font-size:12.5px;font-weight:600;color:var(--ink)">${esc(a.titulo)}</div>
+        ${venc?'<span style="font-size:10px;font-weight:600;padding:1px 8px;border-radius:99px;background:#fef2f2;color:var(--red)">⚠ Em atraso</span>':''}
+      </div>
+      <div style="font-size:12px;color:var(--ink);margin-bottom:3px">${esc(a.acao_corretiva)}</div>
+      <div style="font-size:11px;color:var(--ink3)">Responsável: <strong>${esc(a.responsavel_acao||'—')}</strong> · Prazo: <strong style="color:${venc?'var(--red)':'inherit'}">${_prazoFmt(a.prazo_acao)}</strong></div>
+      ${extra}${btns}
+    </div>`;
+  };
+
+  const pendCount = comAcao.filter(({a})=>_fs(a)!=='implementada').length;
+  let html = pendCount
+    ? `<div class="ib iba" style="margin-bottom:1rem;font-size:12px">${pendCount} ação${pendCount===1?'':'ões'} pendente${pendCount===1?'':'s'} de implementação</div>`
+    : '<div class="ib ibg" style="margin-bottom:1rem;font-size:12px">✓ Todas as ações corretivas foram implementadas.</div>';
+
+  grupos.forEach(g=>{
+    if(!g.items.length) return;
+    html += `<div style="margin-bottom:1.25rem"><div style="font-size:11px;font-weight:700;color:${g.cor};text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">${g.label} (${g.items.length})</div>${g.items.map(card).join('')}</div>`;
+  });
+  return html;
+}
+
+function abrirRegistrarEvidencia(procId, achadoIdx){
+  const p = processos.find(x=>x.id===procId);
+  if(!p) return;
+  const achado = p.auditoria?.achados_list?.[achadoIdx];
+  if(!achado) return;
+  document.getElementById('modal-evidencia-fu')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'modal-evidencia-fu';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:600;display:flex;align-items:center;justify-content:center;padding:1rem';
+  modal.innerHTML = `<div style="background:var(--surf);border-radius:var(--rl);padding:1.5rem;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:var(--sh2)">
+    <div style="font-family:var(--fh);font-size:15px;font-weight:600;margin-bottom:.35rem">📎 Registrar evidência de implementação</div>
+    <div style="font-size:12px;color:var(--ink3);margin-bottom:1rem">${esc(achado.titulo)} · ${esc(achado.acao_corretiva)}</div>
+    <div class="fg">
+      <label class="fl">Descreva o que foi implementado</label>
+      <textarea class="fi" id="fu-evidencia-txt" style="min-height:100px;resize:vertical" placeholder="Descreva as ações tomadas, documentos gerados, sistemas alterados...">${esc(achado.followup?.evidencia_texto||'')}</textarea>
+    </div>
+    <div class="btn-row" style="margin-top:1rem">
+      <button type="button" class="btn" onclick="document.getElementById('modal-evidencia-fu').remove()">Cancelar</button>
+      <button type="button" class="btn btn-p" onclick="salvarEvidenciaFollowup(${procId},${achadoIdx})">Enviar evidência</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
+}
+
+function salvarEvidenciaFollowup(procId, achadoIdx){
+  const p = processos.find(x=>x.id===procId);
+  if(!p) return;
+  const achado = p.auditoria?.achados_list?.[achadoIdx];
+  if(!achado) return;
+  const txt = document.getElementById('fu-evidencia-txt')?.value.trim();
+  if(!txt){ toast('Descreva a implementação antes de enviar.','var(--amber)'); return; }
+  if(!achado.followup) achado.followup = {historico:[]};
+  const autorNome = usuarioLogado.nome||usuarioLogado.email;
+  const agora = new Date().toISOString();
+  Object.assign(achado.followup, {status:'evidencia_enviada', evidencia_texto:txt, evidencia_data:agora, evidencia_por:autorNome});
+  (achado.followup.historico=achado.followup.historico||[]).push({data:agora, acao:'Evidência enviada', por:autorNome});
+  fbAutoSave('salvar');
+  document.getElementById('modal-evidencia-fu')?.remove();
+  toast('Evidência registrada! O auditor será notificado.','var(--teal)');
+  (USUARIOS||[]).filter(u=>u.perfil===PERFIL.EP&&u.email).forEach(ep=>{
+    enviarNotif(ep.email, ep.nome||ep.email,
+      `Evidência enviada por ${autorNome} para o achado "${achado.titulo}" no processo "${p.nome}". Aguarda sua validação.`,
+      p.nome, '', autorNome);
+  });
+  if(curProc?.id===procId) rDetalhe();
+}
+
+function validarEvidenciaFollowup(procId, achadoIdx){
+  confirmar('Validar a evidência e marcar esta ação como implementada?', ()=>{
+    const p = processos.find(x=>x.id===procId);
+    if(!p) return;
+    const achado = p.auditoria?.achados_list?.[achadoIdx];
+    if(!achado) return;
+    if(!achado.followup) achado.followup = {historico:[]};
+    const auditorNome = usuarioLogado.nome||usuarioLogado.email;
+    const agora = new Date().toISOString();
+    Object.assign(achado.followup, {status:'implementada', validacao_data:agora, validacao_por:auditorNome});
+    achado.status_acao = 'Concluída';
+    (achado.followup.historico=achado.followup.historico||[]).push({data:agora, acao:'Validada e implementada', por:auditorNome});
+    fbAutoSave('salvar');
+    toast('Ação marcada como implementada!','var(--teal)');
+    const email = _solDonoEmail(achado.responsavel_acao);
+    if(email) enviarNotif(email, achado.responsavel_acao,
+      `Sua evidência para o achado "${achado.titulo}" (${p.nome}) foi validada. Ação marcada como implementada.`,
+      p.nome, '', auditorNome);
+    if(curProc?.id===procId) rDetalhe();
+  }, 'Validar', false);
+}
+
+function rejeitarEvidenciaFollowup(procId, achadoIdx){
+  document.getElementById('modal-rejeitar-fu')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'modal-rejeitar-fu';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:600;display:flex;align-items:center;justify-content:center;padding:1rem';
+  modal.innerHTML = `<div style="background:var(--surf);border-radius:var(--rl);padding:1.5rem;width:100%;max-width:480px;box-shadow:var(--sh2)">
+    <div style="font-family:var(--fh);font-size:15px;font-weight:600;margin-bottom:.75rem">Rejeitar evidência</div>
+    <div class="fg"><label class="fl">Motivo da rejeição</label><textarea class="fi" id="fu-rejeicao-motivo" style="min-height:80px;resize:vertical" placeholder="Explique por que a evidência não é suficiente..."></textarea></div>
+    <div class="btn-row" style="margin-top:1rem">
+      <button type="button" class="btn" onclick="document.getElementById('modal-rejeitar-fu').remove()">Cancelar</button>
+      <button type="button" class="btn btn-a" onclick="_confirmarRejeicaoFu(${procId},${achadoIdx})">Rejeitar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
+}
+
+function _confirmarRejeicaoFu(procId, achadoIdx){
+  const motivo = document.getElementById('fu-rejeicao-motivo')?.value.trim();
+  if(!motivo){ toast('Informe o motivo da rejeição.','var(--amber)'); return; }
+  const p = processos.find(x=>x.id===procId);
+  if(!p) return;
+  const achado = p.auditoria?.achados_list?.[achadoIdx];
+  if(!achado) return;
+  if(!achado.followup) achado.followup = {historico:[]};
+  const auditorNome = usuarioLogado.nome||usuarioLogado.email;
+  const agora = new Date().toISOString();
+  Object.assign(achado.followup, {status:'rejeitada', rejeicao_motivo:motivo});
+  (achado.followup.historico=achado.followup.historico||[]).push({data:agora, acao:'Evidência rejeitada', por:auditorNome, obs:motivo});
+  fbAutoSave('salvar');
+  document.getElementById('modal-rejeitar-fu')?.remove();
+  toast('Evidência rejeitada. O responsável será notificado.','var(--amber)');
+  const email = _solDonoEmail(achado.responsavel_acao);
+  if(email) enviarNotif(email, achado.responsavel_acao,
+    `Evidência rejeitada para o achado "${achado.titulo}" (${p.nome}). Motivo: ${motivo}. Por favor, envie uma nova evidência.`,
+    p.nome, '', auditorNome);
+  if(curProc?.id===procId) rDetalhe();
+}
+
+function enviarLembreteFollowup(procId, achadoIdx){
+  const p = processos.find(x=>x.id===procId);
+  if(!p) return;
+  const achado = p.auditoria?.achados_list?.[achadoIdx];
+  if(!achado) return;
+  const email = _solDonoEmail(achado.responsavel_acao);
+  if(!email){ toast('E-mail do responsável não encontrado em Usuários.','var(--amber)'); return; }
+  const prazoFmt = achado.prazo_acao ? achado.prazo_acao.split('-').reverse().join('/') : '—';
+  enviarNotif(email, achado.responsavel_acao,
+    `Lembrete: a ação corretiva "${achado.acao_corretiva}" referente ao achado "${achado.titulo}" (${p.nome}) está pendente. Prazo: ${prazoFmt}.`,
+    p.nome, achado.prazo_acao, usuarioLogado.nome||ORG_CONFIG.notificationFromName);
+  if(!achado.followup) achado.followup = {historico:[]};
+  achado.followup.lembrete_enviado_em = new Date().toISOString();
+  (achado.followup.historico=achado.followup.historico||[]).push({data:new Date().toISOString(), acao:'Lembrete enviado', por:usuarioLogado.nome||usuarioLogado.email});
+  fbAutoSave('salvar');
+  toast(`Lembrete enviado para ${achado.responsavel_acao}.`,'var(--teal)');
+}
+
+let _fuAlertasChecados = false;
+function _checkFollowupAlertas(){
+  if(_fuAlertasChecados || !usuarioLogado || !processos.length) return;
+  _fuAlertasChecados = true;
+  const hoje = new Date().toISOString().slice(0,10);
+  processos.forEach(p=>{
+    const aud = p.auditoria;
+    if(!aud) return;
+    (aud.achados_list||[]).forEach((a,i)=>{
+      if(!a.acao_corretiva || !a.prazo_acao) return;
+      const fu = a.followup||{};
+      if(fu.status==='implementada') return;
+      const vencido = a.prazo_acao < hoje;
+      const paraAuditor = isEP() || usuarioLogado?.perfil==='gestor';
+      const prazoFmt = a.prazo_acao.split('-').reverse().join('/');
+      if(fu.status==='evidencia_enviada' && paraAuditor){
+        const item = {id:Date.now()+i+Math.random(), para:usuarioLogado.nome, para_email:usuarioLogado.email,
+          acao:`📎 Evidência aguardando validação: "${a.titulo}" — ${p.nome}`,
+          proc_nome:p.nome, prazo:'', de:'Sistema', data:now(), lida:false};
+        notifs.unshift(item);
+      } else if(vencido && paraAuditor){
+        const item = {id:Date.now()+i+Math.random(), para:usuarioLogado.nome, para_email:usuarioLogado.email,
+          acao:`⚠ Ação em atraso (prazo ${prazoFmt}): "${a.titulo}" — responsável: ${a.responsavel_acao||'—'} · ${p.nome}`,
+          proc_nome:p.nome, prazo:a.prazo_acao, de:'Sistema', data:now(), lida:false};
+        notifs.unshift(item);
+      } else if(vencido && !paraAuditor && a.responsavel_acao===usuarioLogado.nome){
+        const item = {id:Date.now()+i+Math.random(), para:usuarioLogado.nome, para_email:usuarioLogado.email,
+          acao:`⚠ Sua ação corretiva venceu (prazo ${prazoFmt}): "${a.acao_corretiva}" — ${p.nome}. Registre a evidência de implementação.`,
+          proc_nome:p.nome, prazo:a.prazo_acao, de:'Sistema', data:now(), lida:false};
+        notifs.unshift(item);
+      }
+    });
+  });
+  updCounts(); rNotif();
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -5660,6 +6019,7 @@ const ACOES = {
         <div class="tab" role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" onclick="sstab('aud4',this)">Achados</div>
         <div class="tab" role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" onclick="sstab('aud5',this)">Plano de Ação</div>
         <div class="tab" role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" onclick="sstab('aud6',this)">Relatório</div>
+        <div class="tab" role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" onclick="sstab('aud7',this)">Follow-up <span id="aud7-cnt" style="display:none;background:var(--red);color:#fff;border-radius:99px;padding:0 5px;font-size:10px;font-weight:700;margin-left:2px;vertical-align:middle">0</span></div>
       </div>
       <div id="aud1" class="tab-p">
         <div class="g2">
@@ -5681,11 +6041,15 @@ const ACOES = {
         <button type="button" class="btn" onclick="salvarPlanejamentoAuditoria()">Salvar planejamento</button>
       </div>
       <div id="aud2" class="tab-p" style="display:none">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;flex-wrap:wrap;gap:6px">
           <span style="font-size:13px;color:var(--ink3)">${questoes.length} questão(ões) cadastrada(s)</span>
-          <button type="button" class="btn btn-p" style="font-size:12px" onclick="iaGerarQuestoesAuditoria()">✦ Gerar com IA</button>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button type="button" class="btn btn-p" style="font-size:12px" onclick="iaGerarQuestoesAuditoria()">✦ Gerar questões com IA</button>
+            ${questoes.filter(q=>q.resposta?.trim()).length?`<button type="button" class="btn btn-t" style="font-size:12px" onclick="iaSugerirAchados()">✦ Sugerir achados com IA</button>`:''}
+          </div>
         </div>
         <div id="aud-ia-questoes"></div>
+        <div id="aud-ia-sugestoes"></div>
         <div style="margin-bottom:1rem">${questoesHtml||'<div style="font-size:12px;color:var(--ink3)">Nenhuma questão cadastrada.</div>'}</div>
         <div style="font-weight:600;font-size:13px;margin-bottom:.8rem;padding-top:.8rem;border-top:1px solid var(--bdr)" id="aud-q-form-title">Adicionar questão de análise de aderência</div>
         <input type="hidden" id="aud-q-idx" value="">
@@ -5763,9 +6127,15 @@ const ACOES = {
               </select>
             </div>
           </div>
-          <div class="fg"><label class="fl">Descrição / possível causa</label><textarea class="fi" id="aud-a-desc" style="min-height:60px" placeholder="Descreva o achado ou a possível causa..."></textarea></div>
+          <div class="fg">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+              <label class="fl" style="margin-bottom:0">Descrição / possível causa</label>
+              <button type="button" class="btn btn-t" id="aud-ia-desc-btn" style="font-size:11px;padding:1px 9px" onclick="iaDescreverAchado()" title="Gerar descrição, evidência e critério com IA a partir do título">✦ Sugerir com IA</button>
+            </div>
+            <textarea class="fi" id="aud-a-desc" style="min-height:60px" placeholder="Descreva o achado ou a possível causa..."></textarea>
+          </div>
           <div class="fg"><label class="fl">Evidência</label><input class="fi" id="aud-a-evid" placeholder="Documento, observação, entrevista..."></div>
-          <div class="fg"><label class="fl">Recomendação / critério infringido</label><input class="fi" id="aud-a-crit" placeholder="Recomendação de melhoria ou critério não atendido"></div>
+          <div class="fg"><label class="fl">Recomendação / critério infringido</label><textarea class="fi" id="aud-a-crit" style="min-height:72px;resize:vertical" placeholder="Recomendação de melhoria ou critério não atendido"></textarea></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button type="button" class="btn" id="aud-a-save-btn" onclick="adicionarAchadoAuditoria()">＋ Registrar achado</button>
             <button type="button" class="btn" id="aud-a-cancel-btn" onclick="_limparFormularioAchado()" style="display:none">Cancelar</button>
@@ -5803,6 +6173,9 @@ const ACOES = {
           <button type="button" class="btn btn-a" onclick="exportarAuditoriaRelPdf()">⬇ Exportar PDF</button>
           <button type="button" class="btn" onclick="salvarRelatorioAuditoria(false)">Salvar</button>
         </div>
+      </div>
+      <div id="aud7" class="tab-p" style="display:none">
+        ${rAbaFollowup(p, aud)}
       </div>`;
     }},
 };
