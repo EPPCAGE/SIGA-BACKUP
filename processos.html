@@ -42,7 +42,7 @@
 <!-- Firebase -->
 <script type="module">
   import { initializeApp, deleteApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getFirestore, doc, getDoc, getDocFromServer, setDoc, collection, getDocs, onSnapshot, writeBatch, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+  import { getFirestore, doc, getDoc, getDocFromServer, setDoc, collection, getDocs, onSnapshot, writeBatch, deleteDoc, addDoc, updateDoc, query, where, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
   import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail, onAuthStateChanged, deleteUser, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
   import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
   import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js';
@@ -69,7 +69,7 @@
       const auth = getAuth(app);
       const storage = getStorage(app);
       const functions = getFunctions(app);
-      globalThis._fb = { db, doc, getDoc, getDocFromServer, setDoc, collection, getDocs, onSnapshot, writeBatch, deleteDoc, auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail, onAuthStateChanged, deleteUser, updatePassword, reauthenticateWithCredential, EmailAuthProvider, initializeApp, deleteApp, getAuth, storage, storageRef, uploadBytes, getDownloadURL, deleteObject, functions, httpsCallable, FIREBASE_CONFIG };
+      globalThis._fb = { db, doc, getDoc, getDocFromServer, setDoc, collection, getDocs, onSnapshot, writeBatch, deleteDoc, addDoc, updateDoc, query, where, orderBy, auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail, onAuthStateChanged, deleteUser, updatePassword, reauthenticateWithCredential, EmailAuthProvider, initializeApp, deleteApp, getAuth, storage, storageRef, uploadBytes, getDownloadURL, deleteObject, functions, httpsCallable, FIREBASE_CONFIG };
       globalThis._fbReady = true;
       console.info('Firebase conectado');
     } catch(e) {
@@ -1296,6 +1296,10 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
     <svg viewBox="0 0 16 16" fill="none"><path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" stroke-width="1.4"/><path d="M5 6h6M5 9h4M5 12h2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="12" cy="12" r="3" fill="var(--surf)" stroke="currentColor" stroke-width="1.4"/><path d="M11 12l.8.8L13 11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
     Análise de Aderência <span class="nav-cnt" id="nb-aud-cnt">0</span>
   </button>
+  <button type="button" class="nav-btn" onclick="go('ideias',this)" id="nb-ideias" style="display:none">
+    <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="6" r="4" stroke="currentColor" stroke-width="1.4"/><path d="M6 10c0 1.1.9 2 2 2s2-.9 2-2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M8 12v2M6.5 14h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+    Banco de Ideias <span class="nav-cnt" id="nb-ideias-cnt" style="display:none">0</span>
+  </button>
   <button type="button" class="nav-btn" onclick="go('publicacoes',this)" id="nb-pub">
     <svg viewBox="0 0 16 16" fill="none"><path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" stroke-width="1.4"/><path d="M10 2v3h3" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M5 8h6M5 11h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
     Publicações
@@ -1976,6 +1980,24 @@ Não responda este e-mail.</pre>
 
 <div id="page-admin" class="page"></div>
 <div id="page-avisos" class="page"></div>
+<div id="page-ideias" class="page"><div style="padding:2rem">
+  <div class="ph" style="margin-bottom:1.5rem">
+    <div>
+      <div class="page-t">Banco de Ideias</div>
+      <div class="page-s">Ideias de melhoria registradas pelos responsáveis dos processos</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem">
+    <select class="fi" id="ideias-filtro-status" style="width:auto;min-width:150px" onchange="rBancoIdeias()">
+      <option value="">Todos os status</option>
+      <option value="nova">Nova</option>
+      <option value="em_analise">Em análise</option>
+      <option value="implementada">Implementada</option>
+      <option value="descartada">Descartada</option>
+    </select>
+  </div>
+  <div id="banco-ideias-lista"><div style="color:var(--ink3);font-size:13px">Carregando...</div></div>
+</div></div>
 
 <!-- TRILHAS DE CAPACITAÇÃO -->
 <div id="page-trilhas" class="page"><div style="padding:2rem">
@@ -2505,10 +2527,10 @@ function go(page,btn){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('on'));
   document.getElementById('page-'+page).classList.add('on');
   if(btn)btn.classList.add('on');
-  ({fila:rFila,meusprocessos:rMeusProc,dashboard:rDash,processos:renderProcs,arq:rArq,solicitacoes:rSolicitacoes,faq:rFaq,indicadores:()=>{rInd();},notificacoes:()=>{rNotif();},auditoria:rAuditoria,publicacoes:()=>{rPub();},admin:renderAdmin,plano:rPlano,avisos:rAvisos,trilhas:rTrilhas}[page]||function(){})();
+  ({fila:rFila,meusprocessos:rMeusProc,dashboard:rDash,processos:renderProcs,arq:rArq,solicitacoes:rSolicitacoes,faq:rFaq,indicadores:()=>{rInd();},notificacoes:()=>{rNotif();},auditoria:rAuditoria,publicacoes:()=>{rPub();},admin:renderAdmin,plano:rPlano,avisos:rAvisos,trilhas:rTrilhas,ideias:rBancoIdeias}[page]||function(){})();
   // Mobile: close drawer, update title
   if(globalThis.innerWidth<=720){mobClose();}
-  const ttl={fila:'Minhas tarefas',meusprocessos:'Meus Processos',dashboard:'Painel geral',processos:'Processos',arq:'Arquitetura',solicitacoes:'Solicitações',faq:'Base de FAQs',indicadores:'Indicadores',plano:'PAT',notificacoes:'Notificações',auditoria:'Análise de Aderência',publicacoes:'Publicações',admin:'Usuários',avisos:'Avisos',detalhe:'Processo',trilhas:'Trilhas de capacitação'};
+  const ttl={fila:'Minhas tarefas',meusprocessos:'Meus Processos',dashboard:'Painel geral',processos:'Processos',arq:'Arquitetura',solicitacoes:'Solicitações',faq:'Base de FAQs',indicadores:'Indicadores',plano:'PAT',notificacoes:'Notificações',auditoria:'Análise de Aderência',publicacoes:'Publicações',admin:'Usuários',avisos:'Avisos',detalhe:'Processo',trilhas:'Trilhas de capacitação',ideias:'Banco de Ideias'};
   const el=document.getElementById('mob-page-title');if(el)el.textContent=ttl[page]||'SIGA 2.0';
 }
 // Re-renderiza a página ativa sem alterar a navegação.
@@ -3351,6 +3373,9 @@ function rMeusProc(){
         <div style="font-size:11px;color:var(--ink3)">${matText}</div>
       ` : `<div style="font-size:11px;color:#0d9488;font-weight:500">Ver informações →</div>`}
       ${popBadges ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">${popBadges}</div>` : ''}
+      <div style="display:flex;justify-content:flex-end;margin-top:8px">
+        <button type="button" class="btn" style="font-size:10px;padding:2px 9px" onclick="event.stopPropagation();abrirIdeiasProc('${u.arq_id}')">💡 Ideias</button>
+      </div>
       </div>
     </div>`;
   }).join('');
@@ -3412,6 +3437,164 @@ function abrirInfoMeusProc(arqId){
   document.body.appendChild(modal);
   modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
 }
+// ── BANCO DE IDEIAS ──────────────────────────────────────────────────────────
+const _IDEIA_STATUS_LABELS = {nova:'Nova',em_analise:'Em análise',implementada:'Implementada',descartada:'Descartada'};
+const _IDEIA_STATUS_COLORS = {nova:'var(--blue)',em_analise:'var(--amber)',implementada:'var(--teal)',descartada:'var(--ink3)'};
+
+async function abrirIdeiasProc(arqId){
+  document.getElementById('ideias-proc-modal')?.remove();
+  const item = findArqItemById(arqId);
+  const nomeProc = item ? item.nome : arqId;
+  const modal = document.createElement('div');
+  modal.id = 'ideias-proc-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;padding:1rem';
+  modal.innerHTML = `<div style="background:var(--surf);border-radius:var(--rl);padding:1.5rem;width:100%;max-width:640px;max-height:90vh;overflow-y:auto;box-shadow:var(--sh2)">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:.5rem">
+      <div>
+        <div style="font-family:var(--fh);font-size:16px;font-weight:600;color:var(--ink)">💡 Ideias de melhoria</div>
+        <div style="font-size:11px;color:var(--ink3);margin-top:2px">${esc(nomeProc)}</div>
+      </div>
+      <button type="button" class="btn" onclick="document.getElementById('ideias-proc-modal').remove()">✕</button>
+    </div>
+    <div id="ideias-proc-lista" style="margin:1rem 0;min-height:60px"><div style="color:var(--ink3);font-size:13px">Carregando...</div></div>
+    <div style="border-top:1px solid var(--bdr);padding-top:1rem">
+      <div style="font-size:12px;font-weight:600;color:var(--ink);margin-bottom:6px">Registrar nova ideia</div>
+      <textarea id="ideia-texto" class="fi" style="width:100%;min-height:80px;resize:vertical" placeholder="Descreva sua ideia de melhoria para este processo..."></textarea>
+      <div class="btn-row" style="margin-top:8px">
+        <button type="button" class="btn btn-p" id="btn-salvar-ideia" onclick="salvarIdeia('${arqId}')">Enviar ideia</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
+  await _carregarIdeiasProc(arqId);
+}
+
+async function _carregarIdeiasProc(arqId){
+  const el = document.getElementById('ideias-proc-lista');
+  if(!el) return;
+  try {
+    const result = await ideiasRepository.listByArqId(arqId);
+    if(result.empty){
+      el.innerHTML = '<div style="font-size:13px;color:var(--ink3);text-align:center;padding:1.5rem">Nenhuma ideia registrada ainda. Seja o primeiro!</div>';
+      return;
+    }
+    el.innerHTML = result.docs.map(d=>{
+      const v = d.data;
+      const data = v.criadoEm ? new Date(v.criadoEm).toLocaleDateString('pt-BR') : '';
+      return `<div style="border:1px solid var(--bdr);border-radius:var(--r);padding:.75rem;margin-bottom:.5rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+          <div style="font-size:11px;font-weight:600;color:var(--ink3)">${esc(v.autorNome)} · ${data}</div>
+          <span style="font-size:10px;font-weight:600;padding:1px 8px;border-radius:99px;background:var(--bg3);color:${_IDEIA_STATUS_COLORS[v.status]||'var(--ink3)'}">${_IDEIA_STATUS_LABELS[v.status]||v.status}</span>
+        </div>
+        <div style="font-size:13px;color:var(--ink);white-space:pre-wrap">${esc(v.texto)}</div>
+        ${v.comentarioEP?`<div style="font-size:11.5px;color:var(--ink3);margin-top:6px;padding-top:6px;border-top:1px solid var(--bdr)"><strong>Resposta EP:</strong> ${esc(v.comentarioEP)}</div>`:''}
+      </div>`;
+    }).join('');
+  } catch(e){
+    if(el) el.innerHTML = '<div style="color:var(--red);font-size:13px">Erro ao carregar ideias.</div>';
+  }
+}
+
+async function salvarIdeia(arqId){
+  const textoEl = document.getElementById('ideia-texto');
+  const texto = textoEl?.value.trim();
+  if(!texto){ toast('Descreva a ideia antes de enviar.','var(--amber)'); return; }
+  const item = findArqItemById(arqId);
+  const nomeProc = item ? item.nome : arqId;
+  const btn = document.getElementById('btn-salvar-ideia');
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Salvando...'; }
+  try {
+    await ideiasRepository.add({
+      arqId, procNome: nomeProc, texto,
+      autorUid: usuarioLogado.uid,
+      autorNome: usuarioLogado.nome || usuarioLogado.email,
+      criadoEm: new Date().toISOString(),
+      status: 'nova'
+    });
+    if(textoEl) textoEl.value = '';
+    toast('Ideia registrada!','var(--teal)');
+    await _carregarIdeiasProc(arqId);
+    const autorNome = usuarioLogado.nome || usuarioLogado.email;
+    (USUARIOS||[]).filter(u=>u.perfil===PERFIL.EP&&u.email).forEach(ep=>{
+      enviarNotif(ep.email, ep.nome||ep.email,
+        `Nova ideia de melhoria para o processo "${nomeProc}" registrada por ${autorNome}.`,
+        nomeProc, '', autorNome);
+    });
+  } catch(e){
+    toast('Erro ao salvar ideia: '+(e.message||e),'var(--red)');
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent='Enviar ideia'; }
+  }
+}
+
+async function rBancoIdeias(){
+  const el = document.getElementById('banco-ideias-lista');
+  if(!el) return;
+  el.innerHTML = '<div style="color:var(--ink3);font-size:13px">Carregando...</div>';
+  try {
+    const result = await ideiasRepository.list();
+    const filtroStatus = document.getElementById('ideias-filtro-status')?.value||'';
+    const docs = filtroStatus ? result.docs.filter(d=>d.data.status===filtroStatus) : result.docs;
+    if(!docs.length){
+      el.innerHTML = '<div style="font-size:13px;color:var(--ink3);text-align:center;padding:2rem">Nenhuma ideia encontrada.</div>';
+      return;
+    }
+    const byProc = {};
+    docs.forEach(d=>{
+      const k = d.data.arqId;
+      if(!byProc[k]) byProc[k]={nome:d.data.procNome||k,ideias:[]};
+      byProc[k].ideias.push(d);
+    });
+    const statusOpts = Object.entries(_IDEIA_STATUS_LABELS).map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+    el.innerHTML = Object.entries(byProc).map(([arqId,grupo])=>`
+      <div class="card" style="margin-bottom:1rem">
+        <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid var(--bdr)">${esc(grupo.nome)}</div>
+        ${grupo.ideias.map(d=>{
+          const v=d.data;
+          const data=v.criadoEm?new Date(v.criadoEm).toLocaleDateString('pt-BR'):'';
+          const sOpts=Object.entries(_IDEIA_STATUS_LABELS).map(([sv,sl])=>`<option value="${sv}" ${v.status===sv?'selected':''}>${sl}</option>`).join('');
+          return `<div style="padding:.75rem;background:var(--bg3);border-radius:var(--r);margin-bottom:.5rem">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">
+              <div style="font-size:11px;font-weight:600;color:var(--ink3)">${esc(v.autorNome)} · ${data}</div>
+              <select class="fi" style="width:auto;font-size:11px;padding:2px 8px" onchange="atualizarStatusIdeia('${d.id}',this.value)">
+                ${sOpts}
+              </select>
+            </div>
+            <div style="font-size:13px;color:var(--ink);white-space:pre-wrap;margin-bottom:6px">${esc(v.texto)}</div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="text" class="fi" style="flex:1;font-size:11px;padding:3px 8px" placeholder="Comentário EP (opcional)" value="${esc(v.comentarioEP||'')}" id="ep-coment-${d.id}">
+              <button type="button" class="btn" style="font-size:11px;padding:3px 8px;flex-shrink:0" onclick="salvarComentarioEP('${d.id}')">Salvar</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`).join('');
+  } catch(e){
+    el.innerHTML = '<div style="color:var(--red);font-size:13px">Erro ao carregar banco de ideias.</div>';
+  }
+}
+
+async function atualizarStatusIdeia(ideiaId, status){
+  try {
+    await ideiasRepository.update(ideiaId,{status});
+    toast('Status atualizado.','var(--teal)');
+  } catch(e){
+    toast('Erro ao atualizar status.','var(--red)');
+  }
+}
+
+async function salvarComentarioEP(ideiaId){
+  const input = document.getElementById('ep-coment-'+ideiaId);
+  const comentarioEP = input?.value.trim()||'';
+  try {
+    await ideiasRepository.update(ideiaId,{comentarioEP});
+    toast('Comentário salvo.','var(--teal)');
+  } catch(e){
+    toast('Erro ao salvar comentário.','var(--red)');
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function taskCard(p,ACT){
   const prazo=(p.prazos_dono||{})[p.etapa]||p.prazo_dono||'';
   const hoje=new Date().toISOString().slice(0,10);
@@ -3486,6 +3669,8 @@ function aplicarPermissoes(){
   const nbTrilhas = document.getElementById('nb-trilhas');
   if(nbTrilhas) nbTrilhas.style.display = usuarioLogado?.perfil === 'dono' ? 'none' : '';
   document.querySelectorAll('.ep-only').forEach(el=>{ el.style.display=isEP()?'':'none'; });
+  const nbIdeias = document.getElementById('nb-ideias');
+  if(nbIdeias) nbIdeias.style.display = (isEP() || usuarioLogado?.perfil === 'gestor') ? '' : 'none';
 }
 
 function buildArqStatsHTML(f){

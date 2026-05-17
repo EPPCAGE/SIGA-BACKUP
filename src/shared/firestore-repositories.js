@@ -94,6 +94,42 @@
     await batchCommit(ops, chunkSize);
   }
 
+  function ideiasCollectionRepository(collectionName){
+    function colRef(){
+      const {db} = requireFirebase();
+      return fbColRef(db, collectionName);
+    }
+    function docRef(id){
+      const {db} = requireFirebase();
+      return fbDocRef(db, collectionName, id);
+    }
+    async function add(data){
+      const {addDoc} = requireFirebase();
+      return addDoc(colRef(), data);
+    }
+    async function list(){
+      const {getDocs} = requireFirebase();
+      const snap = await getDocs(colRef());
+      const docs = [];
+      snap.forEach(d => docs.push({id: d.id, ref: d.ref, data: d.data()}));
+      docs.sort((a,b)=> (b.data.criadoEm||'').localeCompare(a.data.criadoEm||''));
+      return {empty: snap.empty, docs};
+    }
+    async function listByArqId(arqId){
+      const {getDocs, query, where} = requireFirebase();
+      const snap = await getDocs(query(colRef(), where('arqId','==',arqId)));
+      const docs = [];
+      snap.forEach(d => docs.push({id: d.id, ref: d.ref, data: d.data()}));
+      docs.sort((a,b)=> (b.data.criadoEm||'').localeCompare(a.data.criadoEm||''));
+      return {empty: snap.empty, docs};
+    }
+    async function update(id, data){
+      const {updateDoc} = requireFirebase();
+      return updateDoc(docRef(id), data);
+    }
+    return {collectionName, colRef, docRef, add, list, listByArqId, update};
+  }
+
   const repositories = {
     collection: collectionRepository,
     config: configRepository(),
@@ -117,4 +153,5 @@
   globalScope.programasRepository = collectionRepository('projPROGRAMAS');
   globalScope.projetosUsuariosRepository = globalScope.projetosRepository;
   globalScope.configRepository = repositories.config;
+  globalScope.ideiasRepository = ideiasCollectionRepository('ideias');
 })(globalThis);
