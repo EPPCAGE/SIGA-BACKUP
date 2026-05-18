@@ -8422,7 +8422,7 @@ function renderRelatorioAuditoria(json, conf, p, aud){
   );
   const hR = mk('div', null, null, 'text-align:right;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:8px');
   const logoImg = mk('img');
-  logoImg.src = ORG_CONFIG.logos?.organization || 'cage-logo-report.png';
+  logoImg.src = 'cage-logo-report.png';
   logoImg.alt = 'CAGE';
   logoImg.style.cssText = 'height:36px;max-width:120px;object-fit:contain;filter:brightness(0) invert(1);opacity:.9';
   const badgeWrap = mk('div', null, null, 'text-align:right');
