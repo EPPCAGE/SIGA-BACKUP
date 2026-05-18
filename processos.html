@@ -3740,10 +3740,10 @@ function rAbaFollowup(p, aud){
   };
 
   const pendCount = comAcao.filter(({a})=>_fs(a)!=='implementada').length;
-  const pendSufixo = pendCount === 1 ? '' : 'ões';
-  const pendAdj    = pendCount === 1 ? '' : 's';
+  const pendAcao = pendCount === 1 ? 'ação' : 'ações';
+  const pendAdj  = pendCount === 1 ? '' : 's';
   let html = pendCount
-    ? `<div class="ib iba" style="margin-bottom:1rem;font-size:12px">${pendCount} ação${pendSufixo} pendente${pendAdj} de implementação</div>`
+    ? `<div class="ib iba" style="margin-bottom:1rem;font-size:12px">${pendCount} ${pendAcao} pendente${pendAdj} de implementação</div>`
     : '<div class="ib ibg" style="margin-bottom:1rem;font-size:12px">✓ Todas as ações corretivas foram implementadas.</div>';
 
   grupos.forEach(g=>{
