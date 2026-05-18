@@ -8874,6 +8874,8 @@ function salvarRespostaAchado(idx){
   achado.prazo_acao=document.getElementById('aud-pa-prazo-'+idx)?.value||'';
   achado.status_acao=document.getElementById('aud-pa-status-'+idx)?.value||'Pendente';
   fbAutoSave('salvar');
+  const fuPanel=document.getElementById('aud7');
+  if(fuPanel) fuPanel.innerHTML=rAbaFollowup(p, p.auditoria);
   toast('Resposta salva!','var(--teal)');
 }
 function _reabrirAbaAcoesAuditoria(){
