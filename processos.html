@@ -3526,6 +3526,7 @@ async function _carregarIdeiasProc(arqId){
       </div>`;
     }).join('');
   } catch(e){
+    console.warn('_carregarIdeiasProc:', e.message);
     if(el) el.innerHTML = '<div style="color:var(--red);font-size:13px">Erro ao carregar ideias.</div>';
   }
 }
@@ -3568,6 +3569,7 @@ async function atualizarStatusIdeia(ideiaId, status){
     await ideiasRepository.update(ideiaId,{status});
     toast('Status atualizado.','var(--teal)');
   } catch(e){
+    console.warn('atualizarStatusIdeia:', e.message);
     toast('Erro ao atualizar status.','var(--red)');
   }
 }
@@ -3579,6 +3581,7 @@ async function salvarComentarioEP(ideiaId){
     await ideiasRepository.update(ideiaId,{comentarioEP});
     toast('Comentário salvo.','var(--teal)');
   } catch(e){
+    console.warn('salvarComentarioEP:', e.message);
     toast('Erro ao salvar comentário.','var(--red)');
   }
 }
@@ -3600,7 +3603,7 @@ async function iaSugerirAchados(){
   try {
     const lista=JSON.parse(result.replace(/```json|```/g,'').trim());
     if(!Array.isArray(lista)) throw new Error('Formato inválido');
-    window._achSugestoes=lista;
+    globalThis._achSugestoes=lista;
     if(!lista.length){ targetEl.innerHTML='<div class="ib ibg" style="margin-bottom:.5rem">A IA não identificou achados relevantes com base nas respostas fornecidas.</div>'; return; }
     const TC={'Não conformidade':'var(--red)','Observação':'#d97706','Ponto de melhoria':'var(--blue)','Conformidade':'var(--teal)'};
     targetEl.innerHTML=`<div style="background:var(--bg3);border-radius:var(--r);padding:.75rem;margin-bottom:.75rem">
@@ -3627,7 +3630,7 @@ async function iaSugerirAchados(){
 }
 
 function _confirmarAchadoSugerido(idx){
-  const s=(window._achSugestoes||[])[idx]; if(!s) return;
+  const s=(globalThis._achSugestoes||[])[idx]; if(!s) return;
   const p=curProc; if(!p?.auditoria) return;
   if(!p.auditoria.achados_list) p.auditoria.achados_list=[];
   p.auditoria.achados_list.push({titulo:s.titulo,tipo:s.tipo||'Observação',descricao:s.descricao||'',evidencia:s.evidencia||'',criterio:s.criterio||'',data:now(),anexos:[]});
@@ -3637,7 +3640,7 @@ function _confirmarAchadoSugerido(idx){
 }
 
 function _confirmarTodosAchadosSugeridos(){
-  const lista=window._achSugestoes||[]; const p=curProc; if(!p?.auditoria) return;
+  const lista=globalThis._achSugestoes||[]; const p=curProc; if(!p?.auditoria) return;
   if(!p.auditoria.achados_list) p.auditoria.achados_list=[];
   let count=0;
   lista.forEach((s,i)=>{
