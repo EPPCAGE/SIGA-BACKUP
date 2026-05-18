@@ -17888,7 +17888,9 @@ async function _bootRestoreFirebaseUser(auth, firebaseUser){
     user = _findUsuarioByEmail(firebaseUser.email);
   }
   if(user){
-    _iniciarSessaoUnica(firebaseUser.uid);
+    // Só inicia sessão única na primeira autenticação — não a cada refresh de token
+    // (onAuthStateChanged(user) dispara a cada hora; criar novo sid derruba outras abas)
+    if(!_sessionUnsub) _iniciarSessaoUnica(firebaseUser.uid);
     // Não-EP muda senha mas não pode escrever em config/usuarios;
     // o override fica em /usuarios/{uid} — aplica antes de mostrar hub.
     if(user.trocar_senha){
