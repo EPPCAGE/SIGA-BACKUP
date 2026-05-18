@@ -89,7 +89,7 @@ function projEnsureScheduleBackupBag(exec){
 }
 
 function projPruneScheduleBackups(backups){
-  const keys = Object.keys(backups || {}).sort();
+  const keys = Object.keys(backups || {}).sort((a, b) => a.localeCompare(b));
   while(keys.length > PROJ_SCHEDULE_BACKUP_MAX_DAYS){
     delete backups[keys.shift()];
   }
