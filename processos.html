@@ -3597,7 +3597,7 @@ async function iaSugerirAchados(){
     auditoria_objetivo:aud.objetivo||'',
     auditoria_criterios:aud.criterios||'',
     questoes:comResposta.map(q=>({questao:q.questao, criterio:q.criterio||'', resposta:q.resposta})),
-    riscos:(p.riscos||[]).map(r=>({desc:r.desc, prob:r.prob, imp:r.imp, tratamento:r.tratamento||'', acao_tratamento:r.acao_tratamento||''}))
+    riscos:(p.ent?.riscos||[]).map(r=>({desc:r.desc, prob:r.prob, imp:r.imp, tratamento:r.tratamento||'', acao_tratamento:r.acao_tratamento||''}))
   };
   const result=await chamarIA('sugerir_achados', payload, targetEl);
   if(!result) return;
@@ -3686,7 +3686,7 @@ async function iaDescreverAchado(){
 
 // ── RISCOS NA AUDITORIA ──────────────────────────────────────────────────────
 function _rAudRiscos(p){
-  const riscos = p.riscos||[];
+  const riscos = p.ent?.riscos||[];
   if(!riscos.length) return '<div class="ib ibb" style="font-size:12px">Nenhum risco mapeado na etapa de Identificação de Riscos. Registre os riscos no mapeamento do processo para utilizá-los aqui.</div>';
   const probScore={Baixa:1,Media:2,Alta:3};
   const impScore={Baixo:1,Medio:2,Alto:3,Critico:4};
@@ -3726,7 +3726,7 @@ function _rAudRiscos(p){
 
 function salvarTratamentoRisco(idx){
   const p=curProc; if(!p) return;
-  const r=(p.riscos||[])[idx]; if(!r) return;
+  const r=(p.ent?.riscos||[])[idx]; if(!r) return;
   r.tratamento = document.getElementById('aud-risco-trat-'+idx)?.value||'';
   r.acao_tratamento = document.getElementById('aud-risco-acao-'+idx)?.value.trim()||'';
   fbAutoSave('salvar');
@@ -8400,7 +8400,7 @@ async function iaGerarRelatorioAuditoria(){
     })),
     achados: (aud.achados_list||[]).map(a=>({tipo:a.tipo, titulo:a.titulo, desc:_trunc(a.descricao,500), evidencia:_trunc(a.evidencia,300), criterio:_trunc(a.criterio,200)})),
     acoes: (aud.achados_list||[]).filter(a=>a.acao_corretiva).map(a=>({achado:a.titulo, posicao:a.posicao_auditado, acao:_trunc(a.acao_corretiva,300), responsavel:a.responsavel_acao, prazo:a.prazo_acao, status:a.status_acao})),
-    riscos: (p.riscos||[]).map(r=>({desc:r.desc, prob:r.prob, imp:r.imp, tratamento:r.tratamento||'', acao_tratamento:_trunc(r.acao_tratamento||'',300)})),
+    riscos: (p.ent?.riscos||[]).map(r=>({desc:r.desc, prob:r.prob, imp:r.imp, tratamento:r.tratamento||'', acao_tratamento:_trunc(r.acao_tratamento||'',300)})),
   };
 
   const result = await chamarIA('relatorio_auditoria', payload, el);
@@ -8570,8 +8570,7 @@ function renderRelatorioAuditoria(json, conf, p, aud){
   }
 
   // ── Riscos e Tratamentos
-  const riscosComTrat = (p.riscos||[]).filter(r=>r.tratamento||r.acao_tratamento);
-  const riscosAll = p.riscos||[];
+  const riscosAll = p.ent?.riscos||[];
   let riscosSec = null;
   if(riscosAll.length){
     riscosSec = sec('Riscos do Processo e Tratamentos');
