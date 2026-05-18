@@ -3709,12 +3709,21 @@ function rAbaFollowup(p, aud){
     let extra = '';
     if(st==='rejeitada') extra = `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:var(--r);padding:.45rem .7rem;margin-top:.4rem;font-size:12px;color:var(--red)"><strong>Rejeição:</strong> ${esc(fu.rejeicao_motivo||'')}</div>`;
     if(st==='evidencia_enviada') extra = `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--r);padding:.45rem .7rem;margin-top:.4rem;font-size:12px"><div style="font-weight:600;color:var(--teal);margin-bottom:2px">Evidência por ${esc(fu.evidencia_por||'')} · ${fu.evidencia_data?new Date(fu.evidencia_data).toLocaleDateString('pt-BR'):''}</div><div style="white-space:pre-wrap;color:var(--ink)">${esc(fu.evidencia_texto||'')}</div></div>`;
-    if(st==='implementada') extra = `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--r);padding:.45rem .7rem;margin-top:.4rem;font-size:12px"><div style="font-weight:600;color:var(--teal)">✓ Implementada em ${fu.validacao_data?new Date(fu.validacao_data).toLocaleDateString('pt-BR'):''} · ${esc(fu.validacao_por||'')}</div>${fu.evidencia_texto?`<div style="color:var(--ink3);margin-top:2px;white-space:pre-wrap">${esc(fu.evidencia_texto)}</div>`:''}</div>`;
+    if(st==='implementada'){
+      const validacaoDataFmt = fu.validacao_data ? new Date(fu.validacao_data).toLocaleDateString('pt-BR') : '';
+      const evidenciaBlock = fu.evidencia_texto
+        ? `<div style="color:var(--ink3);margin-top:2px;white-space:pre-wrap">${esc(fu.evidencia_texto)}</div>`
+        : '';
+      extra = `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--r);padding:.45rem .7rem;margin-top:.4rem;font-size:12px"><div style="font-weight:600;color:var(--teal)">✓ Implementada em ${validacaoDataFmt} · ${esc(fu.validacao_por||'')}</div>${evidenciaBlock}</div>`;
+    }
     let btns = '';
     if(st==='evidencia_enviada'){
       btns = `<div class="btn-row" style="margin-top:.5rem"><button type="button" class="btn btn-p" style="font-size:11px" onclick="validarEvidenciaFollowup(${p.id},${i})">✓ Validar</button><button type="button" class="btn" style="font-size:11px;color:var(--red);border-color:var(--red-b)" onclick="rejeitarEvidenciaFollowup(${p.id},${i})">✗ Rejeitar</button></div>`;
     } else if(st!=='implementada'){
-      btns = `<div class="btn-row" style="margin-top:.5rem">${lembreteFmt?`<span style="font-size:10px;color:var(--ink3);align-self:center">Lembrete: ${lembreteFmt}</span>`:''}<button type="button" class="btn" style="font-size:11px" onclick="enviarLembreteFollowup(${p.id},${i})">✉ Lembrete</button><button type="button" class="btn btn-p" style="font-size:11px" onclick="abrirRegistrarEvidencia(${p.id},${i})">📎 Registrar evidência</button></div>`;
+      const lembreteSpan = lembreteFmt
+        ? `<span style="font-size:10px;color:var(--ink3);align-self:center">Lembrete: ${lembreteFmt}</span>`
+        : '';
+      btns = `<div class="btn-row" style="margin-top:.5rem">${lembreteSpan}<button type="button" class="btn" style="font-size:11px" onclick="enviarLembreteFollowup(${p.id},${i})">✉ Lembrete</button><button type="button" class="btn btn-p" style="font-size:11px" onclick="abrirRegistrarEvidencia(${p.id},${i})">📎 Registrar evidência</button></div>`;
     }
     return `<div style="border:1px solid var(--bdr);border-radius:var(--r);padding:.75rem;margin-bottom:.5rem;${venc?'border-left:3px solid var(--red);':''}">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:3px">
@@ -3728,8 +3737,10 @@ function rAbaFollowup(p, aud){
   };
 
   const pendCount = comAcao.filter(({a})=>_fs(a)!=='implementada').length;
+  const pendSufixo = pendCount === 1 ? '' : 'ões';
+  const pendAdj    = pendCount === 1 ? '' : 's';
   let html = pendCount
-    ? `<div class="ib iba" style="margin-bottom:1rem;font-size:12px">${pendCount} ação${pendCount===1?'':'ões'} pendente${pendCount===1?'':'s'} de implementação</div>`
+    ? `<div class="ib iba" style="margin-bottom:1rem;font-size:12px">${pendCount} ação${pendSufixo} pendente${pendAdj} de implementação</div>`
     : '<div class="ib ibg" style="margin-bottom:1rem;font-size:12px">✓ Todas as ações corretivas foram implementadas.</div>';
 
   grupos.forEach(g=>{
@@ -3775,7 +3786,8 @@ function salvarEvidenciaFollowup(procId, achadoIdx){
   const autorNome = usuarioLogado.nome||usuarioLogado.email;
   const agora = new Date().toISOString();
   Object.assign(achado.followup, {status:'evidencia_enviada', evidencia_texto:txt, evidencia_data:agora, evidencia_por:autorNome});
-  (achado.followup.historico=achado.followup.historico||[]).push({data:agora, acao:'Evidência enviada', por:autorNome});
+  achado.followup.historico = achado.followup.historico || [];
+  achado.followup.historico.push({data:agora, acao:'Evidência enviada', por:autorNome});
   fbAutoSave('salvar');
   document.getElementById('modal-evidencia-fu')?.remove();
   toast('Evidência registrada! O auditor será notificado.','var(--teal)');
@@ -3798,7 +3810,8 @@ function validarEvidenciaFollowup(procId, achadoIdx){
     const agora = new Date().toISOString();
     Object.assign(achado.followup, {status:'implementada', validacao_data:agora, validacao_por:auditorNome});
     achado.status_acao = 'Concluída';
-    (achado.followup.historico=achado.followup.historico||[]).push({data:agora, acao:'Validada e implementada', por:auditorNome});
+    achado.followup.historico = achado.followup.historico || [];
+    achado.followup.historico.push({data:agora, acao:'Validada e implementada', por:auditorNome});
     fbAutoSave('salvar');
     toast('Ação marcada como implementada!','var(--teal)');
     const email = _solDonoEmail(achado.responsavel_acao);
@@ -3837,7 +3850,8 @@ function _confirmarRejeicaoFu(procId, achadoIdx){
   const auditorNome = usuarioLogado.nome||usuarioLogado.email;
   const agora = new Date().toISOString();
   Object.assign(achado.followup, {status:'rejeitada', rejeicao_motivo:motivo});
-  (achado.followup.historico=achado.followup.historico||[]).push({data:agora, acao:'Evidência rejeitada', por:auditorNome, obs:motivo});
+  achado.followup.historico = achado.followup.historico || [];
+  achado.followup.historico.push({data:agora, acao:'Evidência rejeitada', por:auditorNome, obs:motivo});
   fbAutoSave('salvar');
   document.getElementById('modal-rejeitar-fu')?.remove();
   toast('Evidência rejeitada. O responsável será notificado.','var(--amber)');
@@ -3860,8 +3874,10 @@ function enviarLembreteFollowup(procId, achadoIdx){
     `Lembrete: a ação corretiva "${achado.acao_corretiva}" referente ao achado "${achado.titulo}" (${p.nome}) está pendente. Prazo: ${prazoFmt}.`,
     p.nome, achado.prazo_acao, usuarioLogado.nome||ORG_CONFIG.notificationFromName);
   if(!achado.followup) achado.followup = {historico:[]};
-  achado.followup.lembrete_enviado_em = new Date().toISOString();
-  (achado.followup.historico=achado.followup.historico||[]).push({data:new Date().toISOString(), acao:'Lembrete enviado', por:usuarioLogado.nome||usuarioLogado.email});
+  const agora = new Date().toISOString();
+  achado.followup.lembrete_enviado_em = agora;
+  achado.followup.historico = achado.followup.historico || [];
+  achado.followup.historico.push({data:agora, acao:'Lembrete enviado', por:usuarioLogado.nome||usuarioLogado.email});
   fbAutoSave('salvar');
   toast(`Lembrete enviado para ${achado.responsavel_acao}.`,'var(--teal)');
 }
@@ -8485,7 +8501,10 @@ function renderRelatorioAuditoria(json, conf, p, aud){
       const sub = mk('div',null,(a.responsavel_acao||'—')+' · '+(a.prazo_acao||'—'),'font-size:10px;color:var(--ink3)');
       info.append(lbl, sub);
       if(a.posicao_auditado){
-        const posColor = a.posicao_auditado==='Discorda'?'#dc2626':a.posicao_auditado==='Concorda parcialmente'?'#d97706':'#16a34a';
+        let posColor;
+        if(a.posicao_auditado==='Discorda') posColor='#dc2626';
+        else if(a.posicao_auditado==='Concorda parcialmente') posColor='#d97706';
+        else posColor='#16a34a';
         info.append(mk('div',null,'Posição do auditado: '+a.posicao_auditado,'font-size:10px;color:'+posColor+';font-style:italic'));
       }
       row.append(sp, info);
@@ -9193,7 +9212,10 @@ function exportarAuditoriaRelPdf(){
         const docs=_e((a.anexos||[]).map(x=>x.nome||x.url).join('; '))||'—';
         let posicaoRow='';
         if(a.posicao_auditado){
-          const posColor=a.posicao_auditado==='Discorda'?'#dc2626':a.posicao_auditado==='Concorda parcialmente'?'#d97706':'#16a34a';
+          let posColor;
+          if(a.posicao_auditado==='Discorda') posColor='#dc2626';
+          else if(a.posicao_auditado==='Concorda parcialmente') posColor='#d97706';
+          else posColor='#16a34a';
           posicaoRow='<tr><td style="background:#f5f7fa;padding:6px 10px;border-top:2px solid #e5e7eb;border-bottom:1px solid #eee;font-weight:600;vertical-align:top">Posição do auditado</td>'
             +'<td style="padding:6px 10px;border-top:2px solid #e5e7eb;border-bottom:1px solid #eee;color:'+posColor+';font-weight:600">'+_e(a.posicao_auditado)+'</td></tr>';
         }
@@ -9206,7 +9228,7 @@ function exportarAuditoriaRelPdf(){
             +'<td style="padding:6px 10px;border-bottom:1px solid #eee">'+(_d(a.prazo_acao)||'—')+'</td></tr>'
             +'<tr><td style="background:#f5f7fa;padding:6px 10px;font-weight:600">Status</td>'
             +'<td style="padding:6px 10px">'+(_e(a.status_acao)||'Pendente')+'</td></tr>'
-          : (posicaoRow?'<tr><td colspan="2" style="padding:6px 10px;color:#9ca3af;font-style:italic">Ação corretiva não preenchida.</td></tr>':'');
+          : posicaoRow ? '<tr><td colspan="2" style="padding:6px 10px;color:#9ca3af;font-style:italic">Ação corretiva não preenchida.</td></tr>' : '';
         return '<div style="margin-bottom:16px;page-break-inside:avoid;border:1px solid #ddd;border-radius:6px;overflow:hidden">'
           +'<div style="background:'+bg+';color:#fff;padding:8px 12px;font-weight:700;font-size:12px;display:flex;justify-content:space-between;align-items:center">'
           +'<span>NC'+(i+1)+': '+_e(a.titulo)+'</span>'
