@@ -64,6 +64,74 @@ function projWithScheduleWrite(fn){
   finally { _projScheduleWriteContext = false; }
 }
 
+function projLocalDateKey(date = new Date()){
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function projCloneScheduleTasks(tarefas){
+  return JSON.parse(JSON.stringify(tarefas || []));
+}
+
+function projScheduleTasksCount(tarefas){
+  return (tarefas || []).reduce((acc, t) => acc + 1 + projScheduleTasksCount(t.subtarefas || []), 0);
+}
+
+function projScheduleHasTasks(proj){
+  return Array.isArray(proj?.execucao?.tarefas) && proj.execucao.tarefas.length > 0;
+}
+
+function projEnsureScheduleBackupBag(exec){
+  if(!exec.cron_backups || Array.isArray(exec.cron_backups) || typeof exec.cron_backups !== 'object') exec.cron_backups = {};
+  return exec.cron_backups;
+}
+
+function projPruneScheduleBackups(backups){
+  const keys = Object.keys(backups || {}).sort();
+  while(keys.length > PROJ_SCHEDULE_BACKUP_MAX_DAYS){
+    delete backups[keys.shift()];
+  }
+}
+
+function projEnsureProjectDailyScheduleBackup(proj, dateKey = projLocalDateKey()){
+  if(!projScheduleHasTasks(proj)) return false;
+  if(!proj.execucao) proj.execucao = {};
+  const backups = projEnsureScheduleBackupBag(proj.execucao);
+  if(backups[dateKey]) return false;
+  backups[dateKey] = {
+    data: dateKey,
+    criado_em: new Date().toISOString(),
+    tarefas: projCloneScheduleTasks(proj.execucao.tarefas)
+  };
+  projPruneScheduleBackups(backups);
+  return true;
+}
+
+function projPersistDailyScheduleBackups(){
+  if(fbReady()){
+    if(isEP()) projFbAutoSave('projetos').catch(()=>{});
+    else if(_projCurrentId && projCanWriteSchedule(_projCurrentId)) projFbSaveCurrentScheduleProject().catch(e=>console.warn('projPersistDailyScheduleBackups:', e.message));
+    return;
+  }
+  try { localStorage.setItem(PROJ_STORAGE_KEY, JSON.stringify(PROJETOS||[])); } catch(_e){}
+}
+
+function projEnsureDailyScheduleBackups(options = {}){
+  const dateKey = options.dateKey || projLocalDateKey();
+  let changed = false;
+  (PROJETOS || []).forEach(proj => {
+    if(projEnsureProjectDailyScheduleBackup(proj, dateKey)) changed = true;
+  });
+  if(changed && options.persist !== false) projPersistDailyScheduleBackups();
+  return changed;
+}
+
+function projEnsureCurrentScheduleBackupBeforeMutation(proj){
+  return projEnsureProjectDailyScheduleBackup(proj);
+}
+
 function _fsCleanArray(v, insideArray){
   const arr = v.map(item => _fsClean(item, true));
   return insideArray ? { items: arr } : arr;
@@ -112,10 +180,12 @@ let PROGRAMAS = [];
 let _projCurrentId = null; // ID do projeto em visualização
 let _projCurrentPage = 'inicio';
 let _projCurrentWorkflowTab = null;
+let _projScheduleBackupLastDate = projLocalDateKey();
 let _projReunioesCalendarMonth = null;
 let _progCurrentId = null; // ID do programa em visualização
 const PROJ_STORAGE_KEY = 'cagePROJETOS_v6';
 const PROG_STORAGE_KEY = 'cagePROGRAMAS_v6';
+const PROJ_SCHEDULE_BACKUP_MAX_DAYS = 14;
 
 // ── Fases do workflow ────────────────────────────────────────────
 const PROJ_FASES = [
@@ -220,6 +290,7 @@ async function projFbSaveCurrentScheduleProject(){
       planner_link: exec.planner_link || '',
       percentual: exec.percentual || proj.percentual || 0,
       tarefas: exec.tarefas || [],
+      cron_backups: exec.cron_backups || {},
       cron_mode: exec.cron_mode || 'planner',
       pct_mode: exec.pct_mode || 'manual'
     }
@@ -290,6 +361,7 @@ function projCacheCloudState(){
 
 function projCloudRender(){
   _projFbState.loaded = true;
+  projEnsureDailyScheduleBackups();
   projCacheCloudState();
   if(_projFbState.saving){
     _projFbState.pendingRender = true;
@@ -399,6 +471,7 @@ function projLoad() {
     if(!_projFbState.loaded) projFbLoadOnce().catch(e=>console.warn('projLoad/fb:',e.message));
     PROJETOS = (PROJETOS||[]).map(p => projFixDefaults(p));
     PROGRAMAS = (PROGRAMAS||[]).map(pg => progFixDefaults(pg));
+    if(_projFbState.loaded) projEnsureDailyScheduleBackups();
     return;
   }
   try {
@@ -409,6 +482,7 @@ function projLoad() {
   }
   // Ensure each project has proper structure
   PROJETOS = PROJETOS.map(p => projFixDefaults(p));
+  projEnsureDailyScheduleBackups();
   // Load programas and lists too
   progLoad();
   projLoadListas();
@@ -451,6 +525,16 @@ function projSave() {
 }
 
 // ── Persistência de Programas ───────────────────────────────────
+setInterval(() => {
+  const today = projLocalDateKey();
+  if(today === _projScheduleBackupLastDate) return;
+  _projScheduleBackupLastDate = today;
+  projLoad();
+  if(projEnsureDailyScheduleBackups() && _projCurrentId && _projCurrentWorkflowTab === 'execucao') {
+    projDetalheTab('execucao', document.querySelector('#proj-detalhe-tabs .proj-tab:nth-child(4)'));
+  }
+}, 60000);
+
 function progLoad() {
   if(fbReady()){
     if(!_projFbState.loaded) projFbLoadOnce().catch(e=>console.warn('progLoad/fb:',e.message));
@@ -3260,6 +3344,7 @@ function projTabExecucao(p) {
   const pctMode = exec.pct_mode || 'manual'; // 'manual' or 'derivado'
   const tarefas = exec.tarefas || [];
   const canScheduleIO = projCanWriteSchedule(String(p.id));
+  const todayBackup = projScheduleBackupForDate(p);
   projSyncDerivedTaskDates(tarefas);
   const derivedPct = projCalcDerivedPct(tarefas);
   const displayPct = pctMode === 'derivado' ? derivedPct : (p.percentual||0);
@@ -3392,8 +3477,10 @@ function projTabExecucao(p) {
           ${canScheduleIO ? `
           <button type="button" class="proj-btn" style="font-size:11px;padding:5px 12px" onclick="projExportCronogramaXLSX()">Exportar .xlsx</button>
           <button type="button" class="proj-btn" style="font-size:11px;padding:5px 12px" onclick="projImportCronogramaXLSX()">Importar .xlsx</button>
+          <button type="button" class="proj-btn danger" style="font-size:11px;padding:5px 12px" ${todayBackup?'':'disabled title="Nenhum backup do início do dia disponível"'} onclick="projRestaurarCronogramaInicioDia()">Voltar para o início do dia</button>
           ` : ''}
         </div>
+        <div style="font-size:10.5px;color:var(--ink3);margin-top:5px">${todayBackup ? `Backup do início do dia salvo em ${projFormatDate(todayBackup.data)}.` : 'O backup do início do dia será criado automaticamente quando houver atividades no cronograma.'}</div>
       </div>
     </div>
 
@@ -3554,6 +3641,12 @@ function projRenderTarefasRows(tarefas, depth, parentIdx) {
 }
 
 // ── Planner SIGA: CRUD ──
+function projScheduleBackupForDate(proj, dateKey = projLocalDateKey()){
+  const backups = proj?.execucao?.cron_backups;
+  if(!backups || typeof backups !== 'object' || Array.isArray(backups)) return null;
+  return backups[dateKey] || null;
+}
+
 function projGetTarefaByPath(tarefas, path) {
   const parts = path.split('.').map(Number);
   let list = tarefas;
@@ -3571,6 +3664,7 @@ function projAddTarefa(parentPath) {
   if(!proj) return;
   if(!proj.execucao) proj.execucao = {planner_link:'',percentual:0,reunioes:[],tarefas:[]};
   if(!proj.execucao.tarefas) proj.execucao.tarefas = [];
+  projEnsureCurrentScheduleBackupBeforeMutation(proj);
   const nova = {id:'t'+Date.now(), nome:'Nova tarefa', ppe:false, marco:false, dt_inicio:'', dt_fim:'', responsavel:'', conclusao:0, concluida:false, subtarefas:[]};
   if(parentPath === null || parentPath === undefined) {
     proj.execucao.tarefas.push(nova);
@@ -3588,10 +3682,27 @@ function projAddTarefa(parentPath) {
 }
 
 function projRemoveTarefa(path) {
+  if(!projEnsureWriteSchedule()) return;
+  projLoad();
+  const proj = PROJETOS.find(p => String(p.id) === _projCurrentId);
+  if(!proj || !proj.execucao || !proj.execucao.tarefas) return;
+  projEnsureCurrentScheduleBackupBeforeMutation(proj);
+  const ref = projGetTarefaByPath(proj.execucao.tarefas, path);
+  const task = ref && ref.list ? ref.list[ref.index] : null;
+  const subCount = task ? projScheduleTasksCount(task.subtarefas || []) : 0;
+  if(task && subCount > 0) {
+    projConfirmar(`Excluir a tarefa "${task.nome || 'Tarefa'}" e ${subCount} subtarefa(s)?\n\nEsta tarefa calcula automaticamente início, fim e percentual a partir das subtarefas. A exclusão removerá tudo que está abaixo dela.`, () => projRemoveTarefaConfirmada(path));
+    return;
+  }
+  return projRemoveTarefaConfirmada(path);
+}
+
+function projRemoveTarefaConfirmada(path) {
   return projWithScheduleWrite(() => {
   projLoad();
   const proj = PROJETOS.find(p => String(p.id) === _projCurrentId);
   if(!proj || !proj.execucao || !proj.execucao.tarefas) return;
+  projEnsureCurrentScheduleBackupBeforeMutation(proj);
   const ref = projGetTarefaByPath(proj.execucao.tarefas, path);
   if(ref) ref.list.splice(ref.index, 1);
   projSyncDerivedTaskDates(proj.execucao.tarefas);
@@ -3600,11 +3711,45 @@ function projRemoveTarefa(path) {
   });
 }
 
+function projRestaurarCronogramaInicioDia() {
+  if(!projEnsureWriteSchedule()) return;
+  projLoad();
+  const proj = PROJETOS.find(p => String(p.id) === _projCurrentId);
+  const backup = projScheduleBackupForDate(proj);
+  if(!proj || !backup) {
+    projToast('Nenhum backup do início do dia disponível para este projeto.', '#d97706');
+    return;
+  }
+  const total = projScheduleTasksCount(backup.tarefas || []);
+  projConfirmar(`Voltar o cronograma de "${proj.nome || 'Projeto'}" para o início do dia?\n\nIsso substituirá as tarefas atuais pelas ${total} tarefa(s) salvas no backup de ${projFormatDate(backup.data)}.`, () => {
+    projWithScheduleWrite(() => {
+      projLoad();
+      const p = PROJETOS.find(x => String(x.id) === _projCurrentId);
+      const b = projScheduleBackupForDate(p);
+      if(!p || !b) {
+        projToast('Backup do início do dia não encontrado.', '#dc2626');
+        return;
+      }
+      if(!p.execucao) p.execucao = {planner_link:'',percentual:0,reunioes:[],tarefas:[]};
+      p.execucao.tarefas = projCloneScheduleTasks(b.tarefas || []);
+      projSyncDerivedTaskDates(p.execucao.tarefas);
+      if(p.execucao.pct_mode === 'derivado') {
+        p.percentual = projCalcDerivedPct(p.execucao.tarefas);
+        p.execucao.percentual = p.percentual;
+      }
+      projSave();
+      projToast('Cronograma restaurado para o início do dia.', 'var(--teal)');
+      projDetalheTab('execucao', document.querySelector('#proj-detalhe-tabs .proj-tab:nth-child(4)'));
+    });
+  });
+}
+
 function projUpdateTarefa(path, field, value) {
   return projWithScheduleWrite(() => {
   projLoad();
   const proj = PROJETOS.find(p => String(p.id) === _projCurrentId);
   if(!proj || !proj.execucao || !proj.execucao.tarefas) return;
+  projEnsureCurrentScheduleBackupBeforeMutation(proj);
   const ref = projGetTarefaByPath(proj.execucao.tarefas, path);
   if(ref && ref.list[ref.index]) {
     ref.list[ref.index][field] = value;
@@ -3627,6 +3772,7 @@ function projUpdateTarefaResponsavel(path, rawValue) {
   projLoad();
   const proj = PROJETOS.find(p => String(p.id) === _projCurrentId);
   if(!proj || !proj.execucao || !proj.execucao.tarefas) return;
+  projEnsureCurrentScheduleBackupBeforeMutation(proj);
   const ref = projGetTarefaByPath(proj.execucao.tarefas, path);
   if(ref && ref.list[ref.index]) {
     const value = String(rawValue||'').trim();
@@ -3646,6 +3792,7 @@ function projToggleTarefaFlag(path, field) {
   projLoad();
   const proj = PROJETOS.find(p => String(p.id) === _projCurrentId);
   if(!proj || !proj.execucao || !proj.execucao.tarefas) return;
+  projEnsureCurrentScheduleBackupBeforeMutation(proj);
   const ref = projGetTarefaByPath(proj.execucao.tarefas, path);
   if(ref && ref.list[ref.index]) {
     ref.list[ref.index][field] = !ref.list[ref.index][field];
@@ -3661,6 +3808,7 @@ function projToggleTarefa(path) {
   projLoad();
   const proj = PROJETOS.find(p => String(p.id) === _projCurrentId);
   if(!proj || !proj.execucao || !proj.execucao.tarefas) return;
+  projEnsureCurrentScheduleBackupBeforeMutation(proj);
   const ref = projGetTarefaByPath(proj.execucao.tarefas, path);
   if(ref && ref.list[ref.index]) {
     ref.list[ref.index].concluida = !ref.list[ref.index].concluida;
@@ -4549,6 +4697,7 @@ function projImportCronogramaXLSX(inputEl){
         projLoad();
         const proj=PROJETOS.find(p=>String(p.id)===_projCurrentId); if(!proj)return;
         if(!proj.execucao)proj.execucao={planner_link:'',percentual:0,reunioes:[],tarefas:[]};
+        projEnsureCurrentScheduleBackupBeforeMutation(proj);
         proj.execucao.tarefas=projSyncDerivedTaskDates(tarefas);
         if(proj.execucao.pct_mode==='derivado'){proj.percentual=projCalcDerivedPct(proj.execucao.tarefas);proj.execucao.percentual=proj.percentual;}
         projSave();
