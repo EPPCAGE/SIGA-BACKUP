@@ -8410,7 +8410,8 @@ async function iaGerarRelatorioAuditoria(){
       const conf = document.getElementById('aud-conf')?.value || aud.conformidade || '';
       const _node = renderRelatorioAuditoria(json, conf, p, aud);
       el.replaceChildren(_node);
-      // Anexa fluxograma AS IS ao final do relatório (assíncrono)
+      // Anexa fluxograma AS IS ao final do relatório (só na sessão — não salvo no Firestore
+      // pois imagem base64 ultrapassa o limite de 1 MB do documento)
       _getFluxogramaAsIsPng(p).then(pngUrl => {
         if(!pngUrl) return;
         const report = el.querySelector('.aud-report');
@@ -8426,10 +8427,10 @@ async function iaGerarRelatorioAuditoria(){
         img.style.cssText = 'width:100%;max-width:100%;border-radius:6px;margin-top:.5rem;border:1px solid var(--bdr)';
         fluxSec.append(title, img);
         report.append(fluxSec);
-        p.auditoria.relatorio_html = report.outerHTML;
-        fbAutoSave('salvar');
       }).catch(()=>{});
-      p.auditoria.relatorio_html = el.querySelector('.aud-report')?.outerHTML || '';
+      const _rawHtml = el.querySelector('.aud-report')?.outerHTML || '';
+      // Remove data URLs de imagens antes de salvar para não estourar o limite de 1 MB do Firestore
+      p.auditoria.relatorio_html = _rawHtml.replace(/(<img\b[^>]*)\bsrc="data:[^"]*"/gi, '$1src=""');
       fbAutoSave('salvar');
     } catch {
       const _wrap=document.createElement('div'); _wrap.className='ai-result';
