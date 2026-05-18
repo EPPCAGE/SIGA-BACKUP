@@ -3596,7 +3596,8 @@ async function iaSugerirAchados(){
     processo:p.nome, area:p.area||'',
     auditoria_objetivo:aud.objetivo||'',
     auditoria_criterios:aud.criterios||'',
-    questoes:comResposta.map(q=>({questao:q.questao, criterio:q.criterio||'', resposta:q.resposta}))
+    questoes:comResposta.map(q=>({questao:q.questao, criterio:q.criterio||'', resposta:q.resposta})),
+    riscos:(p.riscos||[]).map(r=>({desc:r.desc, prob:r.prob, imp:r.imp, tratamento:r.tratamento||'', acao_tratamento:r.acao_tratamento||''}))
   };
   const result=await chamarIA('sugerir_achados', payload, targetEl);
   if(!result) return;
@@ -3682,6 +3683,55 @@ async function iaDescreverAchado(){
   }
 }
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ── RISCOS NA AUDITORIA ──────────────────────────────────────────────────────
+function _rAudRiscos(p){
+  const riscos = p.riscos||[];
+  if(!riscos.length) return '<div class="ib ibb" style="font-size:12px">Nenhum risco mapeado na etapa de Identificação de Riscos. Registre os riscos no mapeamento do processo para utilizá-los aqui.</div>';
+  const probScore={Baixa:1,Media:2,Alta:3};
+  const impScore={Baixo:1,Medio:2,Alto:3,Critico:4};
+  function _zona(r){
+    const s=(probScore[r.prob]||1)*(impScore[r.imp]||1);
+    if(s<=4) return {bg:'#d1fae5',tx:'#065f46',lb:'Baixo'};
+    if(s<=6) return {bg:'#fef3c7',tx:'#92400e',lb:'Moderado'};
+    if(s<=9) return {bg:'#ffedd5',tx:'#9a3412',lb:'Alto'};
+    return {bg:'#fee2e2',tx:'#991b1b',lb:'Crítico'};
+  }
+  const cards = riscos.map((r,i)=>{
+    const z=_zona(r);
+    return `<div style="border:1px solid var(--bdr);border-radius:var(--r);padding:.75rem;margin-bottom:.6rem;border-left:3px solid ${z.tx}">
+      <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:.35rem">
+        <span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px;background:${z.bg};color:${z.tx};flex-shrink:0;margin-top:1px">${z.lb}</span>
+        <div style="font-size:12.5px;font-weight:600;color:var(--ink)">${esc(r.desc)}</div>
+      </div>
+      <div style="font-size:11px;color:var(--ink3);margin-bottom:.6rem">Probabilidade: <strong>${r.prob||'—'}</strong> · Impacto: <strong>${r.imp||'—'}</strong></div>
+      <div class="g2" style="gap:.5rem;margin-bottom:.5rem">
+        <div class="fg" style="margin-bottom:0">
+          <label class="fl">Tratamento</label>
+          <select class="fi" id="aud-risco-trat-${i}" style="font-size:12px">
+            <option value="">— selecione —</option>
+            ${['Mitigar','Aceitar','Transferir','Evitar'].map(o=>`<option${r.tratamento===o?' selected':''}>${o}</option>`).join('')}
+          </select>
+        </div>
+        <div class="fg" style="margin-bottom:0">
+          <label class="fl">Ação concreta de tratamento</label>
+          <textarea class="fi" id="aud-risco-acao-${i}" style="min-height:58px;font-size:12px" placeholder="Descreva a ação adotada...">${esc(r.acao_tratamento||'')}</textarea>
+        </div>
+      </div>
+      <button type="button" class="btn" style="font-size:11px" onclick="salvarTratamentoRisco(${i})">Salvar</button>
+    </div>`;
+  }).join('');
+  return `<div style="font-size:13px;color:var(--ink3);margin-bottom:.9rem">Registre abaixo o tratamento adotado para cada risco identificado no processo.</div>${cards}`;
+}
+
+function salvarTratamentoRisco(idx){
+  const p=curProc; if(!p) return;
+  const r=(p.riscos||[])[idx]; if(!r) return;
+  r.tratamento = document.getElementById('aud-risco-trat-'+idx)?.value||'';
+  r.acao_tratamento = document.getElementById('aud-risco-acao-'+idx)?.value.trim()||'';
+  fbAutoSave('salvar');
+  toast('Tratamento salvo!','var(--teal)');
+}
 
 // ── FOLLOW-UP DE AUDITORIA ───────────────────────────────────────────────────
 function rAbaFollowup(p, aud){
@@ -5211,7 +5261,7 @@ function abrirAtribuirEtapa(etapaId){
   if(etapaId==='auditoria'){
     const activeTab=document.querySelector('#tab-acao .tabs .tab.on');
     const m=activeTab?(activeTab.getAttribute('onclick')||'').match(/sstab\('(aud\d)',this\)/):null;
-    const AUD_LABELS={aud1:'Planejamento',aud2:'Questões',aud3:'Ações',aud4:'Achados',aud5:'Plano de Ação',aud6:'Relatório',aud7:'Follow-up'};
+    const AUD_LABELS={aud1:'Planejamento',aud2:'Questões',aud3:'Ações',aud4:'Achados',aud8:'Riscos',aud5:'Plano de Ação',aud6:'Relatório',aud7:'Follow-up'};
     const abaLabel=m?AUD_LABELS[m[1]]||m[1]:null;
     audAbaBanner=abaLabel
       ?`<div style="background:var(--blue-l,#eff6ff);border:1.5px solid var(--blue-b,#bfdbfe);border-radius:var(--r);padding:.65rem .9rem;margin-bottom:1rem;font-size:12px;color:var(--ink2)">📋 O dono terá acesso somente à aba <strong>${esc(abaLabel)}</strong>.</div>`
@@ -6062,6 +6112,7 @@ const ACOES = {
         <div class="tab" role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" onclick="sstab('aud2',this)">Questões</div>
         <div class="tab" role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" onclick="sstab('aud3',this)">Ações</div>
         <div class="tab" role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" onclick="sstab('aud4',this)">Achados</div>
+        <div class="tab" role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" onclick="sstab('aud8',this)">Riscos</div>
         <div class="tab" role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" onclick="sstab('aud5',this)">Plano de Ação</div>
         <div class="tab" role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" onclick="sstab('aud6',this)">Relatório</div>
         <div class="tab" role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" onclick="sstab('aud7',this)">Follow-up <span id="aud7-cnt" style="display:none;background:var(--red);color:#fff;border-radius:99px;padding:0 5px;font-size:10px;font-weight:700;margin-left:2px;vertical-align:middle">0</span></div>
@@ -6186,6 +6237,9 @@ const ACOES = {
             <button type="button" class="btn" id="aud-a-cancel-btn" onclick="_limparFormularioAchado()" style="display:none">Cancelar</button>
           </div>
         </div>
+      </div>
+      <div id="aud8" class="tab-p" style="display:none">
+        ${_rAudRiscos(p)}
       </div>
       <div id="aud5" class="tab-p" style="display:none">
         <div style="font-size:13px;color:var(--ink3);margin-bottom:.9rem">Registre abaixo a posição do auditado e a ação corretiva prevista para cada achado.</div>
@@ -6760,7 +6814,7 @@ function _rAcaoHandleDono(el, ac, p){
   }
 }
 function _filtrarTabsAuditoriaDono(abaPermitida){
-  const ALL=['aud1','aud2','aud3','aud4','aud5','aud6','aud7'];
+  const ALL=['aud1','aud2','aud3','aud4','aud8','aud5','aud6','aud7'];
   ALL.forEach(id=>{
     const pane=document.getElementById(id);
     if(pane){pane.style.display=id===abaPermitida?'block':'none';pane.classList.toggle('on',id===abaPermitida);}
@@ -8346,6 +8400,7 @@ async function iaGerarRelatorioAuditoria(){
     })),
     achados: (aud.achados_list||[]).map(a=>({tipo:a.tipo, titulo:a.titulo, desc:_trunc(a.descricao,500), evidencia:_trunc(a.evidencia,300), criterio:_trunc(a.criterio,200)})),
     acoes: (aud.achados_list||[]).filter(a=>a.acao_corretiva).map(a=>({achado:a.titulo, posicao:a.posicao_auditado, acao:_trunc(a.acao_corretiva,300), responsavel:a.responsavel_acao, prazo:a.prazo_acao, status:a.status_acao})),
+    riscos: (p.riscos||[]).map(r=>({desc:r.desc, prob:r.prob, imp:r.imp, tratamento:r.tratamento||'', acao_tratamento:_trunc(r.acao_tratamento||'',300)})),
   };
 
   const result = await chamarIA('relatorio_auditoria', payload, el);
@@ -8514,6 +8569,42 @@ function renderRelatorioAuditoria(json, conf, p, aud){
     recSec.append(ul);
   }
 
+  // ── Riscos e Tratamentos
+  const riscosComTrat = (p.riscos||[]).filter(r=>r.tratamento||r.acao_tratamento);
+  const riscosAll = p.riscos||[];
+  let riscosSec = null;
+  if(riscosAll.length){
+    riscosSec = sec('Riscos do Processo e Tratamentos');
+    const probScore={Baixa:1,Media:2,Alta:3};
+    const impScore={Baixo:1,Medio:2,Alto:3,Critico:4};
+    for(const r of riscosAll){
+      const s=(probScore[r.prob]||1)*(impScore[r.imp]||1);
+      let zBg,zTx,zLb;
+      if(s<=4){zBg='#d1fae5';zTx='#065f46';zLb='Baixo';}
+      else if(s<=6){zBg='#fef3c7';zTx='#92400e';zLb='Moderado';}
+      else if(s<=9){zBg='#ffedd5';zTx='#9a3412';zLb='Alto';}
+      else{zBg='#fee2e2';zTx='#991b1b';zLb='Crítico';}
+      const card = mk('div',null,null,
+        'border-left:3px solid '+zTx+';padding:.4rem .75rem;margin-bottom:.35rem;background:var(--surf2);border-radius:0 6px 6px 0');
+      const row = mk('div',null,null,'display:flex;gap:6px;align-items:center;margin-bottom:2px');
+      const zone = mk('span',null,zLb,
+        'font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px;background:'+zBg+';color:'+zTx);
+      const desc = mk('div',null,r.desc,'font-size:12px;font-weight:600');
+      row.append(zone, desc);
+      card.append(row);
+      card.append(mk('div',null,'Prob: '+r.prob+' · Impacto: '+r.imp,'font-size:10px;color:var(--ink3)'));
+      if(r.tratamento){
+        const trat = mk('div',null,null,'font-size:11px;margin-top:3px');
+        trat.append(mk('strong',null,'Tratamento: '));
+        trat.append(document.createTextNode(r.tratamento+(r.acao_tratamento?' — '+r.acao_tratamento:'')));
+        card.append(trat);
+      } else {
+        card.append(mk('div',null,'Tratamento não definido','font-size:10px;color:var(--ink3);font-style:italic;margin-top:2px'));
+      }
+      riscosSec.append(card);
+    }
+  }
+
   // ── Conclusão
   const conclSec = sec('Conclusão');
   conclSec.append(mk('p','aud-rep-p', _fixTermoAnalise(json.conclusao)));
@@ -8522,6 +8613,7 @@ function renderRelatorioAuditoria(json, conf, p, aud){
   if(prAchSec) root.append(prAchSec);
   if(achSec)   root.append(achSec);
   if(recSec)   root.append(recSec);
+  if(riscosSec) root.append(riscosSec);
   root.append(conclSec);
   return root;
 }
