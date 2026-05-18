@@ -5239,7 +5239,14 @@ async function confirmarAtribuirEtapa(etapaId){
   }
 
   if(!p.atribuicoes)p.atribuicoes={};
-  p.atribuicoes[etapaId]={para,para_nome:paraNome,para_email:paraEmail,prazo,por:usuarioLogado?.nome||'EP',dt:now(),lembrete_enviado:false};
+  // Quando atribui auditoria, registra a aba ativa para restringir o dono à aba específica.
+  let abaAtiva = null;
+  if(etapaId==='auditoria'){
+    const activeTab = document.querySelector('#tab-acao .tabs .tab.on');
+    const m = activeTab ? (activeTab.getAttribute('onclick')||'').match(/sstab\('(aud\d)',this\)/) : null;
+    if(m) abaAtiva = m[1];
+  }
+  p.atribuicoes[etapaId]={para,para_nome:paraNome,para_email:paraEmail,prazo,por:usuarioLogado?.nome||'EP',dt:now(),lembrete_enviado:false,...(abaAtiva?{aba:abaAtiva}:{})};
   p.status_workflow=para==='gestor'?'aguardando_gestor':'aguardando_dono';
   const prazoFmt=prazo.split('-').reverse().join('/');
   push(p,etapaId,'EP','Etapa atribuída a '+paraNome+' — prazo: '+prazoFmt);
@@ -6717,6 +6724,23 @@ function _rAcaoHandleDono(el, ac, p){
     el.appendChild(bar);
   }
   _rAcaoInitBpmn(p, minhaTarefa);
+  if(minhaTarefa && p.etapa==='auditoria' && atrib?.aba){
+    _filtrarTabsAuditoriaDono(atrib.aba);
+  }
+}
+function _filtrarTabsAuditoriaDono(abaPermitida){
+  const ALL=['aud1','aud2','aud3','aud4','aud5','aud6','aud7'];
+  ALL.forEach(id=>{
+    const pane=document.getElementById(id);
+    if(pane){pane.style.display=id===abaPermitida?'block':'none';pane.classList.toggle('on',id===abaPermitida);}
+  });
+  document.querySelectorAll('#tab-acao .tabs .tab').forEach(btn=>{
+    const m=(btn.getAttribute('onclick')||'').match(/sstab\('(aud\d)',this\)/);
+    if(!m) return;
+    const visivel=m[1]===abaPermitida;
+    btn.style.display=visivel?'':'none';
+    btn.classList.toggle('on',visivel);
+  });
 }
 function _concluirDonoAtribuido(){
   const etapa=curProc?.etapa;
