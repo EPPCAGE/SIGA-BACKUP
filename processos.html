@@ -17852,20 +17852,24 @@ async function _bootRestoreSession(){
       if(btn){ btn.textContent='Entrar'; btn.disabled=false; }
       if(firebaseUser){
         clearTimeout(_authNullTimer);
+        sessionStorage.removeItem('_auth_null_reloaded');
         await _bootRestoreFirebaseUser(auth, firebaseUser);
       } else if(usuarioLogado){
-        // Aguarda antes de efetivar o logout por null no auth state.
-        // Cobre: suspensão do computador, flap de rede, renovação de token com custom claims.
+        // onAuthStateChanged(null) durante sessão ativa: pode ser suspensão do PC,
+        // flap de rede ou refresh lento do token. Estratégia:
+        // 1ª vez → recarrega a página (Firebase restaura sessão do cache IndexedDB).
+        // 2ª vez (após reload) → de fato deslogar.
         clearTimeout(_authNullTimer);
-        _authNullTimer = setTimeout(async () => {
+        _authNullTimer = setTimeout(() => {
           if(!usuarioLogado) return;
-          // Última verificação: tenta renovar o token antes de deslogar.
-          try {
-            const u = fb().auth.currentUser;
-            if(u){ await u.getIdToken(false); return; } // sessão ainda válida
-          } catch(e_){}
-          doLogout();
-        }, 30000);
+          if(!sessionStorage.getItem('_auth_null_reloaded')){
+            sessionStorage.setItem('_auth_null_reloaded', '1');
+            window.location.reload();
+          } else {
+            sessionStorage.removeItem('_auth_null_reloaded');
+            doLogout();
+          }
+        }, 10000);
       } else {
         _bootShowLoginScreen();
       }
