@@ -10907,7 +10907,7 @@ function _rFormHtml(p){
         const det=pd.ativ_detalhes||{};
         const normTipo=t=>{if(!t){return '';}if(t==='Decisao'||t==='Decisão'){return 'Decisão';}if(t==='Comentario'||t==='Observação'){return 'Observação';}return t;};
         const normModo=m=>{if(m==='Automatica'){return 'Automática';}if(m==='Semi-automatica'){return 'Semi-automática';}return m||'Manual';};
-        const COL='width:32px;flex-shrink:0';
+        const C='overflow-wrap:break-word;word-break:break-word;padding:5px 8px;box-sizing:border-box';
         const linhas=etapas.map((e,i)=>{
           const d=det[e.id]||{};
           const desc=(d.desc!==undefined&&d.desc!=='')?d.desc:(e.desc||'');
@@ -10918,29 +10918,28 @@ function _rFormHtml(p){
           const modo=normModo(e.modo);
           const gw=e.vinculo_gw?.gw_ep_id?etapas.find(x=>x.id===e.vinculo_gw.gw_ep_id):null;
           const gwCellLabel=gw&&e.vinculo_gw.label?' · '+esc(e.vinculo_gw.label):'';
-          const gwCell=gw?`<div style="font-size:10px;color:var(--ink3)">⤷ ${esc(gw.nome||'Gateway')}${gwCellLabel}</div>`:'';
-          return `<div style="display:flex;border-bottom:1px solid var(--bdr);break-inside:avoid;page-break-inside:avoid">
-            <div style="${COL};padding:5px 8px;font-size:11px;color:var(--ink3)">${i+1}</div>
-            <div style="flex:2;min-width:0;padding:5px 8px;font-size:12px;font-weight:600">${esc(e.nome||'')}${gwCell}</div>
-            <div style="width:70px;flex-shrink:0;padding:5px 8px;font-size:11px;color:var(--ink3)">${esc(tipo)}</div>
-            <div style="width:80px;flex-shrink:0;padding:5px 8px;font-size:11px;color:var(--ink3)">${esc(modo)}</div>
-            <div style="flex:3;min-width:0;padding:5px 8px;font-size:12px">${esc(desc)}</div>
-            <div style="flex:1;min-width:0;padding:5px 8px;font-size:11px;color:var(--ink3)">${esc(resp)}</div>
+          const gwCell=gw?`<div style="font-size:10px;color:#8888aa">⤷ ${esc(gw.nome||'Gateway')}${gwCellLabel}</div>`:'';
+          return `<div style="display:flex;width:100%;border-bottom:1px solid #e0e0f0;break-inside:avoid;page-break-inside:avoid">
+            <div style="${C};width:5%;font-size:11px;color:#8888aa">${i+1}</div>
+            <div style="${C};width:22%;font-size:12px;font-weight:600">${esc(e.nome||'')}${gwCell}</div>
+            <div style="${C};width:11%;font-size:11px;color:#8888aa">${esc(tipo)}</div>
+            <div style="${C};width:11%;font-size:11px;color:#8888aa">${esc(modo)}</div>
+            <div style="${C};width:36%;font-size:12px">${esc(desc)}</div>
+            <div style="${C};width:15%;font-size:11px;color:#8888aa">${esc(resp)}</div>
           </div>`;
         }).join('');
-        if(!linhas)return pd.ativ?`<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">2.0 Atividades</div><div style="font-size:12.5px;white-space:pre-wrap">${pd.ativ}</div></div>`:'';
-        return `<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">2.0 Atividades</div>
-          <div style="width:100%;border:1px solid var(--bdr);border-radius:4px;font-size:12px">
-            <div style="display:flex;background:var(--bg2);border-bottom:2px solid var(--bdr)">
-              <div style="${COL};padding:5px 8px;font-size:10px;font-weight:700;color:var(--ink3)">#</div>
-              <div style="flex:2;min-width:0;padding:5px 8px;font-size:10px;font-weight:700;color:var(--ink3)">Etapa</div>
-              <div style="width:70px;flex-shrink:0;padding:5px 8px;font-size:10px;font-weight:700;color:var(--ink3)">Tipo</div>
-              <div style="width:80px;flex-shrink:0;padding:5px 8px;font-size:10px;font-weight:700;color:var(--ink3)">Modo</div>
-              <div style="flex:3;min-width:0;padding:5px 8px;font-size:10px;font-weight:700;color:var(--ink3)">Descrição</div>
-              <div style="flex:1;min-width:0;padding:5px 8px;font-size:10px;font-weight:700;color:var(--ink3)">Responsável</div>
-            </div>
-            ${linhas}
-          </div></div>`;
+        if(!linhas)return pd.ativ?`<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid #e0e0f0;padding-bottom:5px;margin-bottom:.7rem">2.0 Atividades</div><div style="font-size:12.5px;white-space:pre-wrap">${pd.ativ}</div></div>`:'';
+        return `<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid #e0e0f0;padding-bottom:5px;margin-bottom:.7rem">2.0 Atividades</div>
+          <div style="display:flex;width:100%;background:#f4f5f8;border-top:1px solid #e0e0f0;border-bottom:2px solid #e0e0f0">
+            <div style="${C};width:5%;font-size:10px;font-weight:700;color:#8888aa">#</div>
+            <div style="${C};width:22%;font-size:10px;font-weight:700;color:#8888aa">Etapa</div>
+            <div style="${C};width:11%;font-size:10px;font-weight:700;color:#8888aa">Tipo</div>
+            <div style="${C};width:11%;font-size:10px;font-weight:700;color:#8888aa">Modo</div>
+            <div style="${C};width:36%;font-size:10px;font-weight:700;color:#8888aa">Descrição</div>
+            <div style="${C};width:15%;font-size:10px;font-weight:700;color:#8888aa">Responsável</div>
+          </div>
+          ${linhas}
+          </div>`;
       })()}
       ${pd.docs?`<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">3.0 Documentos correlatos</div><div style="font-size:12.5px;white-space:pre-wrap">${pd.docs}</div></div>`:''}
       ${p.form?.faq?`<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">4.0 Perguntas frequentes (FAQ)</div><div style="font-size:12.5px;white-space:pre-wrap">${esc(p.form.faq)}</div></div>`:''}
@@ -10960,23 +10959,24 @@ function _rFormHtml(p){
           seenV.add(key); return true;
         }):[];
         // Rows combinados: manuais primeiro, depois vinculados
-        const _indRow=(cells)=>`<div style="display:flex;border-bottom:1px solid var(--bdr);break-inside:avoid;page-break-inside:avoid">${cells}</div>`;
-        const _indCell=(v,w,bold)=>`<div style="${w?'width:'+w+'px;flex-shrink:0':'flex:1;min-width:0'};padding:5px 8px;font-size:${bold?'12':'11'}px;${bold?'font-weight:600':'color:var(--ink3)'}">${v}</div>`;
+        const CI='overflow-wrap:break-word;word-break:break-word;padding:5px 8px;box-sizing:border-box';
+        const _indRow=(cells)=>`<div style="display:flex;width:100%;border-bottom:1px solid #e0e0f0;break-inside:avoid;page-break-inside:avoid">${cells}</div>`;
+        const _indCell=(v,w,bold)=>`<div style="${CI};width:${w||'20%'};font-size:${bold?'12':'11'}px;${bold?'font-weight:600':'color:#8888aa'}">${v}</div>`;
         const todasRows=[
           ...indsManual.map(ind=>_indRow(
-            _indCell(esc(ind.nome),'',true)+_indCell(esc(ind.meta||'—'),70)+_indCell(esc(ind.unidade||'—'),70)+_indCell(esc(ind.periodicidade||'—'),90)+_indCell(esc(ind.formula||'—'))+_indCell(esc(ind.fonte||'—'))
+            _indCell(esc(ind.nome),'30%',true)+_indCell(esc(ind.meta||'—'),'10%')+_indCell(esc(ind.unidade||'—'),'10%')+_indCell(esc(ind.periodicidade||'—'),'15%')+_indCell(esc(ind.formula||'—'),'20%')+_indCell(esc(ind.fonte||'—'),'15%')
           )),
           ...indsVinc.map(k=>_indRow(
-            _indCell(esc(k.nome),'',true)+_indCell(k.meta==null?'—':esc(String(k.meta)),70)+_indCell(esc(k.unidade||'—'),70)+_indCell(esc(k.periodicidade||'—'),90)+_indCell('—')+_indCell('—')
+            _indCell(esc(k.nome),'30%',true)+_indCell(k.meta==null?'—':esc(String(k.meta)),'10%')+_indCell(esc(k.unidade||'—'),'10%')+_indCell(esc(k.periodicidade||'—'),'15%')+_indCell('—','20%')+_indCell('—','15%')
           )),
         ];
-        const secTitle='<div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">5.0 Indicadores</div>';
+        const secTitle='<div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid #e0e0f0;padding-bottom:5px;margin-bottom:.7rem">5.0 Indicadores</div>';
         if(todasRows.length){
-          const _hCell=(t,w)=>`<div style="${w?'width:'+w+'px;flex-shrink:0':'flex:1;min-width:0'};padding:5px 8px;font-size:10px;font-weight:700;color:var(--ink3)">${t}</div>`;
-          return `<div style="margin-bottom:1rem">${secTitle}<div style="width:100%;border:1px solid var(--bdr);border-radius:4px;font-size:12px">
-            <div style="display:flex;background:var(--bg2);border-bottom:2px solid var(--bdr)">${_hCell('Indicador')+''+_hCell('Meta',70)+_hCell('Unidade',70)+_hCell('Periodicidade',90)+_hCell('Fórmula')+_hCell('Fonte')}</div>
+          const _hCell=(t,w)=>`<div style="${CI};width:${w};font-size:10px;font-weight:700;color:#8888aa">${t}</div>`;
+          return `<div style="margin-bottom:1rem">${secTitle}
+            <div style="display:flex;width:100%;background:#f4f5f8;border-top:1px solid #e0e0f0;border-bottom:2px solid #e0e0f0">${_hCell('Indicador','30%')+_hCell('Meta','10%')+_hCell('Unidade','10%')+_hCell('Periodicidade','15%')+_hCell('Fórmula','20%')+_hCell('Fonte','15%')}</div>
             ${todasRows.join('')}
-          </div></div>`;
+          </div>`;
         }
         return pd.ind?`<div style="margin-bottom:1rem">${secTitle}<div style="font-size:12.5px;white-space:pre-wrap">${pd.ind}</div></div>`:'';
       })()}
