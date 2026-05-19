@@ -11219,7 +11219,8 @@ async function gerarPopPdf(){
   try{anexo=await _popPdfAnexo(p);}catch(ex){console.warn('_popPdfAnexo:',ex);}
   if(btn){btn.disabled=false;btn.textContent='⬇ Gerar POP em PDF';}
   const cageLogo=await _fetchCageLogoBase64();
-  const logoFixed=`<div class="cage-logo-all-pages"><span class="cage-hdr-title">POP — Procedimento Operacional Padrão</span>${cageLogo?'<img src="'+cageLogo+'" alt="CAGE" style="height:32px;object-fit:contain">':''}</div>`;
+  const _pgHdr=`@page{size:A4 portrait;margin:22mm 20mm;@top-left{content:"POP — Procedimento Operacional Padrão";font-family:'Segoe UI',Arial,sans-serif;font-size:11px;font-weight:700;color:#1a1a2e;vertical-align:bottom;padding-bottom:3px;border-bottom:1px solid #e0e0f0}${cageLogo?'@top-right{content:url("'+cageLogo+'");vertical-align:bottom;padding-bottom:3px}':''}}`;
+  const logoFixed='';
   const fullHtml=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${nome}</title>
   <style>
     :root{--blue:#1e6bfa;--ink:#1a1a2e;--ink2:#4a4a6a;--ink3:#8888aa;--bg2:#f4f5f8;--surf:#fff;--bdr:#e0e0f0;--r:6px;--rl:8px;--fh:'Segoe UI',Arial,sans-serif}
@@ -11230,13 +11231,10 @@ async function gerarPopPdf(){
     th{background:#f4f5f8;font-size:10px}
     img{max-width:100%}
     svg{max-width:100%;display:block}
-    @page{size:A4 portrait;margin:22mm 20mm}
-    @page landscape-page{size:A4 landscape;margin:15mm 18mm}
+    ${_pgHdr}
+    @page landscape-page{size:A4 landscape;margin:22mm 18mm}
     .bpmn-landscape{page:landscape-page;page-break-before:always}
-    .cage-logo-all-pages{position:fixed;top:0;left:0;right:0;height:44px;background:#fff;border-bottom:1px solid #e0e0f0;display:flex;align-items:center;justify-content:space-between;padding:0 12px;z-index:9999}
-    .cage-hdr-title{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;font-weight:700;color:#1a1a2e;letter-spacing:.3px}
-    @media screen{.cage-logo-all-pages{display:none}}
-    @media print{body{padding:50px 28px 24px}.pop-pdf-bar{display:none!important}[data-popsec]>div:first-child{break-after:avoid}}
+    @media print{.pop-pdf-bar{display:none!important}[data-popsec]>div:first-child{break-after:avoid}}
   </style>
   </head><body>${logoFixed}${inner}${anexo}<script>setTimeout(function(){window.print();},200);<\/script></body></html>`;
   const w=globalThis.open('','_blank');
@@ -11256,7 +11254,8 @@ async function gerarPopPdfDireto(){
   let anexo='';
   try{anexo=await _popPdfAnexo(p);}catch(ex){console.warn('_popPdfAnexo:',ex);}
   const cageLogo=await _fetchCageLogoBase64();
-  const logoFixed=`<div class="cage-logo-all-pages"><span class="cage-hdr-title">POP — Procedimento Operacional Padrão</span>${cageLogo?'<img src="'+cageLogo+'" alt="CAGE" style="height:32px;object-fit:contain">':''}</div>`;
+  const _pgHdr=`@page{size:A4 portrait;margin:22mm 20mm;@top-left{content:"POP — Procedimento Operacional Padrão";font-family:'Segoe UI',Arial,sans-serif;font-size:11px;font-weight:700;color:#1a1a2e;vertical-align:bottom;padding-bottom:3px;border-bottom:1px solid #e0e0f0}${cageLogo?'@top-right{content:url("'+cageLogo+'");vertical-align:bottom;padding-bottom:3px}':''}}`;
+  const logoFixed='';
   const fullHtml=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${nome}</title>
   <style>
     :root{--blue:#1e6bfa;--ink:#1a1a2e;--ink2:#4a4a6a;--ink3:#8888aa;--bg2:#f4f5f8;--surf:#fff;--bdr:#e0e0f0;--r:6px;--rl:8px;--fh:'Segoe UI',Arial,sans-serif}
@@ -11267,13 +11266,10 @@ async function gerarPopPdfDireto(){
     th{background:#f4f5f8;font-size:10px}
     img{max-width:100%}
     svg{max-width:100%;display:block}
-    @page{size:A4 portrait;margin:22mm 20mm}
-    @page landscape-page{size:A4 landscape;margin:15mm 18mm}
+    ${_pgHdr}
+    @page landscape-page{size:A4 landscape;margin:22mm 18mm}
     .bpmn-landscape{page:landscape-page;page-break-before:always}
-    .cage-logo-all-pages{position:fixed;top:0;left:0;right:0;height:44px;background:#fff;border-bottom:1px solid #e0e0f0;display:flex;align-items:center;justify-content:space-between;padding:0 12px;z-index:9999}
-    .cage-hdr-title{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;font-weight:700;color:#1a1a2e;letter-spacing:.3px}
-    @media screen{.cage-logo-all-pages{display:none}}
-    @media print{body{padding:50px 28px 24px}.pop-pdf-bar{display:none!important}[data-popsec]>div:first-child{break-after:avoid}}
+    @media print{.pop-pdf-bar{display:none!important}[data-popsec]>div:first-child{break-after:avoid}}
   </style>
   </head><body>${logoFixed}${inner}${anexo}<script>setTimeout(function(){window.print();},200);<\/script></body></html>`;
   const w=globalThis.open('','_blank');
