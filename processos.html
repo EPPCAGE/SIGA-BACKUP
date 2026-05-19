@@ -1957,6 +1957,10 @@ Não responda este e-mail.</pre>
         <select class="fi" id="pub-procs" multiple style="min-height:90px;padding:4px 8px"></select>
         <div style="font-size:10.5px;color:var(--ink3);margin-top:3px">Segure Ctrl (Windows) ou ⌘ (Mac) para selecionar múltiplos processos</div>
       </div>
+      <div class="fg" id="pub-bpmn-wrap">
+        <label class="fl" for="pub-bpmn-url">Link da imagem do BPMN</label>
+        <input class="fi" id="pub-bpmn-url" placeholder="https://... link para a imagem do fluxograma BPMN">
+      </div>
       <div class="fg">
         <label class="fl" for="pub-thumb">Capa / Thumbnail</label>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -14826,6 +14830,7 @@ function rPub(){
           <div class="pub-card-meta">${p.data?esc(p.data)+' · ':''}${esc(p.responsavel||'')}</div>
           <div class="pub-card-actions">
             ${safeUrl(p.url)?`<a href="${esc(safeUrl(p.url))}" target="_blank" rel="noopener noreferrer" class="btn pub-action-btn pub-action-open" style="font-size:10px;padding:2px 8px">Abrir documento</a>`:''}
+            ${p.categoria==='POPs'&&safeUrl(p.bpmn_url)?`<a href="${esc(safeUrl(p.bpmn_url))}" target="_blank" rel="noopener noreferrer" class="btn" style="font-size:10px;padding:2px 8px">Ver BPMN</a>`:''}
             ${isEP()?`<button type="button" class="btn pub-action-edit" style="font-size:10px;padding:2px 8px" onclick="editarPub(${p.id})">Editar</button>
             <button type="button" class="btn pub-action-delete" style="font-size:10px;padding:2px 8px" onclick="deletarPub(${p.id})">Excluir</button>`:''}
           </div>
@@ -14842,8 +14847,11 @@ function _pubPopularSelectProcs(selectedArqIds){
   sel.innerHTML = unidades.map(u=>`<option value="${esc(u.arq_id)}"${(selectedArqIds||[]).includes(u.arq_id)?' selected':''}>${esc(u.label)}</option>`).join('');
 }
 function _pubCatChange(cat){
+  const isPop = cat==='POPs';
   const wrap = document.getElementById('pub-procs-wrap');
-  if(wrap) wrap.style.display = cat==='POPs' ? '' : 'none';
+  if(wrap) wrap.style.display = isPop ? '' : 'none';
+  const bwrap = document.getElementById('pub-bpmn-wrap');
+  if(bwrap) bwrap.style.display = isPop ? '' : 'none';
 }
 function abrirModalPub(){
   if(!isEP()){toast('Ação restrita ao '+ORG_CONFIG.supportTeamLabel+'.','var(--amber)');return;}
@@ -14860,6 +14868,7 @@ function abrirModalPub(){
   document.getElementById('pub-tags').value    = '';
   document.getElementById('pub-thumb').value   = '';
   document.getElementById('pub-thumb-preview').style.display = 'none';
+  document.getElementById('pub-bpmn-url').value = '';
   _pubPopularSelectProcs([]);
   _pubCatChange('Manual');
   document.getElementById('pub-modal').style.display = 'flex';
@@ -14883,6 +14892,7 @@ function editarPub(id){
   const prev = document.getElementById('pub-thumb-preview');
   const img  = document.getElementById('pub-thumb-img');
   if(p.thumb_url){ img.src=p.thumb_url; prev.style.display='block'; } else { prev.style.display='none'; }
+  document.getElementById('pub-bpmn-url').value = p.bpmn_url||'';
   _pubPopularSelectProcs(p.arq_ids||[]);
   _pubCatChange(p.categoria||'Manual');
   document.getElementById('pub-modal').style.display = 'flex';
@@ -14904,6 +14914,7 @@ function salvarPub(){
     responsavel: document.getElementById('pub-resp').value.trim(),
     tags:        document.getElementById('pub-tags').value.trim(),
     thumb_url:   document.getElementById('pub-thumb').value.trim(),
+    bpmn_url:    document.getElementById('pub-bpmn-url').value.trim(),
     arq_ids:     arqIds,
   };
   const editId = document.getElementById('pub-edit-id').value;
