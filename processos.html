@@ -3699,6 +3699,7 @@ function _rAudRiscos(p){
   }
   const cards = riscos.map((r,i)=>{
     const z=_zona(r);
+    const nenhuma = !!r.acao_nenhuma;
     return `<div style="border:1px solid var(--bdr);border-radius:var(--r);padding:.75rem;margin-bottom:.6rem;border-left:3px solid ${z.tx}">
       <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:.35rem">
         <span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px;background:${z.bg};color:${z.tx};flex-shrink:0;margin-top:1px">${z.lb}</span>
@@ -3707,21 +3708,25 @@ function _rAudRiscos(p){
       <div style="font-size:11px;color:var(--ink3);margin-bottom:.6rem">Probabilidade: <strong>${r.prob||'—'}</strong> · Impacto: <strong>${r.imp||'—'}</strong></div>
       <div class="g2" style="gap:.5rem;margin-bottom:.5rem">
         <div class="fg" style="margin-bottom:0">
-          <label class="fl">Tratamento</label>
+          <label class="fl">Tratamento Recebido</label>
           <select class="fi" id="aud-risco-trat-${i}" style="font-size:12px">
             <option value="">— selecione —</option>
-            ${['Mitigar','Aceitar','Transferir','Evitar'].map(o=>`<option${r.tratamento===o?' selected':''}>${o}</option>`).join('')}
+            ${['Mitigado','Aceito','Transferido','Evitado'].map(o=>`<option${r.tratamento===o?' selected':''}>${o}</option>`).join('')}
           </select>
         </div>
         <div class="fg" style="margin-bottom:0">
-          <label class="fl">Ação concreta de tratamento</label>
-          <textarea class="fi" id="aud-risco-acao-${i}" style="min-height:58px;font-size:12px" placeholder="Descreva a ação adotada...">${esc(r.acao_tratamento||'')}</textarea>
+          <label class="fl">Ação realizada para tratamento</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2);margin-bottom:.35rem;cursor:pointer">
+            <input type="checkbox" id="aud-risco-nenhuma-${i}" ${nenhuma?'checked':''} onchange="document.getElementById('aud-risco-acao-${i}').disabled=this.checked;document.getElementById('aud-risco-acao-${i}').style.opacity=this.checked?'.4':'1'">
+            Nenhuma
+          </label>
+          <textarea class="fi" id="aud-risco-acao-${i}" style="min-height:58px;font-size:12px;${nenhuma?'opacity:.4':''}" placeholder="Descreva a ação realizada..." ${nenhuma?'disabled':''}>${esc(r.acao_tratamento||'')}</textarea>
         </div>
       </div>
       <button type="button" class="btn" style="font-size:11px" onclick="salvarTratamentoRisco(${i})">Salvar</button>
     </div>`;
   }).join('');
-  return `<div style="font-size:13px;color:var(--ink3);margin-bottom:.9rem">Registre abaixo o tratamento adotado para cada risco identificado no processo.</div>${cards}`;
+  return `<div style="font-size:13px;color:var(--ink3);margin-bottom:.9rem">Registre abaixo como o processo tratou na prática cada risco identificado no mapeamento.</div>${cards}`;
 }
 
 function _rAudRestoreRelatorio(p){
@@ -3758,7 +3763,8 @@ function salvarTratamentoRisco(idx){
   const p=curProc; if(!p) return;
   const r=(p.ent?.riscos||[])[idx]; if(!r) return;
   r.tratamento = document.getElementById('aud-risco-trat-'+idx)?.value||'';
-  r.acao_tratamento = document.getElementById('aud-risco-acao-'+idx)?.value.trim()||'';
+  r.acao_nenhuma = !!(document.getElementById('aud-risco-nenhuma-'+idx)?.checked);
+  r.acao_tratamento = r.acao_nenhuma ? '' : (document.getElementById('aud-risco-acao-'+idx)?.value.trim()||'');
   fbAutoSave('salvar');
   toast('Tratamento salvo!','var(--teal)');
 }
