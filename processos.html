@@ -10900,40 +10900,40 @@ function _rFormHtml(p){
         const det=pd.ativ_detalhes||{};
         const normTipo=t=>{if(!t){return '';}if(t==='Decisao'||t==='Decisão'){return 'Decisão';}if(t==='Comentario'||t==='Observação'){return 'Observação';}return t;};
         const normModo=m=>{if(m==='Automatica'){return 'Automática';}if(m==='Semi-automatica'){return 'Semi-automática';}return m||'Manual';};
+        const COL='width:32px;flex-shrink:0';
         const linhas=etapas.map((e,i)=>{
           const d=det[e.id]||{};
           const desc=(d.desc!==undefined&&d.desc!=='')?d.desc:(e.desc||'');
-          // Eventos e Gateways: tipo sempre do modelo; resp nunca do executor (pode estar desatualizado)
           const isStructural=e.tipo==='Evento'||e.tipo==='Decisao'||e.tipo==='Decisão';
           const tipo=isStructural?(normTipo(e.tipo)||e.tipo):(normTipo(d.tipo)||normTipo(e.tipo)||'Atividade');
           const execDefault=isStructural?'':(e.executor||'');
-    const resp=(d.resp!==undefined&&d.resp!=='')?d.resp:execDefault;
+          const resp=(d.resp!==undefined&&d.resp!=='')?d.resp:execDefault;
           const modo=normModo(e.modo);
           const gw=e.vinculo_gw?.gw_ep_id?etapas.find(x=>x.id===e.vinculo_gw.gw_ep_id):null;
           const gwCellLabel=gw&&e.vinculo_gw.label?' · '+esc(e.vinculo_gw.label):'';
           const gwCell=gw?`<div style="font-size:10px;color:var(--ink3)">⤷ ${esc(gw.nome||'Gateway')}${gwCellLabel}</div>`:'';
-          return `<tr style="border-bottom:1px solid var(--bdr);page-break-inside:avoid;break-inside:avoid">
-            <td style="padding:5px 8px;font-size:11px;color:var(--ink3);white-space:nowrap">${i+1}</td>
-            <td style="padding:5px 8px;font-size:12px;font-weight:600">${esc(e.nome||'')}${gwCell}</td>
-            <td style="padding:5px 8px;font-size:11px;color:var(--ink3)">${esc(tipo)}</td>
-            <td style="padding:5px 8px;font-size:11px;color:var(--ink3)">${esc(modo)}</td>
-            <td style="padding:5px 8px;font-size:12px">${esc(desc)}</td>
-            <td style="padding:5px 8px;font-size:11px;color:var(--ink3)">${esc(resp)}</td>
-          </tr>`;
+          return `<div style="display:flex;border-bottom:1px solid var(--bdr);break-inside:avoid;page-break-inside:avoid">
+            <div style="${COL};padding:5px 8px;font-size:11px;color:var(--ink3)">${i+1}</div>
+            <div style="flex:2;min-width:0;padding:5px 8px;font-size:12px;font-weight:600">${esc(e.nome||'')}${gwCell}</div>
+            <div style="width:70px;flex-shrink:0;padding:5px 8px;font-size:11px;color:var(--ink3)">${esc(tipo)}</div>
+            <div style="width:80px;flex-shrink:0;padding:5px 8px;font-size:11px;color:var(--ink3)">${esc(modo)}</div>
+            <div style="flex:3;min-width:0;padding:5px 8px;font-size:12px">${esc(desc)}</div>
+            <div style="flex:1;min-width:0;padding:5px 8px;font-size:11px;color:var(--ink3)">${esc(resp)}</div>
+          </div>`;
         }).join('');
         if(!linhas)return pd.ativ?`<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">2.0 Atividades</div><div style="font-size:12.5px;white-space:pre-wrap">${pd.ativ}</div></div>`:'';
         return `<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">2.0 Atividades</div>
-          <table style="width:100%;border-collapse:collapse;font-size:12px">
-            <thead><tr style="background:var(--bg2)">
-              <th style="padding:5px 8px;text-align:left;font-size:10px;color:var(--ink3)">#</th>
-              <th style="padding:5px 8px;text-align:left;font-size:10px;color:var(--ink3)">Etapa</th>
-              <th style="padding:5px 8px;text-align:left;font-size:10px;color:var(--ink3)">Tipo</th>
-              <th style="padding:5px 8px;text-align:left;font-size:10px;color:var(--ink3)">Modo</th>
-              <th style="padding:5px 8px;text-align:left;font-size:10px;color:var(--ink3)">Descrição</th>
-              <th style="padding:5px 8px;text-align:left;font-size:10px;color:var(--ink3)">Responsável</th>
-            </tr></thead>
-            <tbody>${linhas}</tbody>
-          </table></div>`;
+          <div style="width:100%;border:1px solid var(--bdr);border-radius:4px;font-size:12px">
+            <div style="display:flex;background:var(--bg2);border-bottom:2px solid var(--bdr)">
+              <div style="${COL};padding:5px 8px;font-size:10px;font-weight:700;color:var(--ink3)">#</div>
+              <div style="flex:2;min-width:0;padding:5px 8px;font-size:10px;font-weight:700;color:var(--ink3)">Etapa</div>
+              <div style="width:70px;flex-shrink:0;padding:5px 8px;font-size:10px;font-weight:700;color:var(--ink3)">Tipo</div>
+              <div style="width:80px;flex-shrink:0;padding:5px 8px;font-size:10px;font-weight:700;color:var(--ink3)">Modo</div>
+              <div style="flex:3;min-width:0;padding:5px 8px;font-size:10px;font-weight:700;color:var(--ink3)">Descrição</div>
+              <div style="flex:1;min-width:0;padding:5px 8px;font-size:10px;font-weight:700;color:var(--ink3)">Responsável</div>
+            </div>
+            ${linhas}
+          </div></div>`;
       })()}
       ${pd.docs?`<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">3.0 Documentos correlatos</div><div style="font-size:12.5px;white-space:pre-wrap">${pd.docs}</div></div>`:''}
       ${p.form?.faq?`<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">4.0 Perguntas frequentes (FAQ)</div><div style="font-size:12.5px;white-space:pre-wrap">${esc(p.form.faq)}</div></div>`:''}
@@ -10953,37 +10953,23 @@ function _rFormHtml(p){
           seenV.add(key); return true;
         }):[];
         // Rows combinados: manuais primeiro, depois vinculados
+        const _indRow=(cells)=>`<div style="display:flex;border-bottom:1px solid var(--bdr);break-inside:avoid;page-break-inside:avoid">${cells}</div>`;
+        const _indCell=(v,w,bold)=>`<div style="${w?'width:'+w+'px;flex-shrink:0':'flex:1;min-width:0'};padding:5px 8px;font-size:${bold?'12':'11'}px;${bold?'font-weight:600':'color:var(--ink3)'}">${v}</div>`;
         const todasRows=[
-          ...indsManual.map(ind=>`<tr style="border-bottom:1px solid var(--bdr);page-break-inside:avoid;break-inside:avoid">
-            <td style="padding:5px 8px;font-size:12px;font-weight:600">${esc(ind.nome)}</td>
-            <td style="padding:5px 8px;font-size:11px;color:var(--ink2)">${esc(ind.meta||'—')}</td>
-            <td style="padding:5px 8px;font-size:11px;color:var(--ink3)">${esc(ind.unidade||'—')}</td>
-            <td style="padding:5px 8px;font-size:11px;color:var(--ink3)">${esc(ind.periodicidade||'—')}</td>
-            <td style="padding:5px 8px;font-size:11px;color:var(--ink3)">${esc(ind.formula||'—')}</td>
-            <td style="padding:5px 8px;font-size:11px;color:var(--ink3)">${esc(ind.fonte||'—')}</td>
-          </tr>`),
-          ...indsVinc.map(k=>`<tr style="border-bottom:1px solid var(--bdr);page-break-inside:avoid;break-inside:avoid">
-            <td style="padding:5px 8px;font-size:12px;font-weight:600">${esc(k.nome)}</td>
-            <td style="padding:5px 8px;font-size:11px;color:var(--ink2)">${k.meta==null?'—':esc(String(k.meta))}</td>
-            <td style="padding:5px 8px;font-size:11px;color:var(--ink3)">${esc(k.unidade||'—')}</td>
-            <td style="padding:5px 8px;font-size:11px;color:var(--ink3)">${esc(k.periodicidade||'—')}</td>
-            <td style="padding:5px 8px;font-size:11px;color:var(--ink3)">—</td>
-            <td style="padding:5px 8px;font-size:11px;color:var(--ink3)">—</td>
-          </tr>`),
+          ...indsManual.map(ind=>_indRow(
+            _indCell(esc(ind.nome),'',true)+_indCell(esc(ind.meta||'—'),70)+_indCell(esc(ind.unidade||'—'),70)+_indCell(esc(ind.periodicidade||'—'),90)+_indCell(esc(ind.formula||'—'))+_indCell(esc(ind.fonte||'—'))
+          )),
+          ...indsVinc.map(k=>_indRow(
+            _indCell(esc(k.nome),'',true)+_indCell(k.meta==null?'—':esc(String(k.meta)),70)+_indCell(esc(k.unidade||'—'),70)+_indCell(esc(k.periodicidade||'—'),90)+_indCell('—')+_indCell('—')
+          )),
         ];
         const secTitle='<div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">5.0 Indicadores</div>';
         if(todasRows.length){
-          return `<div style="margin-bottom:1rem">${secTitle}<table style="width:100%;border-collapse:collapse">
-            <thead><tr style="background:var(--bg2)">
-              <th style="padding:5px 8px;text-align:left;font-size:10px;color:var(--ink3)">Indicador</th>
-              <th style="padding:5px 8px;text-align:left;font-size:10px;color:var(--ink3)">Meta</th>
-              <th style="padding:5px 8px;text-align:left;font-size:10px;color:var(--ink3)">Unidade</th>
-              <th style="padding:5px 8px;text-align:left;font-size:10px;color:var(--ink3)">Periodicidade</th>
-              <th style="padding:5px 8px;text-align:left;font-size:10px;color:var(--ink3)">Fórmula</th>
-              <th style="padding:5px 8px;text-align:left;font-size:10px;color:var(--ink3)">Fonte</th>
-            </tr></thead>
-            <tbody>${todasRows.join('')}</tbody>
-          </table></div>`;
+          const _hCell=(t,w)=>`<div style="${w?'width:'+w+'px;flex-shrink:0':'flex:1;min-width:0'};padding:5px 8px;font-size:10px;font-weight:700;color:var(--ink3)">${t}</div>`;
+          return `<div style="margin-bottom:1rem">${secTitle}<div style="width:100%;border:1px solid var(--bdr);border-radius:4px;font-size:12px">
+            <div style="display:flex;background:var(--bg2);border-bottom:2px solid var(--bdr)">${_hCell('Indicador')+''+_hCell('Meta',70)+_hCell('Unidade',70)+_hCell('Periodicidade',90)+_hCell('Fórmula')+_hCell('Fonte')}</div>
+            ${todasRows.join('')}
+          </div></div>`;
         }
         return pd.ind?`<div style="margin-bottom:1rem">${secTitle}<div style="font-size:12.5px;white-space:pre-wrap">${pd.ind}</div></div>`:'';
       })()}
