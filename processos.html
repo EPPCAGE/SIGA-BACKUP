@@ -11171,43 +11171,29 @@ async function _popPdfAnexo(p){
   }
 
   // ── 12.0 Desenho do processo (BPMN) — página separada em paisagem ────────
-  // Regra: se TO BE existe, usar apenas o TO BE; caso contrário, usar o AS IS.
+  // Regra: TO BE tem prioridade; se falhar ou produto não for TO BE, usa AS IS.
   let bpmnLandscape='';
   const hasAsIsModeler=!!(bpmnModelers['asis']&&bpmnProcIds['asis']===p?.id);
   const hasTobeModeler=!!(bpmnModelers['tobe']&&bpmnProcIds['tobe']===p?.id);
-  console.warn('[POP-SEC12-DIAG] processo:', p?.id, p?.nome, {arq_id:p?.arq_id, hasBpmnAsIs:!!p?.mod?.bpmnAsIs, hasBpmnAsIsSvg:!!p?.mod?.bpmnAsIsSvg, hasFluxoImg:p?.mod?.hasFluxoImg, hasFluxoImgBase64:!!p?.mod?.fluxoImgBase64, hasAsIsModeler, hasBpmnToBe:!!p?.mod?.bpmnToBe});
   const hasFluxoA=!!(p.arq_id||p.mod?.bpmnAsIs||p.mod?.hasFluxoImg||p.mod?.fluxoImgBase64||hasAsIsModeler||p.id);
-  const hasBpmnT=!!(p.mod?.bpmnToBe||hasTobeModeler);
+  const _comTobe=p.produto==='TO BE'||p.produto==='AS IS + TO BE';
+  const hasBpmnT=_comTobe&&!!(p.mod?.bpmnToBe||hasTobeModeler);
   if(hasFluxoA||hasBpmnT){
-    // SVG inline evita problemas de data URI longa em document.write e canvas taint
     const _svgToImg=(svg)=>svg.replace(/<svg /,'<svg style="max-width:100%;height:auto;display:block" ');
+    const _wrapSvg=(svg)=>`<div style="border:1px solid #e0e0f0;border-radius:4px;overflow:hidden;background:#fff;padding:8px">${_svgToImg(svg)}</div>`;
+    const _wrapPng=(png)=>`<div style="border:1px solid #e0e0f0;border-radius:4px;overflow:hidden;background:#fff;padding:10px"><img src="${png}" alt="Fluxograma do processo" style="max-width:100%;height:auto;display:block"></div>`;
     let bpInner=`<div style="font-size:15px;font-weight:700;color:#1a1a2e;border-bottom:3px solid #1e6bfa;padding-bottom:8px;margin-bottom:1.2rem;font-family:'Segoe UI',Arial,sans-serif">12.0 Desenho do Processo</div>`;
     let hasDiagramContent=false;
     if(hasBpmnT){
-      // TO BE tem prioridade — não incluir o AS IS quando TO BE existe
       const svg=await _bpmnGetSvg('tobe',p);
-      if(svg){
-        bpInner+=`<div style="border:1px solid #e0e0f0;border-radius:4px;overflow:hidden;background:#fff;padding:8px">${_svgToImg(svg)}</div>`;
-        hasDiagramContent=true;
-      }else{
-        const png=await _getFluxogramaToBePng(p);
-        if(png){
-          bpInner+=`<div style="border:1px solid #e0e0f0;border-radius:4px;overflow:hidden;background:#fff;padding:10px"><img src="${png}" alt="Fluxograma do processo" style="max-width:100%;height:auto;display:block"></div>`;
-          hasDiagramContent=true;
-        }
-      }
-    }else if(hasFluxoA){
+      if(svg){bpInner+=_wrapSvg(svg);hasDiagramContent=true;}
+      else{const png=await _getFluxogramaToBePng(p);if(png){bpInner+=_wrapPng(png);hasDiagramContent=true;}}
+    }
+    // Fallback para AS IS se TO BE não renderizou (XML inválido, sem diagrama visual, etc.)
+    if(!hasDiagramContent&&hasFluxoA){
       const svg=await _bpmnGetSvg('asis',p);
-      if(svg){
-        bpInner+=`<div style="border:1px solid #e0e0f0;border-radius:4px;overflow:hidden;background:#fff;padding:8px">${_svgToImg(svg)}</div>`;
-        hasDiagramContent=true;
-      }else{
-        const png=await _getFluxogramaAsIsPng(p);
-        if(png){
-          bpInner+=`<div style="border:1px solid #e0e0f0;border-radius:4px;overflow:hidden;background:#fff;padding:10px"><img src="${png}" alt="Fluxograma do processo" style="max-width:100%;height:auto;display:block"></div>`;
-          hasDiagramContent=true;
-        }
-      }
+      if(svg){bpInner+=_wrapSvg(svg);hasDiagramContent=true;}
+      else{const png=await _getFluxogramaAsIsPng(p);if(png){bpInner+=_wrapPng(png);hasDiagramContent=true;}}
     }
     if(!hasDiagramContent){
       bpInner+=`<div style="border:1px solid #e0e0f0;border-radius:4px;padding:24px;text-align:center;color:#888;font-size:12px;background:#f9f9fd">Fluxograma não disponível nesta exportação. Acesse o módulo de mapeamento para visualizar o desenho do processo.</div>`;
