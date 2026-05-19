@@ -10894,11 +10894,11 @@ function _rFormHtml(p){
     <div style="padding:1.2rem 1.5rem">
       <table class="pop-tbl" style="margin-bottom:1.2rem"><thead><tr><th>Revisão</th><th>Data</th><th>Descrição</th></tr></thead><tbody><tr><td>0</td><td>${now()}</td><td>Emissão inicial</td></tr></tbody></table>
       <table class="pop-tbl" style="margin-bottom:1.5rem"><thead><tr><th>Ação</th><th>Elaborado por</th><th>Revisado por</th><th>Aprovado por</th></tr></thead><tbody><tr><td>Nome</td><td>${(pd.ger&&pd.ger!==p.dono)?pd.ger:(p.resp_ep||'—')}</td><td>${p.dono||'—'}</td><td>${p.pat||'—'}</td></tr><tr><td>Função</td><td>Membro do EPP / CAGE</td><td>Dono do processo</td><td>Gestor responsável</td></tr></tbody></table>
-      ${(()=>{const _e=p.ent||{};const _fmtD=d=>d?d.split('-').reverse().join('/'):'—';if(!(_e.dt_inicio||_e.dt_prev||_e.dt_efetiva||_e.equipe||p.produto||_e.t_total||p.objetivo||_e.escopo)){return'';}const _lbl=(l,v,full)=>full?`<div style="margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--bdr);grid-column:1/-1"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3);margin-bottom:3px">${l}</div><div style="font-size:12px;line-height:1.5;white-space:pre-wrap">${esc(v)}</div></div>`:`<div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3)">${l}</div><div style="font-weight:500">${esc(v)}</div></div>`;return`<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">Identificação Temporal</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-size:12px">${[['Início',_fmtD(_e.dt_inicio)],['Previsão de entrega',_fmtD(_e.dt_prev)],['Entrega efetiva',_fmtD(_e.dt_efetiva)],['Produto',p.produto||''],['Tempo total',_calcTotalDias(_e)||''],['Equipe de trabalho',_e.equipe||'']].filter(([,v])=>v&&v!=='—').map(([l,v])=>_lbl(l,v,false)).join('')}${p.objetivo?_lbl('Objetivo do trabalho',p.objetivo,true):''}${_e.escopo?_lbl('Escopo do trabalho',_e.escopo,true):''}</div></div>`})()}
-      <div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">1.0 Objetivo</div><div style="font-size:12.5px;color:var(--ink2)">${pd.obj||p.objetivo||'—'}</div></div>
-      ${pd.def?`<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">1.1 Definições</div><div style="font-size:12.5px;color:var(--ink2);white-space:pre-wrap">${pd.def}</div></div>`:''}
-      <div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">1.2 Entradas</div><div style="font-size:12.5px">${pd.ent||'—'}</div></div>
-      <div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">1.3 Saídas</div><div style="font-size:12.5px">${pd.sai||'—'}</div></div>
+      ${(()=>{const _e=p.ent||{};const _fmtD=d=>d?d.split('-').reverse().join('/'):'—';if(!(_e.dt_inicio||_e.dt_prev||_e.dt_efetiva||_e.equipe||p.produto||_e.t_total||p.objetivo||_e.escopo)){return'';}const _lbl=(l,v,full)=>full?`<div style="margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--bdr);grid-column:1/-1"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3);margin-bottom:3px">${l}</div><div style="font-size:12px;line-height:1.5;white-space:pre-wrap">${esc(v)}</div></div>`:`<div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3)">${l}</div><div style="font-weight:500">${esc(v)}</div></div>`;return`<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:2px solid #1e6bfa;padding-bottom:5px;margin-bottom:.7rem">Identificação Temporal</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-size:12px">${[['Início',_fmtD(_e.dt_inicio)],['Previsão de entrega',_fmtD(_e.dt_prev)],['Entrega efetiva',_fmtD(_e.dt_efetiva)],['Produto',p.produto||''],['Tempo total',_calcTotalDias(_e)||''],['Equipe de trabalho',_e.equipe||'']].filter(([,v])=>v&&v!=='—').map(([l,v])=>_lbl(l,v,false)).join('')}${p.objetivo?_lbl('Objetivo do trabalho',p.objetivo,true):''}${_e.escopo?_lbl('Escopo do trabalho',_e.escopo,true):''}</div></div>`})()}
+      <div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:2px solid #1e6bfa;padding-bottom:5px;margin-bottom:.7rem">1.0 Objetivo</div><div style="font-size:12.5px;color:var(--ink2)">${pd.obj||p.objetivo||'—'}</div></div>
+      ${pd.def?`<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:2px solid #1e6bfa;padding-bottom:5px;margin-bottom:.7rem">1.1 Definições</div><div style="font-size:12.5px;color:var(--ink2);white-space:pre-wrap">${pd.def}</div></div>`:''}
+      <div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:2px solid #1e6bfa;padding-bottom:5px;margin-bottom:.7rem">1.2 Entradas</div><div style="font-size:12.5px">${pd.ent||'—'}</div></div>
+      <div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:2px solid #1e6bfa;padding-bottom:5px;margin-bottom:.7rem">1.3 Saídas</div><div style="font-size:12.5px">${pd.sai||'—'}</div></div>
       ${(()=>{
         const _tobeEt2=curProc?.mod?.etapas_proc_tobe||[];
         const etapas=_tobeEt2.length?_tobeEt2:(curProc?.mod?.etapas_proc||[]);
@@ -10917,36 +10917,34 @@ function _rFormHtml(p){
           const gw=e.vinculo_gw?.gw_ep_id?etapas.find(x=>x.id===e.vinculo_gw.gw_ep_id):null;
           const gwCellLabel=gw&&e.vinculo_gw.label?' · '+esc(e.vinculo_gw.label):'';
           const gwCell=gw?`<div style="font-size:10px;color:#8888aa">⤷ ${esc(gw.nome||'Gateway')}${gwCellLabel}</div>`:'';
-          return `<tr style="display:flex;width:100%;border-bottom:1px solid #e0e0f0">
-            <td style="${TD};width:5%;font-size:11px;color:#8888aa">${i+1}</td>
-            <td style="${TD};width:22%;font-size:12px;font-weight:600">${esc(e.nome||'')}${gwCell}</td>
-            <td style="${TD};width:11%;font-size:11px;color:#8888aa">${esc(tipo)}</td>
-            <td style="${TD};width:11%;font-size:11px;color:#8888aa">${esc(modo)}</td>
-            <td style="${TD};width:36%;font-size:12px">${esc(desc)}</td>
-            <td style="${TD};width:15%;font-size:11px;color:#8888aa">${esc(resp)}</td>
-          </tr>`;
+          return `<div style="display:flex;width:100%;border-bottom:1px solid #e0e0f0;break-inside:avoid">
+            <div style="${TD};width:5%;font-size:11px;color:#8888aa">${i+1}</div>
+            <div style="${TD};width:22%;font-size:12px;font-weight:600">${esc(e.nome||'')}${gwCell}</div>
+            <div style="${TD};width:11%;font-size:11px;color:#8888aa">${esc(tipo)}</div>
+            <div style="${TD};width:11%;font-size:11px;color:#8888aa">${esc(modo)}</div>
+            <div style="${TD};width:36%;font-size:12px">${esc(desc)}</div>
+            <div style="${TD};width:15%;font-size:11px;color:#8888aa">${esc(resp)}</div>
+          </div>`;
         }).join('');
-        if(!linhas)return pd.ativ?`<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid #e0e0f0;padding-bottom:5px;margin-bottom:.7rem">2.0 Atividades</div><div style="font-size:12.5px;white-space:pre-wrap">${pd.ativ}</div></div>`:'';
-        return `<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid #e0e0f0;padding-bottom:5px;margin-bottom:.7rem">2.0 Atividades</div>
-          <table style="width:100%;border-collapse:collapse">
-            <thead>
-              <tr style="display:flex;width:100%;background:#f4f5f8;border-top:1px solid #e0e0f0;border-bottom:2px solid #e0e0f0">
-                <th style="${TD};width:5%;font-size:10px;font-weight:700;color:#8888aa;text-align:left">#</th>
-                <th style="${TD};width:22%;font-size:10px;font-weight:700;color:#8888aa;text-align:left">Etapa</th>
-                <th style="${TD};width:11%;font-size:10px;font-weight:700;color:#8888aa;text-align:left">Tipo</th>
-                <th style="${TD};width:11%;font-size:10px;font-weight:700;color:#8888aa;text-align:left">Modo</th>
-                <th style="${TD};width:36%;font-size:10px;font-weight:700;color:#8888aa;text-align:left">Descrição</th>
-                <th style="${TD};width:15%;font-size:10px;font-weight:700;color:#8888aa;text-align:left">Responsável</th>
-              </tr>
-            </thead>
-            <tbody>${linhas}</tbody>
-          </table></div>`;
+        if(!linhas)return pd.ativ?`<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:2px solid #1e6bfa;padding-bottom:5px;margin-bottom:.7rem">2.0 Atividades</div><div style="font-size:12.5px;white-space:pre-wrap">${pd.ativ}</div></div>`:'';
+        return `<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:2px solid #1e6bfa;padding-bottom:5px;margin-bottom:.7rem">2.0 Atividades</div>
+          <div style="width:100%">
+            <div style="display:flex;width:100%;background:#f4f5f8;border-top:1px solid #e0e0f0;border-bottom:2px solid #e0e0f0">
+              <div style="${TD};width:5%;font-size:10px;font-weight:700;color:#8888aa">#</div>
+              <div style="${TD};width:22%;font-size:10px;font-weight:700;color:#8888aa">Etapa</div>
+              <div style="${TD};width:11%;font-size:10px;font-weight:700;color:#8888aa">Tipo</div>
+              <div style="${TD};width:11%;font-size:10px;font-weight:700;color:#8888aa">Modo</div>
+              <div style="${TD};width:36%;font-size:10px;font-weight:700;color:#8888aa">Descrição</div>
+              <div style="${TD};width:15%;font-size:10px;font-weight:700;color:#8888aa">Responsável</div>
+            </div>
+            <div>${linhas}</div>
+          </div></div>`;
       })()}
-      ${pd.docs?`<div data-popsec style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">3.0 Documentos correlatos</div><div style="font-size:12.5px;white-space:pre-wrap">${pd.docs}</div></div>`:''}
-      ${p.form?.faq?`<div data-popsec style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">4.0 Perguntas frequentes (FAQ)</div><div style="font-size:12.5px;white-space:pre-wrap">${esc(p.form.faq)}</div></div>`:''}
-      ${p.form?.excecoes?`<div data-popsec style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">4.1 Exceções / casos especiais</div><div style="font-size:12.5px;white-space:pre-wrap">${esc(p.form.excecoes)}</div></div>`:''}
-      ${p.form?.contatos?`<div data-popsec style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">4.2 Contatos-chave do processo</div><div style="font-size:12.5px;white-space:pre-wrap">${esc(p.form.contatos)}</div></div>`:''}
-      ${p.form?.forms?`<div data-popsec style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">4.3 Formulários e sistemas utilizados</div><div style="font-size:12.5px">${esc(p.form.forms)}</div></div>`:''}
+      ${pd.docs?`<div data-popsec style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:2px solid #1e6bfa;padding-bottom:5px;margin-bottom:.7rem">3.0 Documentos correlatos</div><div style="font-size:12.5px;white-space:pre-wrap">${pd.docs}</div></div>`:''}
+      ${p.form?.faq?`<div data-popsec style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:2px solid #1e6bfa;padding-bottom:5px;margin-bottom:.7rem">4.0 Perguntas frequentes (FAQ)</div><div style="font-size:12.5px;white-space:pre-wrap">${esc(p.form.faq)}</div></div>`:''}
+      ${p.form?.excecoes?`<div data-popsec style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:2px solid #1e6bfa;padding-bottom:5px;margin-bottom:.7rem">4.1 Exceções / casos especiais</div><div style="font-size:12.5px;white-space:pre-wrap">${esc(p.form.excecoes)}</div></div>`:''}
+      ${p.form?.contatos?`<div data-popsec style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:2px solid #1e6bfa;padding-bottom:5px;margin-bottom:.7rem">4.2 Contatos-chave do processo</div><div style="font-size:12.5px;white-space:pre-wrap">${esc(p.form.contatos)}</div></div>`:''}
+      ${p.form?.forms?`<div data-popsec style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:2px solid #1e6bfa;padding-bottom:5px;margin-bottom:.7rem">4.3 Formulários e sistemas utilizados</div><div style="font-size:12.5px">${esc(p.form.forms)}</div></div>`:''}
       ${(()=>{
         // Indicadores manuais selecionados para o POP
         const indsManual=(p.form?.indicadores_proc||[]).filter(ind=>ind.incluir_pop!==false);
@@ -10961,8 +10959,8 @@ function _rFormHtml(p){
         }):[];
         // Rows combinados: manuais primeiro, depois vinculados
         const CII='overflow-wrap:break-word;padding:5px 8px;box-sizing:border-box;display:block';
-        const _indRow=(cells)=>`<tr style="display:flex;width:100%;border-bottom:1px solid #e0e0f0">${cells}</tr>`;
-        const _indCell=(v,w,bold)=>`<td style="${CII};width:${w||'20%'};font-size:${bold?'12':'11'}px;${bold?'font-weight:600':'color:#8888aa'}">${v}</td>`;
+        const _indRow=(cells)=>`<div style="display:flex;width:100%;border-bottom:1px solid #e0e0f0;break-inside:avoid">${cells}</div>`;
+        const _indCell=(v,w,bold)=>`<div style="${CII};width:${w||'20%'};font-size:${bold?'12':'11'}px;${bold?'font-weight:600':'color:#8888aa'}">${v}</div>`;
         const todasRows=[
           ...indsManual.map(ind=>_indRow(
             _indCell(esc(ind.nome),'30%',true)+_indCell(esc(ind.meta||'—'),'10%')+_indCell(esc(ind.unidade||'—'),'10%')+_indCell(esc(ind.periodicidade||'—'),'15%')+_indCell(esc(ind.formula||'—'),'20%')+_indCell(esc(ind.fonte||'—'),'15%')
@@ -10971,19 +10969,19 @@ function _rFormHtml(p){
             _indCell(esc(k.nome),'30%',true)+_indCell(k.meta==null?'—':esc(String(k.meta)),'10%')+_indCell(esc(k.unidade||'—'),'10%')+_indCell(esc(k.periodicidade||'—'),'15%')+_indCell('—','20%')+_indCell('—','15%')
           )),
         ];
-        const secTitle='<div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid #e0e0f0;padding-bottom:5px;margin-bottom:.7rem">5.0 Indicadores</div>';
+        const secTitle='<div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:2px solid #1e6bfa;padding-bottom:5px;margin-bottom:.7rem">5.0 Indicadores</div>';
         if(todasRows.length){
-          const _hCell=(t,w)=>`<th style="${CII};width:${w};font-size:10px;font-weight:700;color:#8888aa;text-align:left">${t}</th>`;
+          const _hCell=(t,w)=>`<div style="${CII};width:${w};font-size:10px;font-weight:700;color:#8888aa">${t}</div>`;
           return `<div style="margin-bottom:1rem">${secTitle}
-            <table style="width:100%;border-collapse:collapse">
-              <thead><tr style="display:flex;width:100%;background:#f4f5f8;border-top:1px solid #e0e0f0;border-bottom:2px solid #e0e0f0">${_hCell('Indicador','30%')+_hCell('Meta','10%')+_hCell('Unidade','10%')+_hCell('Periodicidade','15%')+_hCell('Fórmula','20%')+_hCell('Fonte','15%')}</tr></thead>
-              <tbody>${todasRows.join('')}</tbody>
-            </table>
+            <div style="width:100%">
+              <div style="display:flex;width:100%;background:#f4f5f8;border-top:1px solid #e0e0f0;border-bottom:2px solid #e0e0f0">${_hCell('Indicador','30%')+_hCell('Meta','10%')+_hCell('Unidade','10%')+_hCell('Periodicidade','15%')+_hCell('Fórmula','20%')+_hCell('Fonte','15%')}</div>
+              <div>${todasRows.join('')}</div>
+            </div>
           </div>`;
         }
         return pd.ind?`<div style="margin-bottom:1rem">${secTitle}<div style="font-size:12.5px;white-space:pre-wrap">${pd.ind}</div></div>`:'';
       })()}
-      ${p.form.apresent?`<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">6.0 Aprovações</div><div style="font-size:12.5px">${p.form.apresent}</div></div>`:''}
+      ${p.form.apresent?`<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:2px solid #1e6bfa;padding-bottom:5px;margin-bottom:.7rem">6.0 Aprovações</div><div style="font-size:12.5px">${p.form.apresent}</div></div>`:''}
     </div>
   </div>`;}
 function rForm(p){
@@ -11084,7 +11082,7 @@ async function _popPdfAnexo(p){
   const e=p.ent||{};
   const sections=[];
   const _esc=v=>esc(String(v||''));
-  const secH=(n,t)=>`<div style="font-size:13px;font-weight:700;color:#1a1a2e;border-bottom:2px solid #1e6bfa;padding-bottom:5px;margin:1.5rem 0 .8rem">${n} ${t}</div>`;
+  const secH=(n,t)=>`<div style="font-size:13px;font-weight:700;color:#1a1a2e;border-bottom:2px solid #1e6bfa;padding-bottom:5px;margin:1.5rem 0 .8rem;page-break-before:always;padding-top:1rem">${n} ${t}</div>`;
   const fld=(l,v)=>v?`<div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#8888aa;margin-bottom:2px">${l}</div><div style="font-size:12px;font-weight:500;color:#1a1a2e">${_esc(v)}</div></div>`:'';
 
   const volumetriaHtml = _popPdfVolumetriaSection(e, secH, fld);
@@ -11134,12 +11132,12 @@ async function _popPdfAnexo(p){
     const iS={Baixo:1,Medio:2,Alto:3,Critico:4};
     const sev=r=>{const s=(pS[r.prob]||1)*(iS[r.imp]||1);if(s<=2){return['#d1fae5','#065f46','Baixo'];}if(s<=4){return['#fef3c7','#92400e','Moderado'];}if(s<=8){return['#ffedd5','#9a3412','Alto'];}return['#fee2e2','#991b1b','Crítico'];};
     const matrizTitle=`Matriz de Riscos (${riscos.length})`;
-    const rRows=riscos.map(r=>{const[bg,c,lbl]=sev(r);return`<tr><td style="padding:5px 8px;font-size:11px;border-bottom:1px solid #e0e0f0">${_esc(r.desc)}</td><td style="padding:5px 8px;font-size:11px;text-align:center;border-bottom:1px solid #e0e0f0">${r.prob||'—'}</td><td style="padding:5px 8px;font-size:11px;text-align:center;border-bottom:1px solid #e0e0f0">${r.imp||'—'}</td><td style="padding:5px 8px;font-size:10px;text-align:center;border-bottom:1px solid #e0e0f0;background:${bg};color:${c};font-weight:700">${lbl}</td></tr>`;}).join('');
+    const rRows=riscos.map(r=>{const[bg,c,lbl]=sev(r);return`<div style="display:flex;width:100%;border-bottom:1px solid #e0e0f0;break-inside:avoid"><div style="padding:5px 8px;font-size:11px;width:55%;overflow-wrap:break-word">${_esc(r.desc)}</div><div style="padding:5px 8px;font-size:11px;text-align:center;width:15%">${r.prob||'—'}</div><div style="padding:5px 8px;font-size:11px;text-align:center;width:15%">${r.imp||'—'}</div><div style="padding:5px 8px;font-size:10px;text-align:center;width:15%;background:${bg};color:${c};font-weight:700">${lbl}</div></div>`;}).join('');
     sections.push(`${secH('10.0',matrizTitle)}
-    <table style="width:100%;border-collapse:collapse">
-      <thead><tr style="background:#f4f5f8"><th style="padding:5px 8px;text-align:left;font-size:10px;border-bottom:2px solid #e0e0f0">Risco</th><th style="padding:5px 8px;text-align:center;font-size:10px;border-bottom:2px solid #e0e0f0">Probabilidade</th><th style="padding:5px 8px;text-align:center;font-size:10px;border-bottom:2px solid #e0e0f0">Impacto</th><th style="padding:5px 8px;text-align:center;font-size:10px;border-bottom:2px solid #e0e0f0">Severidade</th></tr></thead>
-      <tbody>${rRows}</tbody>
-    </table>`);
+    <div style="width:100%">
+      <div style="display:flex;width:100%;background:#f4f5f8;border-bottom:2px solid #e0e0f0"><div style="padding:5px 8px;font-size:10px;font-weight:700;color:#8888aa;width:55%">Risco</div><div style="padding:5px 8px;font-size:10px;font-weight:700;color:#8888aa;text-align:center;width:15%">Probabilidade</div><div style="padding:5px 8px;font-size:10px;font-weight:700;color:#8888aa;text-align:center;width:15%">Impacto</div><div style="padding:5px 8px;font-size:10px;font-weight:700;color:#8888aa;text-align:center;width:15%">Severidade</div></div>
+      <div>${rRows}</div>
+    </div>`);
   }
 
   // ── 11.0 Oportunidades e Soluções Validadas ──────────────────────────────
@@ -11204,10 +11202,7 @@ async function _popPdfAnexo(p){
   }
 
   if(!sections.length&&!bpmnLandscape)return '';
-  const apendice=sections.length?`<div style="page-break-before:always;padding-top:1.5rem">
-    <div style="font-size:15px;font-weight:700;color:#1a1a2e;border-bottom:3px solid #1e6bfa;padding-bottom:8px;margin-bottom:1.5rem;font-family:'Segoe UI',Arial,sans-serif">APÊNDICE — CARACTERIZAÇÃO DO PROCESSO</div>
-    ${sections.join('\n')}
-  </div>`:'';
+  const apendice=sections.length?sections.join('\n'):'';
   return apendice+bpmnLandscape;
 }
 
@@ -11243,24 +11238,7 @@ async function gerarPopPdf(){
     @media screen{.cage-logo-all-pages{display:none}}
     @media print{body{padding:50px 28px 24px}.pop-pdf-bar{display:none!important}}
   </style>
-  </head><body>${logoFixed}${inner}${anexo}<script>
-  window.addEventListener('load',function(){
-    var PAGE_H=820,HDR=50;
-    function addBreak(el){el.style.pageBreakBefore='always';el.style.breakBefore='page';el.style.paddingTop=HDR+'px';}
-    var items=[];
-    document.querySelectorAll('tbody tr,[data-popsec]').forEach(function(el){
-      items.push({el:el,top:el.getBoundingClientRect().top,h:el.offsetHeight||30});
-    });
-    items.sort(function(a,b){return a.top-b.top;});
-    var pagePos=items.length?items[0].top%PAGE_H:0;
-    items.forEach(function(item){
-      var h=item.h;
-      if(pagePos+h>PAGE_H){addBreak(item.el);pagePos=h+HDR;}
-      else{pagePos+=h;}
-    });
-    setTimeout(function(){window.print();},200);
-  });
-  <\/script></body></html>`;
+  </head><body>${logoFixed}${inner}${anexo}<script>setTimeout(function(){window.print();},200);<\/script></body></html>`;
   const w=globalThis.open('','_blank');
   if(!w){toast('Pop-up bloqueado. Permita pop-ups para gerar o PDF.','var(--amber)');return;}
   w.document.write(fullHtml);
@@ -11297,24 +11275,7 @@ async function gerarPopPdfDireto(){
     @media screen{.cage-logo-all-pages{display:none}}
     @media print{body{padding:50px 28px 24px}.pop-pdf-bar{display:none!important}}
   </style>
-  </head><body>${logoFixed}${inner}${anexo}<script>
-  window.addEventListener('load',function(){
-    var PAGE_H=820,HDR=50;
-    function addBreak(el){el.style.pageBreakBefore='always';el.style.breakBefore='page';el.style.paddingTop=HDR+'px';}
-    var items=[];
-    document.querySelectorAll('tbody tr,[data-popsec]').forEach(function(el){
-      items.push({el:el,top:el.getBoundingClientRect().top,h:el.offsetHeight||30});
-    });
-    items.sort(function(a,b){return a.top-b.top;});
-    var pagePos=items.length?items[0].top%PAGE_H:0;
-    items.forEach(function(item){
-      var h=item.h;
-      if(pagePos+h>PAGE_H){addBreak(item.el);pagePos=h+HDR;}
-      else{pagePos+=h;}
-    });
-    setTimeout(function(){window.print();},200);
-  });
-  <\/script></body></html>`;
+  </head><body>${logoFixed}${inner}${anexo}<script>setTimeout(function(){window.print();},200);<\/script></body></html>`;
   const w=globalThis.open('','_blank');
   if(!w){toast('Pop-up bloqueado. Permita pop-ups para gerar o PDF.','var(--amber)');return;}
   w.document.write(fullHtml);
