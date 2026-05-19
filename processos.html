@@ -10917,7 +10917,7 @@ function _rFormHtml(p){
           const gw=e.vinculo_gw?.gw_ep_id?etapas.find(x=>x.id===e.vinculo_gw.gw_ep_id):null;
           const gwCellLabel=gw&&e.vinculo_gw.label?' · '+esc(e.vinculo_gw.label):'';
           const gwCell=gw?`<div style="font-size:10px;color:#8888aa">⤷ ${esc(gw.nome||'Gateway')}${gwCellLabel}</div>`:'';
-          return `<tr style="display:flex;width:100%;border-bottom:1px solid #e0e0f0;break-inside:avoid;page-break-inside:avoid">
+          return `<tr style="display:flex;width:100%;border-bottom:1px solid #e0e0f0">
             <td style="${TD};width:5%;font-size:11px;color:#8888aa">${i+1}</td>
             <td style="${TD};width:22%;font-size:12px;font-weight:600">${esc(e.nome||'')}${gwCell}</td>
             <td style="${TD};width:11%;font-size:11px;color:#8888aa">${esc(tipo)}</td>
@@ -10928,8 +10928,8 @@ function _rFormHtml(p){
         }).join('');
         if(!linhas)return pd.ativ?`<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid #e0e0f0;padding-bottom:5px;margin-bottom:.7rem">2.0 Atividades</div><div style="font-size:12.5px;white-space:pre-wrap">${pd.ativ}</div></div>`:'';
         return `<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid #e0e0f0;padding-bottom:5px;margin-bottom:.7rem">2.0 Atividades</div>
-          <table style="width:100%;border-collapse:collapse;display:block">
-            <thead style="display:block;width:100%">
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
               <tr style="display:flex;width:100%;background:#f4f5f8;border-top:1px solid #e0e0f0;border-bottom:2px solid #e0e0f0">
                 <th style="${TD};width:5%;font-size:10px;font-weight:700;color:#8888aa;text-align:left">#</th>
                 <th style="${TD};width:22%;font-size:10px;font-weight:700;color:#8888aa;text-align:left">Etapa</th>
@@ -10939,7 +10939,7 @@ function _rFormHtml(p){
                 <th style="${TD};width:15%;font-size:10px;font-weight:700;color:#8888aa;text-align:left">Responsável</th>
               </tr>
             </thead>
-            <tbody style="display:block;width:100%">${linhas}</tbody>
+            <tbody>${linhas}</tbody>
           </table></div>`;
       })()}
       ${pd.docs?`<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">3.0 Documentos correlatos</div><div style="font-size:12.5px;white-space:pre-wrap">${pd.docs}</div></div>`:''}
@@ -10961,7 +10961,7 @@ function _rFormHtml(p){
         }):[];
         // Rows combinados: manuais primeiro, depois vinculados
         const CII='overflow-wrap:break-word;padding:5px 8px;box-sizing:border-box;display:block';
-        const _indRow=(cells)=>`<tr style="display:flex;width:100%;border-bottom:1px solid #e0e0f0;break-inside:avoid;page-break-inside:avoid">${cells}</tr>`;
+        const _indRow=(cells)=>`<tr style="display:flex;width:100%;border-bottom:1px solid #e0e0f0">${cells}</tr>`;
         const _indCell=(v,w,bold)=>`<td style="${CII};width:${w||'20%'};font-size:${bold?'12':'11'}px;${bold?'font-weight:600':'color:#8888aa'}">${v}</td>`;
         const todasRows=[
           ...indsManual.map(ind=>_indRow(
@@ -10975,9 +10975,9 @@ function _rFormHtml(p){
         if(todasRows.length){
           const _hCell=(t,w)=>`<th style="${CII};width:${w};font-size:10px;font-weight:700;color:#8888aa;text-align:left">${t}</th>`;
           return `<div style="margin-bottom:1rem">${secTitle}
-            <table style="width:100%;border-collapse:collapse;display:block">
-              <thead style="display:block;width:100%"><tr style="display:flex;width:100%;background:#f4f5f8;border-top:1px solid #e0e0f0;border-bottom:2px solid #e0e0f0">${_hCell('Indicador','30%')+_hCell('Meta','10%')+_hCell('Unidade','10%')+_hCell('Periodicidade','15%')+_hCell('Fórmula','20%')+_hCell('Fonte','15%')}</tr></thead>
-              <tbody style="display:block;width:100%">${todasRows.join('')}</tbody>
+            <table style="width:100%;border-collapse:collapse">
+              <thead><tr style="display:flex;width:100%;background:#f4f5f8;border-top:1px solid #e0e0f0;border-bottom:2px solid #e0e0f0">${_hCell('Indicador','30%')+_hCell('Meta','10%')+_hCell('Unidade','10%')+_hCell('Periodicidade','15%')+_hCell('Fórmula','20%')+_hCell('Fonte','15%')}</tr></thead>
+              <tbody>${todasRows.join('')}</tbody>
             </table>
           </div>`;
         }
