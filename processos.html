@@ -11027,6 +11027,11 @@ async function _getFluxogramaAsIsPng(p){
     const imported = p.mod?.fluxoImgBase64 || await loadFluxoImg(p.id);
     if(imported) return imported;
   }
+  // Fallback: tenta carregar pelo ID do processo mesmo sem flag hasFluxoImg
+  if(!p.mod?.hasFluxoImg && !p.mod?.fluxoImgBase64){
+    const byId = await loadFluxoImg(p.id);
+    if(byId) return byId;
+  }
   if(p.mod?.bpmnAsIs) return renderBpmnToPng(p.mod.bpmnAsIs);
   // Fallback: use active modeler if still loaded for this process in the same session
   const m=bpmnModelers['asis'];
@@ -11169,7 +11174,7 @@ async function _popPdfAnexo(p){
   let bpmnLandscape='';
   const hasAsIsModeler=!!(bpmnModelers['asis']&&bpmnProcIds['asis']===p?.id);
   const hasTobeModeler=!!(bpmnModelers['tobe']&&bpmnProcIds['tobe']===p?.id);
-  const hasFluxoA=!!(p.arq_id||p.mod?.bpmnAsIs||p.mod?.hasFluxoImg||p.mod?.fluxoImgBase64||hasAsIsModeler);
+  const hasFluxoA=!!(p.arq_id||p.mod?.bpmnAsIs||p.mod?.hasFluxoImg||p.mod?.fluxoImgBase64||hasAsIsModeler||p.id);
   const hasBpmnT=!!(p.mod?.bpmnToBe||hasTobeModeler);
   if(hasFluxoA||hasBpmnT){
     // SVG inline evita problemas de data URI longa em document.write e canvas taint
