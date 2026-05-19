@@ -11175,6 +11175,7 @@ async function _popPdfAnexo(p){
   let bpmnLandscape='';
   const hasAsIsModeler=!!(bpmnModelers['asis']&&bpmnProcIds['asis']===p?.id);
   const hasTobeModeler=!!(bpmnModelers['tobe']&&bpmnProcIds['tobe']===p?.id);
+  console.warn('[POP-SEC12-DIAG] processo:', p?.id, p?.nome, {arq_id:p?.arq_id, hasBpmnAsIs:!!p?.mod?.bpmnAsIs, hasBpmnAsIsSvg:!!p?.mod?.bpmnAsIsSvg, hasFluxoImg:p?.mod?.hasFluxoImg, hasFluxoImgBase64:!!p?.mod?.fluxoImgBase64, hasAsIsModeler, hasBpmnToBe:!!p?.mod?.bpmnToBe});
   const hasFluxoA=!!(p.arq_id||p.mod?.bpmnAsIs||p.mod?.hasFluxoImg||p.mod?.fluxoImgBase64||hasAsIsModeler||p.id);
   const hasBpmnT=!!(p.mod?.bpmnToBe||hasTobeModeler);
   if(hasFluxoA||hasBpmnT){
