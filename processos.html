@@ -10942,11 +10942,11 @@ function _rFormHtml(p){
             <tbody>${linhas}</tbody>
           </table></div>`;
       })()}
-      ${pd.docs?`<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">3.0 Documentos correlatos</div><div style="font-size:12.5px;white-space:pre-wrap">${pd.docs}</div></div>`:''}
-      ${p.form?.faq?`<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">4.0 Perguntas frequentes (FAQ)</div><div style="font-size:12.5px;white-space:pre-wrap">${esc(p.form.faq)}</div></div>`:''}
-      ${p.form?.excecoes?`<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">4.1 Exceções / casos especiais</div><div style="font-size:12.5px;white-space:pre-wrap">${esc(p.form.excecoes)}</div></div>`:''}
-      ${p.form?.contatos?`<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">4.2 Contatos-chave do processo</div><div style="font-size:12.5px;white-space:pre-wrap">${esc(p.form.contatos)}</div></div>`:''}
-      ${p.form?.forms?`<div style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">4.3 Formulários e sistemas utilizados</div><div style="font-size:12.5px">${esc(p.form.forms)}</div></div>`:''}
+      ${pd.docs?`<div data-popsec style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">3.0 Documentos correlatos</div><div style="font-size:12.5px;white-space:pre-wrap">${pd.docs}</div></div>`:''}
+      ${p.form?.faq?`<div data-popsec style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">4.0 Perguntas frequentes (FAQ)</div><div style="font-size:12.5px;white-space:pre-wrap">${esc(p.form.faq)}</div></div>`:''}
+      ${p.form?.excecoes?`<div data-popsec style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">4.1 Exceções / casos especiais</div><div style="font-size:12.5px;white-space:pre-wrap">${esc(p.form.excecoes)}</div></div>`:''}
+      ${p.form?.contatos?`<div data-popsec style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">4.2 Contatos-chave do processo</div><div style="font-size:12.5px;white-space:pre-wrap">${esc(p.form.contatos)}</div></div>`:''}
+      ${p.form?.forms?`<div data-popsec style="margin-bottom:1rem"><div style="font-family:var(--fh);font-size:13px;font-weight:600;border-bottom:1px solid var(--bdr);padding-bottom:5px;margin-bottom:.7rem">4.3 Formulários e sistemas utilizados</div><div style="font-size:12.5px">${esc(p.form.forms)}</div></div>`:''}
       ${(()=>{
         // Indicadores manuais selecionados para o POP
         const indsManual=(p.form?.indicadores_proc||[]).filter(ind=>ind.incluir_pop!==false);
@@ -11246,15 +11246,17 @@ async function gerarPopPdf(){
   </head><body>${logoFixed}${inner}${anexo}<script>
   window.addEventListener('load',function(){
     var PAGE_H=820,HDR=50;
-    document.querySelectorAll('tbody').forEach(function(tb){
-      var rows=Array.from(tb.querySelectorAll('tr'));
-      if(!rows.length)return;
-      var pagePos=tb.getBoundingClientRect().top%PAGE_H;
-      rows.forEach(function(r){
-        var h=r.offsetHeight||30;
-        if(pagePos+h>PAGE_H){r.style.pageBreakBefore='always';r.style.breakBefore='page';r.style.paddingTop=HDR+'px';pagePos=h+HDR;}
-        else{pagePos+=h;}
-      });
+    function addBreak(el){el.style.pageBreakBefore='always';el.style.breakBefore='page';el.style.paddingTop=HDR+'px';}
+    var items=[];
+    document.querySelectorAll('tbody tr,[data-popsec]').forEach(function(el){
+      items.push({el:el,top:el.getBoundingClientRect().top,h:el.offsetHeight||30});
+    });
+    items.sort(function(a,b){return a.top-b.top;});
+    var pagePos=items.length?items[0].top%PAGE_H:0;
+    items.forEach(function(item){
+      var h=item.h;
+      if(pagePos+h>PAGE_H){addBreak(item.el);pagePos=h+HDR;}
+      else{pagePos+=h;}
     });
     setTimeout(function(){window.print();},200);
   });
@@ -11298,15 +11300,17 @@ async function gerarPopPdfDireto(){
   </head><body>${logoFixed}${inner}${anexo}<script>
   window.addEventListener('load',function(){
     var PAGE_H=820,HDR=50;
-    document.querySelectorAll('tbody').forEach(function(tb){
-      var rows=Array.from(tb.querySelectorAll('tr'));
-      if(!rows.length)return;
-      var pagePos=tb.getBoundingClientRect().top%PAGE_H;
-      rows.forEach(function(r){
-        var h=r.offsetHeight||30;
-        if(pagePos+h>PAGE_H){r.style.pageBreakBefore='always';r.style.breakBefore='page';r.style.paddingTop=HDR+'px';pagePos=h+HDR;}
-        else{pagePos+=h;}
-      });
+    function addBreak(el){el.style.pageBreakBefore='always';el.style.breakBefore='page';el.style.paddingTop=HDR+'px';}
+    var items=[];
+    document.querySelectorAll('tbody tr,[data-popsec]').forEach(function(el){
+      items.push({el:el,top:el.getBoundingClientRect().top,h:el.offsetHeight||30});
+    });
+    items.sort(function(a,b){return a.top-b.top;});
+    var pagePos=items.length?items[0].top%PAGE_H:0;
+    items.forEach(function(item){
+      var h=item.h;
+      if(pagePos+h>PAGE_H){addBreak(item.el);pagePos=h+HDR;}
+      else{pagePos+=h;}
     });
     setTimeout(function(){window.print();},200);
   });
