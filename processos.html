@@ -11230,7 +11230,7 @@ async function gerarPopPdf(){
   try{anexo=await _popPdfAnexo(p);}catch(ex){console.warn('_popPdfAnexo:',ex);}
   if(btn){btn.disabled=false;btn.textContent='⬇ Gerar POP em PDF';}
   const cageLogo=await _fetchCageLogoBase64();
-  const logoHdr=cageLogo?`<div style="text-align:right;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #e0e0f0"><img src="${cageLogo}" alt="CAGE" style="height:40px;object-fit:contain"></div>`:'';
+  const logoFixed=cageLogo?`<div class="cage-logo-all-pages"><img src="${cageLogo}" alt="CAGE" style="height:36px;object-fit:contain"></div>`:'';
   const fullHtml=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${nome}</title>
   <style>
     :root{--blue:#1e6bfa;--ink:#1a1a2e;--ink2:#4a4a6a;--ink3:#8888aa;--bg2:#f4f5f8;--surf:#fff;--bdr:#e0e0f0;--r:6px;--rl:8px;--fh:'Segoe UI',Arial,sans-serif}
@@ -11244,9 +11244,11 @@ async function gerarPopPdf(){
     @page{size:A4 portrait;margin:22mm 20mm}
     @page landscape-page{size:A4 landscape;margin:15mm 18mm}
     .bpmn-landscape{page:landscape-page;page-break-before:always}
+    .cage-logo-all-pages{position:fixed;top:5mm;right:6mm;z-index:9999}
+    @media screen{.cage-logo-all-pages{display:none}}
     @media print{body{padding:0}.pop-pdf-bar{display:none!important}}
   </style>
-  </head><body>${logoHdr}${inner}${anexo}</body></html>`;
+  </head><body>${logoFixed}${inner}${anexo}</body></html>`;
   const w=globalThis.open('','_blank');
   if(!w){toast('Pop-up bloqueado. Permita pop-ups para gerar o PDF.','var(--amber)');return;}
   w.document.write(fullHtml);
@@ -11265,7 +11267,7 @@ async function gerarPopPdfDireto(){
   let anexo='';
   try{anexo=await _popPdfAnexo(p);}catch(ex){console.warn('_popPdfAnexo:',ex);}
   const cageLogo=await _fetchCageLogoBase64();
-  const logoHdr=cageLogo?`<div style="text-align:right;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #e0e0f0"><img src="${cageLogo}" alt="CAGE" style="height:40px;object-fit:contain"></div>`:'';
+  const logoFixed=cageLogo?`<div class="cage-logo-all-pages"><img src="${cageLogo}" alt="CAGE" style="height:36px;object-fit:contain"></div>`:'';
   const fullHtml=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${nome}</title>
   <style>
     :root{--blue:#1e6bfa;--ink:#1a1a2e;--ink2:#4a4a6a;--ink3:#8888aa;--bg2:#f4f5f8;--surf:#fff;--bdr:#e0e0f0;--r:6px;--rl:8px;--fh:'Segoe UI',Arial,sans-serif}
@@ -11279,9 +11281,11 @@ async function gerarPopPdfDireto(){
     @page{size:A4 portrait;margin:22mm 20mm}
     @page landscape-page{size:A4 landscape;margin:15mm 18mm}
     .bpmn-landscape{page:landscape-page;page-break-before:always}
+    .cage-logo-all-pages{position:fixed;top:5mm;right:6mm;z-index:9999}
+    @media screen{.cage-logo-all-pages{display:none}}
     @media print{body{padding:0}.pop-pdf-bar{display:none!important}}
   </style>
-  </head><body>${logoHdr}${inner}${anexo}</body></html>`;
+  </head><body>${logoFixed}${inner}${anexo}</body></html>`;
   const w=globalThis.open('','_blank');
   if(!w){toast('Pop-up bloqueado. Permita pop-ups para gerar o PDF.','var(--amber)');return;}
   w.document.write(fullHtml);
