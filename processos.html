@@ -10912,7 +10912,7 @@ function _rFormHtml(p){
           const gw=e.vinculo_gw?.gw_ep_id?etapas.find(x=>x.id===e.vinculo_gw.gw_ep_id):null;
           const gwCellLabel=gw&&e.vinculo_gw.label?' · '+esc(e.vinculo_gw.label):'';
           const gwCell=gw?`<div style="font-size:10px;color:var(--ink3)">⤷ ${esc(gw.nome||'Gateway')}${gwCellLabel}</div>`:'';
-          return `<tr style="border-bottom:1px solid var(--bdr)">
+          return `<tr style="border-bottom:1px solid var(--bdr);page-break-inside:avoid;break-inside:avoid">
             <td style="padding:5px 8px;font-size:11px;color:var(--ink3);white-space:nowrap">${i+1}</td>
             <td style="padding:5px 8px;font-size:12px;font-weight:600">${esc(e.nome||'')}${gwCell}</td>
             <td style="padding:5px 8px;font-size:11px;color:var(--ink3)">${esc(tipo)}</td>
@@ -10954,7 +10954,7 @@ function _rFormHtml(p){
         }):[];
         // Rows combinados: manuais primeiro, depois vinculados
         const todasRows=[
-          ...indsManual.map(ind=>`<tr style="border-bottom:1px solid var(--bdr)">
+          ...indsManual.map(ind=>`<tr style="border-bottom:1px solid var(--bdr);page-break-inside:avoid;break-inside:avoid">
             <td style="padding:5px 8px;font-size:12px;font-weight:600">${esc(ind.nome)}</td>
             <td style="padding:5px 8px;font-size:11px;color:var(--ink2)">${esc(ind.meta||'—')}</td>
             <td style="padding:5px 8px;font-size:11px;color:var(--ink3)">${esc(ind.unidade||'—')}</td>
@@ -10962,7 +10962,7 @@ function _rFormHtml(p){
             <td style="padding:5px 8px;font-size:11px;color:var(--ink3)">${esc(ind.formula||'—')}</td>
             <td style="padding:5px 8px;font-size:11px;color:var(--ink3)">${esc(ind.fonte||'—')}</td>
           </tr>`),
-          ...indsVinc.map(k=>`<tr style="border-bottom:1px solid var(--bdr)">
+          ...indsVinc.map(k=>`<tr style="border-bottom:1px solid var(--bdr);page-break-inside:avoid;break-inside:avoid">
             <td style="padding:5px 8px;font-size:12px;font-weight:600">${esc(k.nome)}</td>
             <td style="padding:5px 8px;font-size:11px;color:var(--ink2)">${k.meta==null?'—':esc(String(k.meta))}</td>
             <td style="padding:5px 8px;font-size:11px;color:var(--ink3)">${esc(k.unidade||'—')}</td>
@@ -11249,7 +11249,7 @@ async function gerarPopPdf(){
     .cage-logo-all-pages{position:fixed;top:0;left:0;right:0;height:44px;background:#fff;border-bottom:1px solid #e0e0f0;display:flex;align-items:center;justify-content:space-between;padding:0 12px;z-index:9999}
     .cage-hdr-title{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;font-weight:700;color:#1a1a2e;letter-spacing:.3px}
     @media screen{.cage-logo-all-pages{display:none}}
-    @media print{body{padding:50px 28px 24px}.pop-pdf-bar{display:none!important}}
+    @media print{body{padding:50px 28px 24px}.pop-pdf-bar{display:none!important}*{overflow:visible!important}tr{page-break-inside:avoid;break-inside:avoid}td,th{page-break-inside:avoid;break-inside:avoid}}
   </style>
   </head><body>${logoFixed}${inner}${anexo}</body></html>`;
   const w=globalThis.open('','_blank');
@@ -11289,7 +11289,7 @@ async function gerarPopPdfDireto(){
     .cage-logo-all-pages{position:fixed;top:0;left:0;right:0;height:44px;background:#fff;border-bottom:1px solid #e0e0f0;display:flex;align-items:center;justify-content:space-between;padding:0 12px;z-index:9999}
     .cage-hdr-title{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;font-weight:700;color:#1a1a2e;letter-spacing:.3px}
     @media screen{.cage-logo-all-pages{display:none}}
-    @media print{body{padding:50px 28px 24px}.pop-pdf-bar{display:none!important}}
+    @media print{body{padding:50px 28px 24px}.pop-pdf-bar{display:none!important}*{overflow:visible!important}tr{page-break-inside:avoid;break-inside:avoid}td,th{page-break-inside:avoid;break-inside:avoid}}
   </style>
   </head><body>${logoFixed}${inner}${anexo}</body></html>`;
   const w=globalThis.open('','_blank');
