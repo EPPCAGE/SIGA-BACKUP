@@ -11018,22 +11018,44 @@ async function _bpmnGetSvg(which,p){
   });
 }
 
+// Converte SVG string salvo em PNG via canvas, sem precisar do BpmnJS
+function svgStringToPng(svg){
+  if(!svg) return Promise.resolve(null);
+  return new Promise(resolve=>{
+    const img=new Image();
+    const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    img.onload=()=>{
+      URL.revokeObjectURL(url);
+      try{
+        const sc=2,c=document.createElement('canvas');
+        c.width=Math.max(img.width,100)*sc; c.height=Math.max(img.height,50)*sc;
+        const ctx=c.getContext('2d');
+        ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,c.width,c.height);
+        ctx.scale(sc,sc); ctx.drawImage(img,0,0);
+        resolve(c.toDataURL('image/png'));
+      }catch{resolve(null);}
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);resolve(null);};
+    img.src=url;
+  });
+}
+
 async function _getFluxogramaAsIsPng(p){
   if(!p) return null;
   const linkedImg = p.arq_id ? await loadFluxoImg(p.arq_id) : null;
   if(linkedImg) return linkedImg;
-  // Fallback: imagem importada via POP (salva em fluxos/{p.id})
   if(p.mod?.hasFluxoImg || p.mod?.fluxoImgBase64){
     const imported = p.mod?.fluxoImgBase64 || await loadFluxoImg(p.id);
     if(imported) return imported;
   }
-  // Fallback: tenta carregar pelo ID do processo mesmo sem flag hasFluxoImg
   if(!p.mod?.hasFluxoImg && !p.mod?.fluxoImgBase64){
     const byId = await loadFluxoImg(p.id);
     if(byId) return byId;
   }
+  // SVG salvo junto com o XML — converte diretamente sem BpmnJS
+  if(p.mod?.bpmnAsIsSvg){const png=await svgStringToPng(p.mod.bpmnAsIsSvg);if(png)return png;}
   if(p.mod?.bpmnAsIs) return renderBpmnToPng(p.mod.bpmnAsIs);
-  // Fallback: use active modeler if still loaded for this process in the same session
   const m=bpmnModelers['asis'];
   if(m&&bpmnProcIds['asis']===p?.id){
     try{const{xml}=await m.saveXML({format:true});if(xml)return renderBpmnToPng(xml);}catch{}
@@ -11043,6 +11065,7 @@ async function _getFluxogramaAsIsPng(p){
 
 async function _getFluxogramaToBePng(p){
   if(!p) return null;
+  if(p.mod?.bpmnToBeSvg){const png=await svgStringToPng(p.mod.bpmnToBeSvg);if(png)return png;}
   if(p.mod?.bpmnToBe) return renderBpmnToPng(p.mod.bpmnToBe);
   const m=bpmnModelers['tobe'];
   if(m&&bpmnProcIds['tobe']===p?.id){
@@ -11287,8 +11310,9 @@ async function baixarFluxogramas(btn){
   const orig=btn.textContent;
   btn.disabled=true;btn.textContent='⏳ Preparando...';
   try{
+    const comTobe=p.produto==='TO BE'||p.produto==='AS IS + TO BE';
     const pngAsIs=await _getFluxogramaAsIsPng(p);
-    const pngToBe=await _getFluxogramaToBePng(p);
+    const pngToBe=comTobe?await _getFluxogramaToBePng(p):null;
     if(!pngAsIs&&!pngToBe){toast('Nenhum fluxograma disponível para este processo.','var(--amber)');return;}
     const nome=(p.nome||'fluxo').replaceAll(/[^\w\s-]/g,'').trim().replaceAll(/\s+/g,'_');
     const dl=(href,filename)=>{const a=document.createElement('a');a.href=href;a.download=filename;document.body.appendChild(a);a.click();a.remove();};
