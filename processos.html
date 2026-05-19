@@ -11169,8 +11169,6 @@ async function _popPdfAnexo(p){
   const hasTobeModeler=!!(bpmnModelers['tobe']&&bpmnProcIds['tobe']===p?.id);
   const hasFluxoA=!!(p.arq_id||p.mod?.bpmnAsIs||p.mod?.hasFluxoImg||p.mod?.fluxoImgBase64||hasAsIsModeler);
   const hasBpmnT=!!(p.mod?.bpmnToBe||hasTobeModeler);
-  // Se TO BE existe em qualquer forma (etapas ou BPMN), o AS IS não deve ser exibido
-  const hasTobeAny=hasBpmnT||!!(p.mod?.etapas_proc_tobe||[]).length;
   if(hasFluxoA||hasBpmnT){
     // SVG inline evita problemas de data URI longa em document.write e canvas taint
     const _svgToImg=(svg)=>svg.replace(/<svg /,'<svg style="max-width:100%;height:auto;display:block" ');
