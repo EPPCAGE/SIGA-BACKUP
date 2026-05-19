@@ -10883,7 +10883,7 @@ function _rFormHtml(p){
   const pd=p.form?.pop;
   if(!pd)return '<div class="ib iba">POP não construído ainda.</div>';
   return `<div style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rl);overflow:hidden">
-    <div style="background:var(--ink);color:#fff;padding:1.2rem 1.5rem">
+    <div class="pop-doc-hdr" style="background:var(--ink);color:#fff;padding:1.2rem 1.5rem">
       <div style="display:flex;gap:12px;align-items:center;margin-bottom:.8rem">
         <span style="background:rgba(255,255,255,.1);border-radius:5px;padding:3px 9px;font-family:var(--fh);font-size:11px">EPP</span>
         <span style="background:var(--blue);border-radius:5px;padding:3px 9px;font-size:11px;font-weight:600">CAGE</span>
@@ -11234,6 +11234,7 @@ async function gerarPopPdf(){
     ${_pgHdr}
     @page landscape-page{size:A4 landscape;margin:22mm 18mm}
     .bpmn-landscape{page:landscape-page;page-break-before:always}
+    ${cageLogo?`.pop-doc-hdr{background-image:url("${cageLogo}");background-repeat:no-repeat;background-position:right 16px center;background-size:auto 48px;padding-right:110px}`:''}
     @media print{.pop-pdf-bar{display:none!important}[data-popsec]>div:first-child{break-after:avoid}}
   </style>
   </head><body>${logoFixed}${inner}${anexo}<script>setTimeout(function(){window.print();},200);<\/script></body></html>`;
@@ -11269,6 +11270,7 @@ async function gerarPopPdfDireto(){
     ${_pgHdr}
     @page landscape-page{size:A4 landscape;margin:22mm 18mm}
     .bpmn-landscape{page:landscape-page;page-break-before:always}
+    ${cageLogo?`.pop-doc-hdr{background-image:url("${cageLogo}");background-repeat:no-repeat;background-position:right 16px center;background-size:auto 48px;padding-right:110px}`:''}
     @media print{.pop-pdf-bar{display:none!important}[data-popsec]>div:first-child{break-after:avoid}}
   </style>
   </head><body>${logoFixed}${inner}${anexo}<script>setTimeout(function(){window.print();},200);<\/script></body></html>`;
