@@ -3082,7 +3082,7 @@ function rPainelGestor(){
   // Desatualizados (sem atividade há +1 ano)
   const umAnoAtras=new Date();umAnoAtras.setFullYear(umAnoAtras.getFullYear()-1);
   const umAnoStr=umAnoAtras.toISOString().slice(0,10);
-  const desatual=publicados.filter(u=>{
+  const desatual=mapeados.filter(u=>{
     const p=u.proc;if(!p)return false;
     const ultHist=p.hist?.slice(-1)[0];
     if(ultHist?.data){const[d,m,a]=ultHist.data.split('/');if(`${a}-${m}-${d}`>=umAnoStr)return false;}
