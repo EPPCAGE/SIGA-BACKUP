@@ -3645,72 +3645,21 @@ function abrirIndicadoresProc(arqId){
   modal.id='inds-proc-modal';
   modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:center;justify-content:center;padding:1rem';
   modal.onclick=ev=>{if(ev.target===modal)modal.remove();};
-  const cardsHtml=inds.length
-    ?inds.map(k=>{
-      const polaridade=k.polaridade||'Maior é melhor';
-      const unidade=k.unidade?' '+k.unidade:'';
-      const polIcon=polaridade==='Menor é melhor'?'↓':'↑';
-      const hasMeta=k.meta!==null&&k.meta!==undefined&&k.meta!=='';
-      let pct=null,color,status;
-      if(hasMeta){
-        const _r=Number(k.realizado),_m=Number(k.meta);
-        if(_r===0&&_m===0){pct=100;}
-        else if(polaridade==='Menor é melhor'){pct=_r>0?Math.round((_m/_r)*100):(k.pct_realizado||0);}
-        else{pct=_m>0?Math.round((_r/_m)*100):null;}
-        const ok=pct>=100,warn=pct>=80&&pct<100;
-        if(ok){color='var(--green)';status='✓ Meta atingida';}
-        else if(warn){color='var(--amber)';status='~ Próximo da meta';}
-        else{color='var(--red)';status='✗ Abaixo da meta';}
-      }else{color='var(--ink3)';status=null;}
-      const borderColor=hasMeta?color:'var(--bdr)';
-      const barW=hasMeta?Math.min(100,Math.max(0,pct)):0;
-      return`<div style="background:var(--surf);border:1px solid var(--bdr);border-left:3px solid ${borderColor};border-radius:var(--r);padding:.85rem 1rem;margin-bottom:.75rem">
-        <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start;margin-bottom:.5rem">
-          <div>
-            <div style="font-size:11px;color:var(--ink3);margin-bottom:2px">${k.codigo?'<strong>'+esc(k.codigo)+'</strong> · ':''}${esc(k.periodicidade||'—')} · ${esc(k.periodo||'—')}${k.ciclo?' · '+esc(k.ciclo):''}</div>
-            <div style="font-size:13px;font-weight:600;color:var(--ink);line-height:1.4">${esc(k.nome)}</div>
-            ${k.desc?`<div style="font-size:11px;color:var(--ink3);margin-top:2px">${esc(k.desc)}</div>`:''}
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
-            ${status?`<span style="font-size:11px;font-weight:600;color:${color}">${status}</span>`:''}
-            <span style="font-size:10px;color:var(--ink3)">${polIcon} ${polaridade}</span>
-            ${k.ppe==='Sim'?'<span class="badge bb" style="font-size:10px">PPE</span>':''}
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(72px,1fr));gap:8px;margin-bottom:.6rem;font-size:12px">
-          <div style="text-align:center;padding:5px;background:var(--bg2);border-radius:6px">
-            <div style="font-size:10px;color:var(--ink3);margin-bottom:1px">% Índice</div>
-            <div style="font-weight:700;color:var(--ink)">${k.indice||0}%</div>
-          </div>
-          <div style="text-align:center;padding:5px;background:var(--bg2);border-radius:6px">
-            <div style="font-size:10px;color:var(--ink3);margin-bottom:1px">Meta</div>
-            <div style="font-weight:700;color:var(--ink)">${hasMeta?k.meta+unidade:'—'}</div>
-          </div>
-          <div style="text-align:center;padding:5px;background:var(--bg2);border-radius:6px">
-            <div style="font-size:10px;color:var(--ink3);margin-bottom:1px">Realizado</div>
-            <div style="font-weight:700;color:var(--ink)">${k.realizado!=null?k.realizado+unidade:'—'}</div>
-          </div>
-          ${hasMeta?`<div style="text-align:center;padding:5px;background:var(--bg2);border-radius:6px;border:1px solid ${color}">
-            <div style="font-size:10px;color:var(--ink3);margin-bottom:1px">Desempenho</div>
-            <div style="font-weight:700;color:${color}">${pct!=null?pct+'%':'—'}</div>
-          </div>`:''}
-        </div>
-        ${hasMeta?`<div style="height:6px;background:var(--bg3);border-radius:99px;overflow:hidden;margin-bottom:.5rem">
-          <div style="height:100%;border-radius:99px;background:${color};width:${barW}%;transition:width .4s"></div>
-        </div>`:''}
-        ${k.analise?`<div style="font-size:11px;color:var(--ink3);line-height:1.5;padding:.4rem .6rem;background:var(--surf2);border-radius:5px;border-left:2px solid ${borderColor}">📝 ${esc(k.analise)}</div>`:''}
-      </div>`;
-    }).join('')
+  const grupos=kpiGroupByKey(inds);
+  Object.values(grupos).forEach(kpiApplyMetaFallback);
+  const cardsHtml=Object.keys(grupos).length
+    ?Object.entries(grupos).map(([key,items])=>kpiGrupoCardHTML(key,items)).join('')
     :'<div style="font-size:13px;color:var(--ink3);padding:1rem 0">Nenhum indicador vinculado a este processo.</div>';
-  modal.innerHTML=`<div style="background:var(--surf);border-radius:var(--rl);padding:1.5rem 1.6rem;width:100%;max-width:580px;max-height:85vh;display:flex;flex-direction:column;box-shadow:var(--sh2)">
+  modal.innerHTML=`<div style="background:var(--surf);border-radius:var(--rl);padding:1.5rem 1.6rem;width:100%;max-width:620px;max-height:90vh;display:flex;flex-direction:column;box-shadow:var(--sh2)">
     <div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:.25rem">📊 Indicadores</div>
     <div style="font-size:12px;color:var(--ink3);margin-bottom:1rem">${esc(u?.nome||arqId)}</div>
-    <div style="overflow-y:auto;flex:1">${cardsHtml}</div>
+    <div style="overflow-y:auto;flex:1;padding-right:4px">${cardsHtml}</div>
     <div style="display:flex;justify-content:flex-end;margin-top:1rem">
       <button type="button" class="btn" onclick="document.getElementById('inds-proc-modal').remove()">Fechar</button>
     </div>
   </div>`;
   document.body.appendChild(modal);
+  setTimeout(()=>{ Object.entries(grupos).forEach(([key,items])=>createKpiChart(key,items)); }, 50);
 }
 async function abrirIdeiasProc(arqId){
   document.getElementById('ideias-proc-modal')?.remove();
