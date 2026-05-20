@@ -2947,9 +2947,8 @@ function rPainelGestor(){
   const subEl=document.getElementById('painel-gestor-sub');
   const todas=getUnidadesMapeaveis();
   const _etFinal=['publicacao','acompanha','auditoria'];
-  const publicados=todas.filter(u=>u.proc&&_etFinal.includes(u.proc.etapa));
-  const emAnd=todas.filter(u=>u.proc&&!_etFinal.includes(u.proc.etapa));
-  const mapeadosArq=todas.filter(u=>!u.proc&&isMapeado(u.arq_id));
+  const mapeados=todas.filter(u=>(u.proc&&_etFinal.includes(u.proc.etapa))||isMapeado(u.arq_id));
+  const emAnd=todas.filter(u=>u.proc&&!_etFinal.includes(u.proc.etapa)&&!isMapeado(u.arq_id));
   const naoMapeadas=todas.filter(u=>!u.proc&&!isMapeado(u.arq_id));
   if(subEl) subEl.textContent=`${todas.length} processos/subprocessos · Atualizado em ${new Date().toLocaleDateString('pt-BR')}`;
 
@@ -2957,9 +2956,8 @@ function rPainelGestor(){
   const statsHtml=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:1.5rem">
     ${[
       {lb:'Total',v:todas.length,c:'var(--blue)'},
-      {lb:'Publicados',v:publicados.length,c:'var(--teal)'},
+      {lb:'Mapeados',v:mapeados.length,c:'var(--teal)'},
       {lb:'Em mapeamento',v:emAnd.length,c:'var(--amber)'},
-      {lb:'Mapeados na arq.',v:mapeadosArq.length,c:'var(--blue)'},
       {lb:'Não mapeados',v:naoMapeadas.length,c:'var(--ink3)'},
     ].map(s=>`<div style="background:var(--surf);border:1px solid var(--bdr);border-left:3px solid ${s.c};border-radius:var(--r);padding:.85rem 1rem;text-align:center">
       <div style="font-size:22px;font-weight:700;color:${s.c}">${s.v}</div>
@@ -2973,9 +2971,8 @@ function rPainelGestor(){
     <div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap">
       <div style="position:relative;width:140px;height:140px;flex-shrink:0"><canvas id="pg-pie-chart"></canvas></div>
       <div style="display:flex;flex-direction:column;gap:6px;font-size:12px">
-        <div style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#0d9488;display:inline-block"></span> Publicados: <strong>${publicados.length}</strong></div>
+        <div style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#0d9488;display:inline-block"></span> Mapeados: <strong>${mapeados.length}</strong></div>
         <div style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#f59e0b;display:inline-block"></span> Em mapeamento: <strong>${emAnd.length}</strong></div>
-        <div style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#5B8EF0;display:inline-block"></span> Mapeados na arq.: <strong>${mapeadosArq.length}</strong></div>
         <div style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#94a3b8;display:inline-block"></span> Não mapeados: <strong>${naoMapeadas.length}</strong></div>
       </div>
     </div>
@@ -3107,7 +3104,7 @@ function rPainelGestor(){
     if(!canvas||typeof Chart==='undefined')return;
     new Chart(canvas,{
       type:'doughnut',
-      data:{labels:['Publicados','Em mapeamento','Mapeados na arq.','Não mapeados'],datasets:[{data:[publicados.length,emAnd.length,mapeadosArq.length,naoMapeadas.length],backgroundColor:['#0d9488','#f59e0b','#5B8EF0','#94a3b8'],borderWidth:0}]},
+      data:{labels:['Mapeados','Em mapeamento','Não mapeados'],datasets:[{data:[mapeados.length,emAnd.length,naoMapeadas.length],backgroundColor:['#0d9488','#f59e0b','#94a3b8'],borderWidth:0}]},
       options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},cutout:'65%'}
     });
   },50);
