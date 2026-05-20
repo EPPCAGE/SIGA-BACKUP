@@ -194,8 +194,8 @@ body.drawer-open{overflow:hidden;touch-action:none}
 .fi:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,93,200,.08)}
 textarea.fi{min-height:76px;resize:vertical;line-height:1.5}
 select.fi{cursor:pointer}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 #sol-servicos{align-items:stretch}
 #sol-servicos>.card{height:100%}
 #sol-servicos>.card+.card{margin-top:0}
@@ -3668,10 +3668,13 @@ function rMeusProc(){
     const pluralProcessos = minhas.length===1 ? '' : 's';
     const pluralMapeados = mapeados===1 ? '' : 's';
     const pluralNaoMapeados = naoMapeados===1 ? '' : 's';
+    const lblTotal = isGestorUser
+      ? `${minhas.length} processo${pluralProcessos} na arquitetura institucional`
+      : `${minhas.length} processo${pluralProcessos} no(s) macroprocesso(s) vinculado(s) ao seu usuário`;
     summaryEl.innerHTML = minhas.length
       ? `<div class="card" style="border-left:4px solid var(--teal);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
           <div>
-            <div class="card-t" style="margin-bottom:3px">${minhas.length} processo${pluralProcessos} no(s) macroprocesso(s) vinculado(s) ao seu usuário</div>
+            <div class="card-t" style="margin-bottom:3px">${lblTotal}</div>
             <div style="font-size:12px;color:var(--ink3)">${mapeados} mapeado${pluralMapeados} na arquitetura · ${naoMapeados} não mapeado${pluralNaoMapeados}</div>
           </div>
           <button type="button" class="btn" onclick="go('arq',document.getElementById('nb-arq'))" style="font-size:12px">Ver arquitetura</button>
@@ -3707,7 +3710,7 @@ function rMeusProc(){
     </div>`);
   }
 
-  listEl.innerHTML = minhas.map(u=>{
+  const _buildCard = u=>{
     const proc = u.proc;
     const mapeado = isMapeado(u.arq_id);
     const mat = proc?.ent?.mat||0;
@@ -3760,7 +3763,27 @@ function rMeusProc(){
       </div>
       </div>
     </div>`;
-  }).join('');
+  };
+
+  if(isGestorUser && !_meusProc_macroFiltro){
+    // Gestor sem filtro: agrupar por macroprocesso
+    const macroOrdem = [...new Set(minhas.map(u=>u.macro))];
+    listEl.style.display = 'block';
+    listEl.innerHTML = macroOrdem.map(macro=>{
+      const grupo = minhas.filter(u=>u.macro===macro);
+      const nMap = grupo.filter(u=>isMapeado(u.arq_id)).length;
+      return `<details open style="margin-bottom:1.25rem">
+        <summary style="cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;padding:.4rem 0;border-bottom:1px solid var(--bdr);margin-bottom:.75rem">
+          <span style="font-size:13px;font-weight:600;color:var(--ink)">${esc(macro)}</span>
+          <span style="font-size:11px;color:var(--ink3)">${grupo.length} processos · ${nMap} mapeados</span>
+        </summary>
+        <div class="g3">${grupo.map(_buildCard).join('')}</div>
+      </details>`;
+    }).join('');
+  } else {
+    listEl.style.display = '';
+    listEl.innerHTML = minhas.map(_buildCard).join('');
+  }
   updCounts();
 }
 function abrirInfoMeusProc(arqId){
