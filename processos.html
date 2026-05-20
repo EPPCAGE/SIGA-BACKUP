@@ -14364,7 +14364,11 @@ function kpiGrupoCardHTML(key, items){
   }
 
   // Linked process
-  const linkedProc = items[0].pid ? processos.find(p=>p.id===items[0].pid) : null;
+  const linkedProc = items[0].pid
+    ? processos.find(p=>p.id===items[0].pid)
+    : items[0].arq_id
+      ? (()=>{const o=_kpiArquiteturaOptions().find(x=>x.id===items[0].arq_id);return o?{nome:o.nome}:null;})()
+      : null;
 
   // Analysis lines with period label
   const analises = items.filter(i=>i.analise).map(i=>
