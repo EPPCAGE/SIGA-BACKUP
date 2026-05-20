@@ -3062,7 +3062,7 @@ function rPainelGestor(){
   </div>`;
 
   // Sem indicadores
-  const semInd=mapeados.filter(u=>u.proc&&!kpis.some(k=>k.pid===u.proc.id||k.arq_id===u.arq_id));
+  const semInd=mapeados.filter(u=>!kpis.some(k=>(u.proc&&k.pid===u.proc.id)||k.arq_id===u.arq_id));
   const semIndHtml=semInd.length?`<div style="background:var(--surf);border:1px solid var(--bdr);border-left:3px solid var(--amber);border-radius:var(--r);padding:1rem;margin-bottom:1.5rem">
     <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:.5rem">⚠ Processos sem indicadores vinculados (${semInd.length})</div>
     <div style="display:flex;flex-wrap:wrap;gap:6px">
