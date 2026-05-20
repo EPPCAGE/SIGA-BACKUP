@@ -7985,7 +7985,7 @@ function _revPeriodica_init(p){
 // 'vencida' | 'pendente' (≤30 dias) | 'em_dia' | null
 function _revStatus(p){
   if(p.status_ciclo==='suspenso'||p.status_ciclo==='cancelado') return null;
-  const rp=p.revisao_periodica?.proxima_revisao?p.revisao_periodica:null;
+  const rp=p.revisao_periodica||_revPeriodica_init(p);
   if(!rp?.proxima_revisao) return null;
   const hoje=new Date().toISOString().slice(0,10);
   if(rp.proxima_revisao<=hoje) return 'vencida';
