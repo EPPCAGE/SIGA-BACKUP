@@ -13352,7 +13352,12 @@ function abrirModalMeta(item, onSave){
       <div class="fg"><label class="fl">Dono do processo</label><input class="fi" id="mm-ger" value="${item.gerente||''}"></div>
     </div>
     <div class="fg"><label class="fl">Objetivo do processo</label><textarea class="fi" id="mm-obj" style="min-height:60px">${item.objetivo||''}</textarea></div>
-    <div class="fg"><label class="fl">Objetivo estratégico</label><input class="fi" id="mm-obje" value="${item.objetivo_estrategico||''}"></div>
+    <div class="fg"><label class="fl">Objetivo estratégico</label>
+      <select class="fi" id="mm-obje">
+        <option value="">Selecione...</option>
+        ${(()=>{const s=new Set();ARQUITETURA.forEach(m=>m.processos.forEach(p=>{(p.objetivo_estrategico||'').split(';').map(x=>x.trim()).filter(Boolean).forEach(o=>s.add(o));(p.subprocessos||[]).forEach(sp=>(sp.objetivo_estrategico||'').split(';').map(x=>x.trim()).filter(Boolean).forEach(o=>s.add(o)))}));return[...s].sort().map(o=>`<option ${(item.objetivo_estrategico||'')===o?'selected':''}>${esc(o)}</option>`).join('');})()}
+      </select>
+    </div>
     <div class="g2">
       <div class="fg"><label class="fl">Entradas do processo</label><textarea class="fi" id="mm-ent" style="min-height:55px">${item.entradas||''}</textarea></div>
       <div class="fg"><label class="fl">Entregas do processo</label><textarea class="fi" id="mm-entr" style="min-height:55px">${item.entregas||''}</textarea></div>
