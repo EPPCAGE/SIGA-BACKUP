@@ -2984,12 +2984,16 @@ function rPainelGestor(){
     const p=u.proc;
     const ei=etIdx(p.etapa);
     const pct=Math.round((ei/(ETAPAS.length-1))*100);
-    const dtAb=p.dt_etapas?.abertura;
+    const dtAb=p.dt_etapas?.abertura
+      ? (()=>{const[d,m,a]=p.dt_etapas.abertura.split('/');return`${a}-${m}-${d}`;})()
+      : p.ent?.dt_inicio||null;
     let dias='—';
-    if(dtAb){const[d,m,a]=dtAb.split('/');dias=Math.round((hoje-new Date(a,m-1,d))/86400000);}
-    const prazoMedio=60;
-    const diasRestantes=typeof dias==='number'?(prazoMedio-dias):null;
-    const previsao=diasRestantes!=null?new Date(hoje.getTime()+Math.max(0,diasRestantes)*86400000).toLocaleDateString('pt-BR'):'—';
+    if(dtAb){dias=Math.round((hoje-new Date(dtAb))/86400000);}
+    const previsao=p.ent?.dt_prev
+      ? new Date(p.ent.dt_prev).toLocaleDateString('pt-BR')
+      : typeof dias==='number'
+        ? new Date(hoje.getTime()+Math.max(0,60-dias)*86400000).toLocaleDateString('pt-BR')
+        : '—';
     return `<tr style="border-bottom:1px solid var(--bdr)">
       <td style="padding:.45rem .6rem;font-size:12px;font-weight:500">${esc(p.nome)}</td>
       <td style="padding:.45rem .6rem;font-size:11px;color:var(--ink3)">${esc(ETAPAS[ei]?.titulo||p.etapa||'—')}</td>
