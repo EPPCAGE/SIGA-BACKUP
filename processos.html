@@ -2946,10 +2946,10 @@ function rPainelGestor(){
   if(!el)return;
   const subEl=document.getElementById('painel-gestor-sub');
   const todas=getUnidadesMapeaveis();
-  const mapeadas=todas.filter(u=>isMapeado(u.arq_id));
-  const emAnd=mapeadas.filter(u=>u.proc&&!['acompanha','auditoria','publicacao'].includes(u.proc.etapa));
-  const publicados=mapeadas.filter(u=>u.proc&&['publicacao','acompanha','auditoria'].includes(u.proc.etapa));
-  const naoMapeadas=todas.filter(u=>!isMapeado(u.arq_id));
+  const _etFinal=['publicacao','acompanha','auditoria'];
+  const publicados=todas.filter(u=>u.proc&&_etFinal.includes(u.proc.etapa));
+  const emAnd=todas.filter(u=>u.proc&&!_etFinal.includes(u.proc.etapa));
+  const naoMapeadas=todas.filter(u=>!u.proc);
   if(subEl) subEl.textContent=`${todas.length} processos/subprocessos · ${mapeadas.length} mapeados · Atualizado em ${new Date().toLocaleDateString('pt-BR')}`;
 
   // Stats row
@@ -3097,18 +3097,7 @@ function rPainelGestor(){
   </div>`:'';
 
   // Publicações oficiais
-  const pubLinks=publicacoes.filter(p=>p.url||p.bpmn_url);
-  const pubHtml=pubLinks.length?`<div style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:1rem;margin-bottom:1.5rem">
-    <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:.5rem">📄 Relatórios e publicações oficiais</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px">
-      ${pubLinks.flatMap(p=>[
-        p.url?`<a href="${esc(safeUrl(p.url)||'')}" target="_blank" rel="noopener noreferrer" style="font-size:11px;font-weight:600;background:#ccfbf1;color:#0d9488;padding:3px 10px;border-radius:4px;text-decoration:none">📄 ${esc(p.titulo)}</a>`:'',
-        p.bpmn_url&&p.categoria==='POPs'?`<a href="${esc(safeUrl(p.bpmn_url)||'')}" target="_blank" rel="noopener noreferrer" style="font-size:11px;font-weight:600;background:#ede9fe;color:#5b21b6;padding:3px 10px;border-radius:4px;text-decoration:none">🔷 BPMN — ${esc(p.titulo)}</a>`:''
-      ]).filter(Boolean).join('')}
-    </div>
-  </div>`:'';
-
-  el.innerHTML=statsHtml+pieHtml+andHtml+prazosHtml+ilpHtml+matHtml+semIndHtml+desatualHtml+pubHtml;
+  el.innerHTML=statsHtml+pieHtml+andHtml+prazosHtml+ilpHtml+matHtml+semIndHtml+desatualHtml;
 
   setTimeout(()=>{
     const canvas=document.getElementById('pg-pie-chart');
