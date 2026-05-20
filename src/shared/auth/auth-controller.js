@@ -9,6 +9,31 @@
   'use strict';
 
   // ══════════════════════════════════════════════════════════════
+  // RATE LIMITING — reset de senha
+  // ══════════════════════════════════════════════════════════════
+  // Máx. 3 tentativas por e-mail em janela de 5 min (client-side via localStorage).
+  // Retorna null se permitido, ou string de erro se bloqueado.
+  function _resetRateLimit(email) {
+    const KEY = 'siga_reset_rl';
+    const MAX = 3;
+    const WINDOW_MS = 5 * 60 * 1000;
+    const now = Date.now();
+    let rl = {};
+    try { rl = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { /* storage indisponível */ }
+    const attempts = (rl[email] || []).filter(t => now - t < WINDOW_MS);
+    if (attempts.length >= MAX) {
+      const wait = Math.ceil((WINDOW_MS - (now - attempts[0])) / 1000);
+      const mins = Math.floor(wait / 60);
+      const secs = wait % 60;
+      return `Muitas tentativas. Aguarde ${mins > 0 ? mins + ' min ' : ''}${secs}s antes de solicitar outro e-mail.`;
+    }
+    attempts.push(now);
+    rl[email] = attempts;
+    try { localStorage.setItem(KEY, JSON.stringify(rl)); } catch { /* storage indisponível */ }
+    return null;
+  }
+
+  // ══════════════════════════════════════════════════════════════
   // LOGIN
   // ══════════════════════════════════════════════════════════════
 
@@ -182,7 +207,7 @@
   // auto-cadastro porque nenhum usuário está logado nesse momento.
   async function _fbSaveUsuarios() {
     const repo = globalScope.configRepository;
-    if (!repo) return;
+    if (!repo) throw new Error('Repositório de usuários não disponível. Tente novamente em instantes.');
     const lista = (globalScope.USUARIOS || []).map(function(u) {
       if (!u._perfil_original) return u;
       const { _perfil_original, ...rest } = u;
@@ -233,6 +258,8 @@
       showErr('Firebase não configurado.');
       return;
     }
+    const rlErr = _resetRateLimit(email);
+    if (rlErr) { showErr(rlErr); return; }
     
     try {
       const { auth, sendPasswordResetEmail, initializeApp, deleteApp, getAuth, createUserWithEmailAndPassword, FIREBASE_CONFIG } = globalScope.fb();
@@ -297,11 +324,12 @@
       showErr('Informe seu nome completo.');
       return;
     }
-    
     if (!globalScope.fbReady || !globalScope.fbReady()) {
       showErr('Firebase não configurado.');
       return;
     }
+    const rlErr = _resetRateLimit(email);
+    if (rlErr) { showErr(rlErr); return; }
 
     const senhaTemp = globalScope.gerarSenhaTemp();
 
@@ -331,43 +359,48 @@
       return;
     }
 
-    // Adiciona ao USUARIOS
-    const palavras = nome.trim().split(/\s+/).filter(Boolean);
-    const iniciais = (palavras.length >= 2 
-      ? palavras[0][0] + palavras[palavras.length - 1][0] 
-      : (palavras[0] || '?').slice(0, 2)
-    ).toUpperCase();
-    
-    globalScope.USUARIOS.push({
-      email,
-      nome,
-      perfil: 'dono',
-      perfis: ['dono', 'gerente_projeto'],
-      iniciais,
-      macroprocessos_vinculados: [],
-      processos_vinculados: [],
-      trocar_senha: true
-    });
-    
-    await _fbSaveUsuarios();
+    // Registra no SIGA e só então envia o e-mail
+    try {
+      const palavras = nome.trim().split(/\s+/).filter(Boolean);
+      const iniciais = (palavras.length >= 2
+        ? palavras[0][0] + palavras[palavras.length - 1][0]
+        : (palavras[0] || '?').slice(0, 2)
+      ).toUpperCase();
 
-    // Envia senha temporária
-    if (globalScope._enviarSenhaAcesso) {
-      globalScope._enviarSenhaAcesso(email, nome, senhaTemp);
-    }
+      globalScope.USUARIOS.push({
+        email,
+        nome,
+        perfil: 'dono',
+        perfis: ['dono', 'gerente_projeto'],
+        iniciais,
+        macroprocessos_vinculados: [],
+        processos_vinculados: [],
+        trocar_senha: true
+      });
 
-    // Notifica EPPs
-    if (globalScope.enviarNotif) {
-      globalScope.USUARIOS.filter(u => u.perfil === 'ep' && u.email).forEach(ep =>
-        globalScope.enviarNotif(
-          ep.email,
-          ep.nome,
-          'Novo usuário registrado: ' + nome + ' (' + email + '). Acesso liberado automaticamente.',
-          'Controle de Acesso',
-          '',
-          'Sistema'
-        )
-      );
+      await _fbSaveUsuarios(); // lança erro se o repositório não estiver disponível
+
+      // Só envia o e-mail após confirmar o save no Firestore
+      if (globalScope._enviarSenhaAcesso) {
+        globalScope._enviarSenhaAcesso(email, nome, senhaTemp);
+      }
+
+      // Notifica EPPs
+      if (globalScope.enviarNotif) {
+        globalScope.USUARIOS.filter(u => u.perfil === 'ep' && u.email).forEach(ep =>
+          globalScope.enviarNotif(
+            ep.email, ep.nome,
+            'Novo usuário registrado: ' + nome + ' (' + email + '). Acesso liberado automaticamente.',
+            'Controle de Acesso', '', 'Sistema'
+          )
+        );
+      }
+    } catch (e) {
+      // Desfaz o push em memória para não deixar estado inconsistente
+      const idx = (globalScope.USUARIOS || []).findLastIndex(u => u.email === email);
+      if (idx >= 0) globalScope.USUARIOS.splice(idx, 1);
+      showErr('Acesso criado no Firebase, mas falha ao registrar no SIGA: ' + (e.message || e));
+      return;
     }
 
     showOk('Acesso criado! Enviamos uma senha temporária para ' + email + '. Verifique sua caixa de entrada e spam.');

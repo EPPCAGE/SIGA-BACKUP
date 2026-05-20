@@ -3014,9 +3014,7 @@ function rPainelGestor(){
       </tr></thead>
       <tbody>${andRows}</tbody>
     </table>
-  </div>`:''
-
-  // Prazos médios
+  </div>`:'';
   const _parseDMY=s=>{if(!s)return null;const[d,m,a]=s.split('/');return new Date(a,m-1,d);};
   const procPubl=processos.filter(p=>p.dt_etapas?.abertura&&p.dt_etapas?.publicacao);
   const diasMap=procPubl.map(p=>{const ini=_parseDMY(p.dt_etapas.abertura);const fim=_parseDMY(p.dt_etapas.publicacao);if(!ini||!fim)return null;const d=Math.round((fim-ini)/86400000);return(d>0&&d<730)?d:null;}).filter(Boolean);
