@@ -3540,7 +3540,7 @@ function rMeusProc(){
       ${revBadge?`<div style="display:flex;align-items:center;gap:6px;margin-top:8px">${revBadge}${revBtn}</div>`:''}
       <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px">
         ${hasFaq?`<button type="button" class="btn" style="font-size:10px;padding:2px 9px" title="Ver perguntas frequentes" onclick="event.stopPropagation();abrirFaqProc('${u.arq_id}')">❓ FAQ</button>`:''}
-        ${(()=>{const _inds=kpis.filter(k=>(proc&&k.pid===proc.id)||(k.arq_id===u.arq_id));return _inds.length?`<button type="button" class="btn" style="font-size:10px;padding:2px 9px" title="Ver indicadores vinculados" onclick="event.stopPropagation();abrirIndicadoresProc('${u.arq_id}')">📊 ${_inds.length} ind.</button>`:''})()}
+        ${(()=>{const _inds=kpis.filter(k=>(proc&&k.pid===proc.id)||(k.arq_id===u.arq_id));const _nGrp=Object.keys(kpiGroupByKey(_inds)).length;return _nGrp?`<button type="button" class="btn" style="font-size:10px;padding:2px 9px" title="Ver indicadores vinculados" onclick="event.stopPropagation();abrirIndicadoresProc('${u.arq_id}')">📊 ${_nGrp} ind.</button>`:''})()}
         <button type="button" class="btn" style="font-size:10px;padding:2px 9px" onclick="event.stopPropagation();abrirIdeiasProc('${u.arq_id}')">💡 Ideias</button>
       </div>
       </div>
