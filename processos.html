@@ -3053,14 +3053,14 @@ function rPainelGestor(){
 
   // Maturidade
   const matGrps={0:[],1:[],2:[],3:[],4:[],5:[]};
-  mapeadas.forEach(u=>{const m=u.proc?.ent?.mat||0;(matGrps[m]||matGrps[0]).push(u);});
+  mapeados.forEach(u=>{const m=u.proc?.ent?.mat||0;(matGrps[m]||matGrps[0]).push(u);});
   const matLabels={0:'Não avaliada',1:'Inicial',2:'Gerenciado',3:'Padronizado',4:'Quantitativo',5:'Otimizado'};
   const matColors=['var(--ink3)','var(--red)','var(--amber)','var(--blue)','var(--teal)','var(--green)'];
   const matHtml=`<div style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:1rem;margin-bottom:1.5rem">
     <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:.75rem">Processos por Grau de Maturidade</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px">
     ${Object.entries(matGrps).map(([nv,arr])=>{
-      const pct=mapeadas.length?Math.round(arr.length/mapeadas.length*100):0;
+      const pct=mapeados.length?Math.round(arr.length/mapeados.length*100):0;
       return `<div style="text-align:center;padding:.6rem;background:var(--bg2);border-radius:var(--r);border-top:3px solid ${matColors[Number(nv)]}">
         <div style="font-size:18px;font-weight:700;color:${matColors[Number(nv)]}">${arr.length}</div>
         <div style="font-size:10px;color:var(--ink3)">${matLabels[nv]}</div>
@@ -3071,7 +3071,7 @@ function rPainelGestor(){
   </div>`;
 
   // Sem indicadores
-  const semInd=mapeadas.filter(u=>u.proc&&!kpis.some(k=>k.pid===u.proc.id||k.arq_id===u.arq_id));
+  const semInd=mapeados.filter(u=>u.proc&&!kpis.some(k=>k.pid===u.proc.id||k.arq_id===u.arq_id));
   const semIndHtml=semInd.length?`<div style="background:var(--surf);border:1px solid var(--bdr);border-left:3px solid var(--amber);border-radius:var(--r);padding:1rem;margin-bottom:1.5rem">
     <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:.5rem">⚠ Processos sem indicadores vinculados (${semInd.length})</div>
     <div style="display:flex;flex-wrap:wrap;gap:6px">
