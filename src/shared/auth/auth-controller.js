@@ -9,6 +9,31 @@
   'use strict';
 
   // ══════════════════════════════════════════════════════════════
+  // RATE LIMITING — reset de senha
+  // ══════════════════════════════════════════════════════════════
+  // Máx. 3 tentativas por e-mail em janela de 5 min (client-side via localStorage).
+  // Retorna null se permitido, ou string de erro se bloqueado.
+  function _resetRateLimit(email) {
+    const KEY = 'siga_reset_rl';
+    const MAX = 3;
+    const WINDOW_MS = 5 * 60 * 1000;
+    const now = Date.now();
+    let rl = {};
+    try { rl = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { /* storage indisponível */ }
+    const attempts = (rl[email] || []).filter(t => now - t < WINDOW_MS);
+    if (attempts.length >= MAX) {
+      const wait = Math.ceil((WINDOW_MS - (now - attempts[0])) / 1000);
+      const mins = Math.floor(wait / 60);
+      const secs = wait % 60;
+      return `Muitas tentativas. Aguarde ${mins > 0 ? mins + ' min ' : ''}${secs}s antes de solicitar outro e-mail.`;
+    }
+    attempts.push(now);
+    rl[email] = attempts;
+    try { localStorage.setItem(KEY, JSON.stringify(rl)); } catch { /* storage indisponível */ }
+    return null;
+  }
+
+  // ══════════════════════════════════════════════════════════════
   // LOGIN
   // ══════════════════════════════════════════════════════════════
 
@@ -233,6 +258,8 @@
       showErr('Firebase não configurado.');
       return;
     }
+    const rlErr = _resetRateLimit(email);
+    if (rlErr) { showErr(rlErr); return; }
     
     try {
       const { auth, sendPasswordResetEmail, initializeApp, deleteApp, getAuth, createUserWithEmailAndPassword, FIREBASE_CONFIG } = globalScope.fb();
@@ -297,11 +324,12 @@
       showErr('Informe seu nome completo.');
       return;
     }
-    
     if (!globalScope.fbReady || !globalScope.fbReady()) {
       showErr('Firebase não configurado.');
       return;
     }
+    const rlErr = _resetRateLimit(email);
+    if (rlErr) { showErr(rlErr); return; }
 
     const senhaTemp = globalScope.gerarSenhaTemp();
 

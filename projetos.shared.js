@@ -256,11 +256,33 @@ function gerarSenhaTemp() {
   return senhaTempShuffle(senha);
 }
 
+function _resetRateLimit(email) {
+  const KEY = 'siga_reset_rl';
+  const MAX = 3;
+  const WINDOW_MS = 5 * 60 * 1000;
+  const now = Date.now();
+  let rl = {};
+  try { rl = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { /* storage indisponível */ }
+  const attempts = (rl[email] || []).filter(t => now - t < WINDOW_MS);
+  if (attempts.length >= MAX) {
+    const wait = Math.ceil((WINDOW_MS - (now - attempts[0])) / 1000);
+    const mins = Math.floor(wait / 60);
+    const secs = wait % 60;
+    return `Muitas tentativas. Aguarde ${mins > 0 ? mins + ' min ' : ''}${secs}s antes de solicitar outro e-mail.`;
+  }
+  attempts.push(now);
+  rl[email] = attempts;
+  try { localStorage.setItem(KEY, JSON.stringify(rl)); } catch { /* storage indisponível */ }
+  return null;
+}
+
 async function _primeiroAcessoExistente(email, showErr, showOk) {
   if (!fbReady()) {
     showErr('Firebase não configurado.');
     return;
   }
+  const rlErr = _resetRateLimit(email);
+  if (rlErr) { showErr(rlErr); return; }
   try {
     const { auth, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } = fb();
     try {
