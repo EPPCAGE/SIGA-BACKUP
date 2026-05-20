@@ -2946,17 +2946,17 @@ function rPainelGestor(){
   if(!el)return;
   const subEl=document.getElementById('painel-gestor-sub');
   const todas=getUnidadesMapeaveis();
-  const mapeadas=todas.filter(u=>isMapeado(u.arq_id));
-  const emAnd=mapeadas.filter(u=>u.proc&&!['acompanha','auditoria','publicacao'].includes(u.proc.etapa));
-  const publicados=mapeadas.filter(u=>u.proc&&['publicacao','acompanha','auditoria'].includes(u.proc.etapa));
-  const naoMapeadas=todas.filter(u=>!isMapeado(u.arq_id));
-  if(subEl) subEl.textContent=`${todas.length} processos/subprocessos · ${mapeadas.length} mapeados · Atualizado em ${new Date().toLocaleDateString('pt-BR')}`;
+  const _etFinal=['publicacao','acompanha','auditoria'];
+  const mapeados=todas.filter(u=>(u.proc&&_etFinal.includes(u.proc.etapa))||isMapeado(u.arq_id));
+  const emAnd=todas.filter(u=>u.proc&&!_etFinal.includes(u.proc.etapa)&&!isMapeado(u.arq_id));
+  const naoMapeadas=todas.filter(u=>!u.proc&&!isMapeado(u.arq_id));
+  if(subEl) subEl.textContent=`${todas.length} processos/subprocessos · Atualizado em ${new Date().toLocaleDateString('pt-BR')}`;
 
   // Stats row
   const statsHtml=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:1.5rem">
     ${[
       {lb:'Total',v:todas.length,c:'var(--blue)'},
-      {lb:'Publicados',v:publicados.length,c:'var(--teal)'},
+      {lb:'Mapeados',v:mapeados.length,c:'var(--teal)'},
       {lb:'Em mapeamento',v:emAnd.length,c:'var(--amber)'},
       {lb:'Não mapeados',v:naoMapeadas.length,c:'var(--ink3)'},
     ].map(s=>`<div style="background:var(--surf);border:1px solid var(--bdr);border-left:3px solid ${s.c};border-radius:var(--r);padding:.85rem 1rem;text-align:center">
@@ -2971,7 +2971,7 @@ function rPainelGestor(){
     <div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap">
       <div style="position:relative;width:140px;height:140px;flex-shrink:0"><canvas id="pg-pie-chart"></canvas></div>
       <div style="display:flex;flex-direction:column;gap:6px;font-size:12px">
-        <div style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#0d9488;display:inline-block"></span> Publicados: <strong>${publicados.length}</strong></div>
+        <div style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#0d9488;display:inline-block"></span> Mapeados: <strong>${mapeados.length}</strong></div>
         <div style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#f59e0b;display:inline-block"></span> Em mapeamento: <strong>${emAnd.length}</strong></div>
         <div style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#94a3b8;display:inline-block"></span> Não mapeados: <strong>${naoMapeadas.length}</strong></div>
       </div>
@@ -3097,25 +3097,14 @@ function rPainelGestor(){
   </div>`:'';
 
   // Publicações oficiais
-  const pubLinks=publicacoes.filter(p=>p.url||p.bpmn_url);
-  const pubHtml=pubLinks.length?`<div style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:1rem;margin-bottom:1.5rem">
-    <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:.5rem">📄 Relatórios e publicações oficiais</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px">
-      ${pubLinks.flatMap(p=>[
-        p.url?`<a href="${esc(safeUrl(p.url)||'')}" target="_blank" rel="noopener noreferrer" style="font-size:11px;font-weight:600;background:#ccfbf1;color:#0d9488;padding:3px 10px;border-radius:4px;text-decoration:none">📄 ${esc(p.titulo)}</a>`:'',
-        p.bpmn_url&&p.categoria==='POPs'?`<a href="${esc(safeUrl(p.bpmn_url)||'')}" target="_blank" rel="noopener noreferrer" style="font-size:11px;font-weight:600;background:#ede9fe;color:#5b21b6;padding:3px 10px;border-radius:4px;text-decoration:none">🔷 BPMN — ${esc(p.titulo)}</a>`:''
-      ]).filter(Boolean).join('')}
-    </div>
-  </div>`:'';
-
-  el.innerHTML=statsHtml+pieHtml+andHtml+prazosHtml+ilpHtml+matHtml+semIndHtml+desatualHtml+pubHtml;
+  el.innerHTML=statsHtml+pieHtml+andHtml+prazosHtml+ilpHtml+matHtml+semIndHtml+desatualHtml;
 
   setTimeout(()=>{
     const canvas=document.getElementById('pg-pie-chart');
     if(!canvas||typeof Chart==='undefined')return;
     new Chart(canvas,{
       type:'doughnut',
-      data:{labels:['Publicados','Em mapeamento','Não mapeados'],datasets:[{data:[publicados.length,emAnd.length,naoMapeadas.length],backgroundColor:['#0d9488','#f59e0b','#94a3b8'],borderWidth:0}]},
+      data:{labels:['Mapeados','Em mapeamento','Não mapeados'],datasets:[{data:[mapeados.length,emAnd.length,naoMapeadas.length],backgroundColor:['#0d9488','#f59e0b','#94a3b8'],borderWidth:0}]},
       options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},cutout:'65%'}
     });
   },50);
