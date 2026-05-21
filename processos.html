@@ -5013,6 +5013,7 @@ function rDetalhe(){
   const p=curProc;
   _migrarMatMin(p);
   _migrarQuestHist(p);
+  _migrarQuestHistNivel(p);
   document.getElementById('det-titulo').textContent=p.nome;
   document.getElementById('det-badge').innerHTML=fBadge(p.etapa)+' '+_eBadgeAcomp(p)+_statusBadge(p);
   document.getElementById('det-prio').innerHTML=pBadge(p.prio)
@@ -7564,6 +7565,21 @@ function _calcNivelMaturidadeMin(resp){
   const niveis=Object.values(dims).filter(d=>d.cnt>0).map(d=>_calcNivelMaturidade(d.sum/d.cnt));
   return niveis.length?Math.min(...niveis):1;
 }
+function _migrarQuestHistNivel(p){
+  const e=p.ent;
+  if(!e?.quest_hist?.length) return;
+  const resp=e.quest_resp||{};
+  if(!Object.keys(resp).length) return;
+  const nivelCorreto=_calcNivelMaturidadeMin(resp);
+  let mudou=false;
+  e.quest_hist.forEach(h=>{
+    if(h.dt==='(retroativo)'&&h.nivel!==nivelCorreto){
+      h.nivel=nivelCorreto;
+      mudou=true;
+    }
+  });
+  if(mudou) fbAutoSave('salvar');
+}
 function _migrarMatMin(p){
   const e=p.ent;
   if(!e) return;
@@ -7583,7 +7599,8 @@ function _migrarQuestHist(p){
   if(!respondidas||!e.mat) return;
   const total=Object.values(resp).reduce((a,b)=>a+b,0);
   const media=(total/respondidas).toFixed(1);
-  e.quest_hist=[{dt:'(retroativo)',nivel:e.mat,media,respondidas,nota:e.quest_nota||''}];
+  const nivel=_calcNivelMaturidadeMin(resp);
+  e.quest_hist=[{dt:'(retroativo)',nivel,media,respondidas,nota:e.quest_nota||''}];
   fbAutoSave('salvar');
 }
 function salvarQuestionario(){
