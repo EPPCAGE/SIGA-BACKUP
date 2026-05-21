@@ -4212,7 +4212,7 @@ function _rAudRiscos(p){
       <button type="button" class="btn" style="font-size:11px" onclick="salvarTratamentoRisco(${i})">Salvar</button>
     </div>`;
   }).join('');
-  return `<div style="font-size:13px;color:var(--ink3);margin-bottom:.9rem">Registre abaixo como o processo tratou na prática cada risco identificado no mapeamento.</div>${cards}`;
+  return `<div style="font-size:13px;color:var(--ink3);margin-bottom:.9rem">Riscos inerentes identificados no mapeamento do processo. Registre abaixo como cada risco foi tratado na prática — estes riscos existem independentemente dos achados da auditoria.</div>${cards}`;
 }
 
 function _rAudRestoreRelatorio(p){
@@ -5793,7 +5793,7 @@ function abrirAtribuirEtapa(etapaId){
   if(etapaId==='auditoria'){
     const activeTab=document.querySelector('#tab-acao .tabs .tab.on');
     const m=activeTab?(activeTab.getAttribute('onclick')||'').match(/sstab\('(aud\d)',this\)/):null;
-    const AUD_LABELS={aud1:'Planejamento',aud2:'Questões',aud3:'Ações',aud4:'Achados',aud8:'Riscos',aud5:'Plano de Ação',aud6:'Relatório',aud7:'Follow-up'};
+    const AUD_LABELS={aud1:'Planejamento',aud2:'Questões',aud3:'Ações',aud4:'Achados',aud8:'Riscos Inerentes',aud5:'Plano de Ação',aud6:'Relatório',aud7:'Follow-up'};
     const abaLabel=m?AUD_LABELS[m[1]]||m[1]:null;
     audAbaBanner=abaLabel
       ?`<div style="background:var(--blue-l,#eff6ff);border:1.5px solid var(--blue-b,#bfdbfe);border-radius:var(--r);padding:.65rem .9rem;margin-bottom:1rem;font-size:12px;color:var(--ink2)">📋 O dono terá acesso somente à aba <strong>${esc(abaLabel)}</strong>.</div>`
@@ -6688,7 +6688,7 @@ const ACOES = {
         <div class="tab" role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" onclick="sstab('aud2',this)">Questões</div>
         <div class="tab" role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" onclick="sstab('aud3',this)">Ações</div>
         <div class="tab" role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" onclick="sstab('aud4',this)">Achados</div>
-        <div class="tab" role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" onclick="sstab('aud8',this)">Riscos</div>
+        <div class="tab" role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" onclick="sstab('aud8',this)">Riscos Inerentes</div>
         <div class="tab" role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" onclick="sstab('aud5',this)">Plano de Ação</div>
         <div class="tab" role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" onclick="sstab('aud6',this)">Relatório</div>
         <div class="tab" role="tab" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" onclick="sstab('aud7',this)">Follow-up <span id="aud7-cnt" style="display:none;background:var(--red);color:#fff;border-radius:99px;padding:0 5px;font-size:10px;font-weight:700;margin-left:2px;vertical-align:middle">0</span></div>
@@ -6788,7 +6788,7 @@ const ACOES = {
         <div id="aud-form">
           <input type="hidden" id="aud-a-idx" value="">
           <div id="aud-form-title" style="font-weight:600;font-size:13px;margin-bottom:.6rem">Registrar achado / não-conformidade</div>
-          <div class="g2">
+          <div class="g3">
             <div class="fg"><label class="fl">Título</label><input class="fi" id="aud-a-titulo" placeholder="Título do achado"></div>
             <div class="fg"><label class="fl">Tipo</label>
               <select class="fi" id="aud-a-tipo">
@@ -6796,6 +6796,15 @@ const ACOES = {
                 <option>Observação</option>
                 <option>Ponto de melhoria</option>
                 <option>Conformidade</option>
+              </select>
+            </div>
+            <div class="fg"><label class="fl">Risco do Achado</label>
+              <select class="fi" id="aud-a-risco">
+                <option value="">— selecione —</option>
+                <option>Baixo</option>
+                <option>Médio</option>
+                <option>Alto</option>
+                <option>Crítico</option>
               </select>
             </div>
           </div>
@@ -9188,7 +9197,7 @@ function renderRelatorioAuditoria(json, conf, p, aud){
   const riscosAll = p.ent?.riscos||[];
   let riscosSec = null;
   if(riscosAll.length){
-    riscosSec = sec('Riscos do Processo e Tratamentos');
+    riscosSec = sec('Riscos Inerentes do Processo e Tratamentos');
     const probScore={Baixa:1,Media:2,Alta:3};
     const impScore={Baixo:1,Medio:2,Alto:3,Critico:4};
     for(const r of riscosAll){
@@ -9470,6 +9479,7 @@ function toggleAudPicker(){
 function _limparFormularioAchado(){
   ['aud-a-titulo','aud-a-desc','aud-a-evid','aud-a-crit'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const tipoEl=document.getElementById('aud-a-tipo');if(tipoEl)tipoEl.value='Não conformidade';
+  const riscoEl=document.getElementById('aud-a-risco');if(riscoEl)riscoEl.value='';
   const idxEl=document.getElementById('aud-a-idx');if(idxEl)idxEl.value='';
   const titleEl=document.getElementById('aud-form-title');if(titleEl)titleEl.textContent='Registrar achado / não-conformidade';
   const saveEl=document.getElementById('aud-a-save-btn');if(saveEl)saveEl.textContent='＋ Registrar achado';
@@ -9487,6 +9497,7 @@ function adicionarAchadoAuditoria(){
     const existente=p.auditoria.achados_list[idx];if(!existente)return;
     existente.titulo=titulo;
     existente.tipo=document.getElementById('aud-a-tipo')?.value||existente.tipo;
+    existente.risco=document.getElementById('aud-a-risco')?.value||'';
     existente.descricao=document.getElementById('aud-a-desc')?.value||'';
     existente.evidencia=document.getElementById('aud-a-evid')?.value||'';
     existente.criterio=document.getElementById('aud-a-crit')?.value||'';
@@ -9501,6 +9512,7 @@ function adicionarAchadoAuditoria(){
   const a={
     titulo,
     tipo:document.getElementById('aud-a-tipo')?.value||'Não conformidade',
+    risco:document.getElementById('aud-a-risco')?.value||'',
     descricao:document.getElementById('aud-a-desc')?.value||'',
     evidencia:document.getElementById('aud-a-evid')?.value||'',
     criterio:document.getElementById('aud-a-crit')?.value||'',
@@ -9520,6 +9532,7 @@ function editarAchado(idx){
   document.getElementById('aud-a-idx').value=String(idx);
   document.getElementById('aud-a-titulo').value=a.titulo||'';
   document.getElementById('aud-a-tipo').value=a.tipo||'Não conformidade';
+  const riscoEditEl=document.getElementById('aud-a-risco');if(riscoEditEl)riscoEditEl.value=a.risco||'';
   document.getElementById('aud-a-desc').value=a.descricao||'';
   document.getElementById('aud-a-evid').value=a.evidencia||'';
   document.getElementById('aud-a-crit').value=a.criterio||'';
@@ -9942,6 +9955,13 @@ function exportarAuditoriaRelPdf(){
             +'<tr><td style="background:#f5f7fa;padding:6px 10px;font-weight:600">Status</td>'
             +'<td style="padding:6px 10px">'+(_e(a.status_acao)||'Pendente')+'</td></tr>'
           : semAcaoRow;
+        const _riscoColorPdf={'Baixo':'#16a34a','Médio':'#d97706','Alto':'#ea580c','Crítico':'#dc2626'};
+        const riscoColor=a.risco?(_riscoColorPdf[a.risco]||'#374151'):'#9ca3af';
+        const riscoRow=a.risco
+          ?'<tr><td style="background:#f5f7fa;padding:6px 10px;border-bottom:1px solid #eee;font-weight:600;vertical-align:top">Risco do Achado</td>'
+            +'<td style="padding:6px 10px;border-bottom:1px solid #eee"><span style="font-weight:700;color:'+riscoColor+'">'+_e(a.risco)+'</span></td></tr>'
+          :'<tr><td style="background:#f5f7fa;padding:6px 10px;border-bottom:1px solid #eee;font-weight:600;vertical-align:top">Risco do Achado</td>'
+            +'<td style="padding:6px 10px;border-bottom:1px solid #eee;color:#9ca3af;font-style:italic">Não informado</td></tr>';
         return '<div style="margin-bottom:16px;page-break-inside:avoid;border:1px solid #ddd;border-radius:6px;overflow:hidden">'
           +'<div style="background:'+bg+';color:#fff;padding:8px 12px;font-weight:700;font-size:12px;display:flex;justify-content:space-between;align-items:center">'
           +'<span>NC'+(i+1)+': '+_e(a.titulo)+'</span>'
@@ -9954,6 +9974,7 @@ function exportarAuditoriaRelPdf(){
           +'<td style="padding:6px 10px;border-bottom:1px solid #eee" contenteditable="true">'+(_e(a.evidencia)||'—')+'</td></tr>'
           +'<tr><td style="background:#f5f7fa;padding:6px 10px;border-bottom:1px solid #eee;font-weight:600;vertical-align:top">Critério / Recomendação</td>'
           +'<td style="padding:6px 10px;border-bottom:1px solid #eee" contenteditable="true">'+(_e(a.criterio)||'—')+'</td></tr>'
+          +riscoRow
           +'<tr><td style="background:#f5f7fa;padding:6px 10px;border-bottom:1px solid #eee;font-weight:600;vertical-align:top">Documentos</td>'
           +'<td style="padding:6px 10px;border-bottom:1px solid #eee" contenteditable="true">'+docs+'</td></tr>'
           +posicaoRow+acaoRows
