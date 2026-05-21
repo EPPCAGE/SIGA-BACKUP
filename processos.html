@@ -11747,7 +11747,7 @@ async function _popPdfAnexo(p){
   if(matNivel>0){
     const matDescs=['',
       'O processo é executado de forma ad hoc, sem padronização documentada. Os resultados dependem do esforço individual e do conhecimento tácito dos executores.',
-      'O processo possui rotinas estabelecidas e é repetido com alguma regularidade, mas a padronização ainda é informal ou parcial.',
+      'O processo possui rotinas reconhecidas e é gerenciado localmente, mas a padronização ainda é informal ou parcial.',
       'O processo está formalmente documentado, com responsabilidades, fluxo e critérios de qualidade claros. É um processo estável e ensinável.',
       'O processo é monitorado com métricas quantitativas. Há coleta sistemática de dados e controle dos resultados com base em indicadores.',
       'O processo é continuamente aprimorado com base em dados, benchmarks e inovação. Representa o nível máximo de excelência processual.'
@@ -11759,10 +11759,35 @@ async function _popPdfAnexo(p){
       else{bg='#f4f5f8';c='#8888aa';}
       return `<span style="background:${bg};color:${c};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;margin-right:4px">${n} ${MATURIDADE_LABELS[n]}</span>`;
     }).join('');
+    // Nível por eixo e eixo(s) limitante(s)
+    const _pdfDims={};
+    QUESTOES.forEach(q=>{if(!_pdfDims[q.dim])_pdfDims[q.dim]={sum:0,cnt:0};if(resp[q.id]){_pdfDims[q.dim].sum+=resp[q.id];_pdfDims[q.dim].cnt++;}});
+    const _pdfValsAll=Object.values(resp);
+    const _pdfMedia=_pdfValsAll.length?(_pdfValsAll.reduce((a,b)=>a+b,0)/_pdfValsAll.length).toFixed(1):null;
+    const _pdfDimRows=Object.entries(_pdfDims).map(([dim,d])=>{
+      const nota=d.cnt>0?(d.sum/d.cnt).toFixed(1):'-';
+      const nivelDim=d.cnt>0?_calcNivelMaturidade(d.sum/d.cnt):0;
+      const isLim=nivelDim===matNivel&&matNivel>0;
+      return `<tr style="${isLim?'background:#fff7ed':''}">
+        <td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:11px;font-weight:${isLim?'700':'400'};color:${isLim?'#c2410c':'#374151'}">${dim}${isLim?' ★':''}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:11px;text-align:center;font-weight:700;color:#1e6bfa">Nível ${nivelDim}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:11px;text-align:center;color:#374151">${nota}</td>
+      </tr>`;
+    }).join('');
     const matTitle=`Maturidade — Nível ${matNivel}/5: ${MATURIDADE_LABELS[matNivel]}`;
     sections.push(`${secH('8.0',matTitle)}
-    <div style="margin-bottom:.5rem">${badges}</div>
-    <div style="font-size:12px;color:#4a4a6a;line-height:1.55">${matDescs[matNivel]}</div>`);
+    <div style="margin-bottom:.6rem">${badges}</div>
+    <div style="font-size:12px;color:#4a4a6a;line-height:1.55;margin-bottom:.8rem">${matDescs[matNivel]}</div>
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;margin-bottom:.4rem">Nível por eixo${_pdfMedia?` · <span style="font-weight:400;font-style:normal">Média geral (indicador complementar): ${_pdfMedia}</span>`:''}</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px;border:1px solid #e5e7eb;border-radius:6px;overflow:hidden">
+      <thead><tr style="background:#f8f9fc">
+        <th style="text-align:left;padding:5px 8px;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.03em;border-bottom:1px solid #e5e7eb">Eixo</th>
+        <th style="text-align:center;padding:5px 8px;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.03em;border-bottom:1px solid #e5e7eb">Nível</th>
+        <th style="text-align:center;padding:5px 8px;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.03em;border-bottom:1px solid #e5e7eb">Média</th>
+      </tr></thead>
+      <tbody>${_pdfDimRows}</tbody>
+    </table>
+    <div style="font-size:10px;color:#9ca3af;margin-top:.4rem">★ Eixo(s) limitante(s): determinam o nível geral de maturidade do processo.</div>`);
   }
 
   // ── 9.0 SIPOC ────────────────────────────────────────────────────────────
