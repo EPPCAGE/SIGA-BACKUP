@@ -6788,7 +6788,7 @@ const ACOES = {
         <div id="aud-form">
           <input type="hidden" id="aud-a-idx" value="">
           <div id="aud-form-title" style="font-weight:600;font-size:13px;margin-bottom:.6rem">Registrar achado / não-conformidade</div>
-          <div class="g3">
+          <div class="g2">
             <div class="fg"><label class="fl">Título</label><input class="fi" id="aud-a-titulo" placeholder="Título do achado"></div>
             <div class="fg"><label class="fl">Tipo</label>
               <select class="fi" id="aud-a-tipo">
@@ -6798,16 +6798,8 @@ const ACOES = {
                 <option>Conformidade</option>
               </select>
             </div>
-            <div class="fg"><label class="fl">Risco do Achado</label>
-              <select class="fi" id="aud-a-risco">
-                <option value="">— selecione —</option>
-                <option>Baixo</option>
-                <option>Médio</option>
-                <option>Alto</option>
-                <option>Crítico</option>
-              </select>
-            </div>
           </div>
+          <div class="fg"><label class="fl">Risco do Achado</label><textarea class="fi" id="aud-a-risco" style="min-height:58px;resize:vertical" placeholder="Descreva o risco que este achado gera para o processo..."></textarea></div>
           <div class="fg">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
               <label class="fl" style="margin-bottom:0">Descrição / possível causa</label>
@@ -9955,13 +9947,11 @@ function exportarAuditoriaRelPdf(){
             +'<tr><td style="background:#f5f7fa;padding:6px 10px;font-weight:600">Status</td>'
             +'<td style="padding:6px 10px">'+(_e(a.status_acao)||'Pendente')+'</td></tr>'
           : semAcaoRow;
-        const _riscoColorPdf={'Baixo':'#16a34a','Médio':'#d97706','Alto':'#ea580c','Crítico':'#dc2626'};
-        const riscoColor=a.risco?(_riscoColorPdf[a.risco]||'#374151'):'#9ca3af';
-        const riscoRow=a.risco
-          ?'<tr><td style="background:#f5f7fa;padding:6px 10px;border-bottom:1px solid #eee;font-weight:600;vertical-align:top">Risco do Achado</td>'
-            +'<td style="padding:6px 10px;border-bottom:1px solid #eee"><span style="font-weight:700;color:'+riscoColor+'">'+_e(a.risco)+'</span></td></tr>'
-          :'<tr><td style="background:#f5f7fa;padding:6px 10px;border-bottom:1px solid #eee;font-weight:600;vertical-align:top">Risco do Achado</td>'
-            +'<td style="padding:6px 10px;border-bottom:1px solid #eee;color:#9ca3af;font-style:italic">Não informado</td></tr>';
+        const riscoRow='<tr><td style="background:#f5f7fa;padding:6px 10px;border-bottom:1px solid #eee;font-weight:600;vertical-align:top">Risco do Achado</td>'
+          +(a.risco
+            ?'<td style="padding:6px 10px;border-bottom:1px solid #eee" contenteditable="true">'+_e(a.risco)+'</td>'
+            :'<td style="padding:6px 10px;border-bottom:1px solid #eee;color:#9ca3af;font-style:italic">Não informado</td>')
+          +'</tr>';
         return '<div style="margin-bottom:16px;page-break-inside:avoid;border:1px solid #ddd;border-radius:6px;overflow:hidden">'
           +'<div style="background:'+bg+';color:#fff;padding:8px 12px;font-weight:700;font-size:12px;display:flex;justify-content:space-between;align-items:center">'
           +'<span>NC'+(i+1)+': '+_e(a.titulo)+'</span>'
