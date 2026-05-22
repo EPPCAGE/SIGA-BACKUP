@@ -3030,7 +3030,7 @@ function rPainelGestor(){
 
   // Maturidade
   const matGrps={0:[],1:[],2:[],3:[],4:[],5:[]};
-  mapeados.forEach(u=>{
+  todas.filter(u=>u.proc).forEach(u=>{
     const ent=u.proc?.ent||{};
     const resp=ent.quest_resp||{};
     const m=Object.keys(resp).length?_calcNivelMaturidadeMin(resp):(ent.mat||0);
