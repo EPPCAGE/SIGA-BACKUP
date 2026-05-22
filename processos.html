@@ -7572,8 +7572,9 @@ function _migrarQuestHistNivel(p){
   if(!Object.keys(resp).length) return;
   const nivelCorreto=_calcNivelMaturidadeMin(resp);
   let mudou=false;
-  e.quest_hist.forEach(h=>{
-    if(h.dt==='(retroativo)'&&h.nivel!==nivelCorreto){
+  e.quest_hist.forEach((h,i)=>{
+    const isLast=i===e.quest_hist.length-1;
+    if((h.dt==='(retroativo)'||isLast)&&h.nivel!==nivelCorreto){
       h.nivel=nivelCorreto;
       mudou=true;
     }
@@ -11468,7 +11469,9 @@ function rEnt(p){
         <tbody>${(e.quest_hist||[]).map((h,i)=>{
           const ord=['1ª','2ª','3ª','4ª','5ª','6ª','7ª','8ª','9ª'][i]||(i+1)+'ª';
           const isRetro=h.dt==='(retroativo)';
-          const dt=isRetro?'<span style="font-size:10px;color:var(--ink3);font-style:italic">data não registrada</span>':(h.dt?(new Date(h.dt).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})||'—'):'—');
+          const _parseHistDt=s=>{if(!s)return null;if(/^\d{2}\/\d{2}\/\d{4}$/.test(s)){const[d,m,y]=s.split('/');return new Date(y,m-1,d);}return new Date(s);};
+          const _dtObj=isRetro?null:_parseHistDt(h.dt);
+          const dt=isRetro?'<span style="font-size:10px;color:var(--ink3);font-style:italic">data não registrada</span>':(_dtObj&&!isNaN(_dtObj)?_dtObj.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}):'—');
           const isLast=i===(e.quest_hist.length-1);
           const rowStyle=isLast?'background:var(--bg2)':'';
           return`<tr style="${rowStyle}">
