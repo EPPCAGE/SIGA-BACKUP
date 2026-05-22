@@ -1,16 +1,23 @@
 {
+  "name": "siga2.0",
+  "type": "module",
   "scripts": {
-    "test:e2e:smoke": "node tests/e2e/smoke.cjs",
-    "test:e2e:projetos": "node tests/e2e/projetos-smoke.cjs",
-    "test:e2e:mapeamento": "node tests/e2e/mapeamento.cjs",
-    "test:e2e:aderencia": "node tests/e2e/aderencia.cjs",
-    "test:e2e:meus-processos": "node tests/e2e/meus-processos-align.cjs",
-    "tenant:migration:plan": "node tools/migrate-firestore-tenant.mjs --tenant=cage-rs",
-    "tenant:migration:validate": "node tools/migrate-firestore-tenant.mjs --tenant=cage-rs --validate",
+    "test:unit":          "vitest run",
+    "test:unit:watch":    "vitest",
+    "test:unit:coverage": "vitest run --coverage",
+    "test:e2e:smoke":         "node tests/e2e/smoke.cjs",
+    "test:e2e:projetos":      "node tests/e2e/projetos-smoke.cjs",
+    "test:e2e:mapeamento":    "node tests/e2e/mapeamento.cjs",
+    "test:e2e:aderencia":     "node tests/e2e/aderencia.cjs",
+    "test:e2e:meus-processos":"node tests/e2e/meus-processos-align.cjs",
+    "tenant:migration:plan":      "node tools/migrate-firestore-tenant.mjs --tenant=cage-rs",
+    "tenant:migration:validate":  "node tools/migrate-firestore-tenant.mjs --tenant=cage-rs --validate",
     "docs:diagrama-pdf": "PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node tools/gerar-diagrama-pdf.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
-    "mermaid": "^11.15.0"
+    "@vitest/coverage-v8": "^2.0.0",
+    "mermaid": "^11.15.0",
+    "vitest": "^2.0.0"
   }
 }
