@@ -10627,20 +10627,28 @@ function _bpmnBuildNodeInfo(xml, GW_TAGS, TASK_TAGS, laneMap){
   const tags=[
     'startEvent','endEvent','intermediateThrowEvent','intermediateCatchEvent',
     'task','userTask','serviceTask','sendTask','receiveTask','manualTask','scriptTask',
-    'exclusiveGateway','inclusiveGateway','parallelGateway','complexGateway'
+    'exclusiveGateway','inclusiveGateway','parallelGateway','complexGateway',
+    'subProcess'
   ];
   _bpmnFindAll(xml, tags).forEach(e=>{
     const tag=e.localName.toLowerCase();
-    const typeInfo = _bpmnNodeType(tag, GW_TAGS, TASK_TAGS);
-    if(!typeInfo) return;
-    const gatewayDir = GW_TAGS.has(tag) ? (e.getAttribute('gatewayDirection')||'') : '';
-    nodeInfo[e.id]={xmlId:e.id, nome:e.getAttribute('name')||'', executor:laneMap[e.id]||'', gatewayDir, ...typeInfo};
+    // Elementos dentro de subprocessos são tratados separadamente
+    if(e.parentElement?.localName?.toLowerCase()==='subprocess') return;
+    if(tag==='subprocess'){
+      nodeInfo[e.id]={xmlId:e.id, nome:e.getAttribute('name')||'Subprocesso', executor:laneMap[e.id]||'', tipo:'Atividade', subtipo:null, natureza:'Execucao', modo:'Manual', desc:'', isSubProcess:true};
+    } else {
+      const typeInfo=_bpmnNodeType(tag, GW_TAGS, TASK_TAGS);
+      if(!typeInfo) return;
+      const gatewayDir=GW_TAGS.has(tag)?(e.getAttribute('gatewayDirection')||''):'';
+      nodeInfo[e.id]={xmlId:e.id, nome:e.getAttribute('name')||'', executor:laneMap[e.id]||'', gatewayDir, ...typeInfo};
+    }
   });
   return nodeInfo;
 }
 function _bpmnBuildOutgoing(xml){
   const outgoing={};
   _bpmnFindAll(xml,['sequenceFlow']).forEach(sf=>{
+    if(sf.parentElement?.localName?.toLowerCase()==='subprocess') return;
     const src=sf.getAttribute('sourceRef'), tgt=sf.getAttribute('targetRef');
     if(src&&tgt){ if(!outgoing[src]){ outgoing[src]=[]; } outgoing[src].push(tgt); }
   });
@@ -10649,6 +10657,7 @@ function _bpmnBuildOutgoing(xml){
 function _bpmnBuildFlowLabels(xml){
   const labels={};
   _bpmnFindAll(xml,['sequenceFlow']).forEach(sf=>{
+    if(sf.parentElement?.localName?.toLowerCase()==='subprocess') return;
     const src=sf.getAttribute('sourceRef'), tgt=sf.getAttribute('targetRef');
     const name=sf.getAttribute('name')||'';
     if(src&&tgt) labels[src+'→'+tgt]=name;
@@ -10691,12 +10700,14 @@ function _bpmnAddDisconnectedNodes(ordered, visited, nodeInfo){
     ordered.push(_bpmnNodeToEtapa(nodeInfo[id], id, null));
   });
 }
-function _bpmnBuildFlatGwAware(xml, outgoing, nodeInfo, flowLabels){
+function _bpmnBuildFlatGwAware(outgoing, nodeInfo, flowLabels){
   const incoming={};
   Object.entries(outgoing).forEach(([src,tgts])=>{
     tgts.forEach(tgt=>{ incoming[tgt]=(incoming[tgt]||0)+1; });
   });
-  const startIds=_bpmnFindAll(xml,['startEvent']).map(e=>e.id);
+  const startIds=Object.entries(nodeInfo)
+    .filter(([,n])=>n.tipo==='Evento'&&n.subtipo==='Início')
+    .map(([id])=>id);
   const visited=new Set();
   const ordered=[];
   const queue=startIds.map(id=>({id,gwCtx:null}));
@@ -10722,6 +10733,50 @@ function _bpmnBuildFlatGwAware(xml, outgoing, nodeInfo, flowLabels){
   _bpmnAddDisconnectedNodes(ordered, visited, nodeInfo);
   return ordered;
 }
+function _bpmnGetSubprocessChildren(subEl, GW_TAGS, TASK_TAGS, laneMap){
+  const tagSet=new Set([
+    'startevent','endevent','intermediatethrowevent','intermediatecatchevent',
+    'task','usertask','servicetask','sendtask','receivetask','manualtask','scripttask',
+    'exclusivegateway','inclusivegateway','parallelgateway','complexgateway',
+  ]);
+  const nodeInfo={};
+  Array.from(subEl.children).forEach(e=>{
+    const tag=e.localName.toLowerCase();
+    if(!tagSet.has(tag)) return;
+    const id=e.getAttribute('id'); if(!id) return;
+    const typeInfo=_bpmnNodeType(tag, GW_TAGS, TASK_TAGS);
+    if(!typeInfo) return;
+    const gatewayDir=GW_TAGS.has(tag)?(e.getAttribute('gatewayDirection')||''):'';
+    nodeInfo[id]={xmlId:id, nome:e.getAttribute('name')||'', executor:laneMap[id]||'', gatewayDir, ...typeInfo};
+  });
+  if(!Object.keys(nodeInfo).length) return [];
+  const outgoing={};
+  const flowLabels={};
+  Array.from(subEl.children).forEach(sf=>{
+    if(sf.localName.toLowerCase()!=='sequenceflow') return;
+    const src=sf.getAttribute('sourceRef'), tgt=sf.getAttribute('targetRef');
+    if(!src||!tgt) return;
+    if(!outgoing[src]) outgoing[src]=[];
+    outgoing[src].push(tgt);
+    const name=sf.getAttribute('name')||'';
+    if(name) flowLabels[src+'→'+tgt]=name;
+  });
+  return _bpmnBuildFlatGwAware(outgoing, nodeInfo, flowLabels);
+}
+function _bpmnExpandSubprocesses(elems, xml, GW_TAGS, TASK_TAGS, laneMap){
+  const result=[];
+  elems.forEach(elem=>{
+    if(!elem.isSubProcess){ result.push(elem); return; }
+    const subEls=Array.from(xml.getElementsByTagName('*')).filter(
+      e=>e.localName.toLowerCase()==='subprocess'&&e.getAttribute('id')===elem.bpmn_id
+    );
+    if(!subEls.length){ result.push(elem); return; }
+    const children=_bpmnGetSubprocessChildren(subEls[0], GW_TAGS, TASK_TAGS, laneMap);
+    if(!children.length){ result.push(elem); return; }
+    children.forEach(c=>result.push(c));
+  });
+  return result;
+}
 function extrairBpmn(){
   const p=curProc;
   const etapaAtiva=epRetroEtapa||p.etapa;
@@ -10739,7 +10794,8 @@ function extrairBpmn(){
   const outgoing  = _bpmnBuildOutgoing(xml);
   const flowLabels= _bpmnBuildFlowLabels(xml);
   if(!Object.keys(nodeInfo).length){toast('Nenhum elemento encontrado no BPMN. Desenhe o fluxo primeiro.','var(--amber)');return;}
-  const elems=_bpmnBuildFlatGwAware(xml,outgoing,nodeInfo,flowLabels);
+  const elems0=_bpmnBuildFlatGwAware(outgoing,nodeInfo,flowLabels);
+  const elems=_bpmnExpandSubprocesses(elems0,xml,GW_TAGS,TASK_TAGS,laneMap);
   if(!elems.length){toast('Nenhum elemento encontrado no BPMN.','var(--amber)');return;}
   const key=isTobe?'etapas_proc_tobe':'etapas_proc';
   if(!p.mod[key]) p.mod[key]=[];
