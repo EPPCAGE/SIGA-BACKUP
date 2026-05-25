@@ -13731,13 +13731,6 @@ function _metaFieldsMapeamentoHTML(item, proc){
       ${isEP()?`<label class="btn" style="font-size:10px;padding:2px 8px;cursor:pointer" title="Carregar imagem de fluxo Bizagi">📎 Alterar imagem<input type="file" accept="image/*" style="display:none" onchange="uploadFluxoArq('${item.id}',this)"></label>`:''}
     </div>
     <div style="display:flex;gap:2px;margin-bottom:.6rem">${progBar}</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px;font-size:11px">
-      <div><span style="font-weight:600;color:var(--ink2)">Dono:</span> <span style="color:var(--ink3)">${proc.dono||'—'}</span></div>
-      <div><span style="font-weight:600;color:var(--ink2)">Resp. EP:</span> <span style="color:var(--ink3)">${proc.resp_ep||'—'}</span></div>
-      <div><span style="font-weight:600;color:var(--ink2)">Maturidade:</span> <span style="color:var(--ink3)">${matNivel?matNivel+'/5 — '+MATURIDADE_LABELS[matNivel]:'Não avaliada'}</span></div>
-      ${proc.ent?.dt_inicio?`<div><span style="font-weight:600;color:var(--ink2)">Início:</span> <span style="color:var(--ink3)">${proc.ent.dt_inicio}</span></div>`:''}
-      ${proc.ent?.dt_prev?`<div><span style="font-weight:600;color:var(--ink2)">Previsão:</span> <span style="color:var(--ink3)">${proc.ent.dt_prev}</span></div>`:''}
-    </div>
     ${_procCentralInteligenciaHTML(proc)}
   </div>`;
 }
