@@ -13942,16 +13942,21 @@ function buildPainelAlertasEPHTML(){
 
 function _procCentralInteligenciaHTML(proc){
   const {riscos, indicadores, pubs, trilhasProc, atividadesPlano, analise, vencido, sinais, recomendacoes} = _procIntelSnapshot(proc);
+  const _revSt = _revStatus(proc);
   const topGargalos = (analise.gargalos||[]).slice(0,2);
   const topOportunidades = (analise.oportunidades||[]).slice(0,2);
   let statusPrazo = 'Sem previsão';
   if(proc.ent?.dt_prev) statusPrazo = proc.ent.dt_prev.split('-').reverse().join('/');
   if(vencido) statusPrazo = 'Vencido';
+  const revisarBtn = (_revSt==='vencida'||_revSt==='pendente')
+    ? `<button type="button" class="btn btn-p" style="font-size:10px;padding:2px 9px;margin-left:auto" onclick="abrirRevisaoPeriodica(${proc.id})">✔ Revisar</button>`
+    : '';
 
   return `<div style="margin-top:.75rem;padding:.75rem .85rem;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r)">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:.65rem">
       <div style="font-size:11px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em">Central de inteligência</div>
       ${sinais.length ? sinais.slice(0,3).map(s=>`<span class="badge ${s.cls}" style="font-size:10px">${s.txt}</span>`).join('') : '<span class="badge bg" style="font-size:10px">Sem alertas imediatos</span>'}
+      ${revisarBtn}
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:7px;font-size:11px">
       <div><span style="font-weight:600;color:var(--ink2)">Etapa:</span> <span style="color:var(--ink3)">${etLb(proc.etapa)}</span></div>
@@ -13995,7 +14000,6 @@ function _metaFieldsMapeamentoHTML(item, proc){
       <div><span style="font-weight:600;color:var(--ink2)">Maturidade:</span> <span style="color:var(--ink3)">${matNivel?matNivel+'/5 — '+MATURIDADE_LABELS[matNivel]:'Não avaliada'}</span></div>
       ${proc.ent?.dt_inicio?`<div><span style="font-weight:600;color:var(--ink2)">Início:</span> <span style="color:var(--ink3)">${proc.ent.dt_inicio}</span></div>`:''}
       ${proc.ent?.dt_prev?`<div><span style="font-weight:600;color:var(--ink2)">Previsão:</span> <span style="color:var(--ink3)">${proc.ent.dt_prev}</span></div>`:''}
-      ${proc.produto?`<div><span style="font-weight:600;color:var(--ink2)">Produto:</span> <span style="color:var(--ink3)">${proc.produto}</span></div>`:''}
     </div>
     ${_procCentralInteligenciaHTML(proc)}
   </div>`;
