@@ -19959,7 +19959,7 @@ POP:\n${texto}`;
     const rawText = await chamarIA('extrair_pop', prompt, loadEl);
     if(!rawText) throw new Error('Sem resposta da IA.');
     let jsonStr=rawText.trim().replaceAll(/```json?/g,'').replaceAll('```','').trim();
-    if(!jsonStr.startsWith('{')){const m=jsonStr.match(/\{[\s\S]*\}/);if(m)jsonStr=m[0];}
+    if(!jsonStr.startsWith('{')){const s=jsonStr.indexOf('{'),e=jsonStr.lastIndexOf('}');if(s!==-1&&e>s)jsonStr=jsonStr.slice(s,e+1);}
     let extracted;
     try{ extracted=JSON.parse(jsonStr); }
     catch(e){ throw new Error('A IA não retornou um JSON válido. Tente novamente ou verifique se o arquivo contém texto extraível (não apenas imagens).'); }
