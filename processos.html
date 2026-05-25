@@ -1379,6 +1379,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
     <div><div class="card-t" style="margin-bottom:.6rem;color:var(--red)">⚠ Prazo vencido</div><div id="dash-vencidos"></div></div>
   </div>
   <div id="dash-analytics"></div>
+  <div id="dash-mapchart"></div>
 </div></div>
 
 <div id="page-processos" class="page"><div style="padding:2rem">
@@ -4609,6 +4610,8 @@ function rDash(){
   document.getElementById('dash-vencidos').innerHTML=buildVencidosHTML(vencidos);
   // Q036: analytics gerenciais
   document.getElementById('dash-analytics').innerHTML=buildAnalyticsHTML();
+  document.getElementById('dash-mapchart').innerHTML=buildMapChartHTML();
+  setTimeout(initMapChart,0);
 }
 function filtEtapaGo(etId){filtFaseAtual='';document.querySelectorAll('#fase-chips .chip').forEach((c,i)=>c.classList.toggle('on',i===0));go('processos',document.getElementById('nb-proc'));}
 
@@ -4738,6 +4741,69 @@ function buildAnalyticsHTML(){
     ${topTempo.length?`<div><div class="sec-lbl" style="margin-bottom:.4rem">Etapas com maior tempo médio</div>
       ${topTempoRows}</div>`:''}
   </div>`;
+}
+function buildMapChartHTML(){
+  const MESES_PT=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const hoje=new Date();
+  const meses=[];
+  for(let i=17;i>=0;i--){
+    const d=new Date(hoje.getFullYear(),hoje.getMonth()-i,1);
+    meses.push({key:d.toISOString().slice(0,7),label:MESES_PT[d.getMonth()]+'/'+String(d.getFullYear()).slice(2)});
+  }
+  const contagem={};
+  processos.forEach(p=>{
+    const ef=p.ent?.dt_efetiva||'';
+    if(!ef) return;
+    const ym=ef.slice(0,7);
+    contagem[ym]=(contagem[ym]||0)+1;
+  });
+  const temDados=meses.some(m=>contagem[m.key]);
+  if(!temDados) return '';
+  return `<div class="card" style="margin-bottom:1rem">
+    <div class="card-t">Mapeamentos concluídos por mês</div>
+    <div style="position:relative;height:220px"><canvas id="dash-mapchart-canvas"></canvas></div>
+  </div>`;
+}
+function initMapChart(){
+  if(typeof Chart==='undefined') return;
+  const canvas=document.getElementById('dash-mapchart-canvas');
+  if(!canvas) return;
+  const MESES_PT=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const hoje=new Date();
+  const meses=[];
+  for(let i=17;i>=0;i--){
+    const d=new Date(hoje.getFullYear(),hoje.getMonth()-i,1);
+    meses.push({key:d.toISOString().slice(0,7),label:MESES_PT[d.getMonth()]+'/'+String(d.getFullYear()).slice(2)});
+  }
+  const contagem={};
+  processos.forEach(p=>{
+    const ef=p.ent?.dt_efetiva||'';
+    if(!ef) return;
+    const ym=ef.slice(0,7);
+    contagem[ym]=(contagem[ym]||0)+1;
+  });
+  new Chart(canvas,{
+    type:'bar',
+    data:{
+      labels:meses.map(m=>m.label),
+      datasets:[{
+        label:'Concluídos',
+        data:meses.map(m=>contagem[m.key]||0),
+        backgroundColor:'#0d9488',
+        borderRadius:4,
+        borderSkipped:false,
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+ctx.parsed.y+' mapeamento'+(ctx.parsed.y===1?'':'s')}}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:11}}},
+        y:{beginAtZero:true,ticks:{stepSize:1,precision:0,font:{size:11}},grid:{color:'rgba(0,0,0,.06)'}}
+      }
+    }
+  });
 }
 // ═══════════════════════════════════════════
 // Q024: UPLOAD DE EVIDÊNCIAS (reutilizável)
