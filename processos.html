@@ -19931,26 +19931,28 @@ async function processarArquivoPOP(input){
     const arrayBuffer=await input.files[0].arrayBuffer();
     const result=await mammoth.extractRawText({arrayBuffer});
     const texto=result.value.trim().slice(0,12000);
-    const prompt=`Analise o POP abaixo e retorne APENAS um JSON válido (sem markdown) com a estrutura:
+    const prompt=`Analise o documento de processo/POP abaixo e retorne APENAS um JSON válido (sem markdown) com a estrutura:
 {"nome":"...","area":"...","objetivo":"...","atores":["..."],"etapas":[{"nome":"...","tipo":"Atividade|Decisao|Evento","executor":"..."}]}
 
-COMO CLASSIFICAR CADA LINHA:
-- "Atividade": linhas com verbos de ação (Receber, Verificar, Inserir, Analisar, Enviar, Examinar, Diligenciar, Preencher, Enquadrar, Atender, Avaliar, Informar, Cancelar, Criar, Validar, Registrar etc.)
-- "Decisao": linhas que TERMINAM COM "?" — independente de serem numeradas ou não (ex: "Primeira liquidação?", "Contém Erro?", "Cabe retenção?", "Quem está analisando, Auditor ou Analista?")
-- "Evento": linha de início do processo E linhas que contenham "fim do processo" ou descrevam o estado final (ex: "Processo devolvido (fim do processo)", "INSS Retido (fim do processo)")
+CLASSIFICAÇÃO das etapas:
+- "Evento": início do processo (recebimento da demanda, disparo de formulário, acionamento) e encerramentos explícitos ("Finalizar demanda", "fim do processo", estado final do fluxo)
+- "Decisao": qualquer item que TERMINE COM "?" — ex: "Caso a demanda pertença à DTI ou outro órgão?", "É necessário reunião?", "Demanda recebida via formulário?", "Primeira liquidação?", "Contém Erro?"
+- "Atividade": toda ação, verificação, comunicação ou registro — sejam itens numerados (2.3.1, 2.3.4.3.1), bullet points ou linhas do tipo "Caso X: [verbo]" onde haja uma ação após os dois pontos
 
-NÃO INCLUIR como etapa (ignorar completamente):
-- Cabeçalhos e títulos de seção numéricos sem "?" e sem verbo de ação (ex: "2.3.2 INSS", "2.3 Execução do processo", "2.3.1 Identificação da Regra de Retenção aplicável")
-- Linhas de condição/ramificação que começam com "Caso" (ex: "Caso seja a primeira liquidação:", "Caso não exija:", "Caso caiba retenção")
-- Linhas de remissão interna (ex: "Encaminhar para o Item 2.3.2.2", "Processo segue no Item 2.3.2.2", "Encaminhar para o Item...")
-- Observações e notas que começam com "OBS:"
-- Linhas isoladas de ator sem verbo de ação (ex: "Auditor", "Analista", "Seccional (Analista ou Auditor)", "Tesouraria própria do órgão")
+O que INCLUIR: toda ação, decisão e encerramento do fluxo — inclusive saídas de gateways com ação (ex: "Caso não seja possível: Manter em tickets separados" → etapa "Manter em tickets separados")
 
-EXECUTOR por etapa:
-- Linhas isoladas de papel/cargo (ex: "Auditor", "Analista", "Seccional (Analista ou Auditor)", "Tesouraria própria do órgão") NÃO são etapas — são o responsável pelas atividades que vêm a seguir
-- Atribua esse responsável a todas as atividades abaixo dele até surgir uma nova linha de ator isolado
-- "Seccional (Analista ou Auditor)" → executor = "Seccional"
-- Se não identificado, use ""
+O que NÃO INCLUIR:
+- Parágrafos de definição de conceitos (ex: "ALTA CRITICIDADE: São demandas que podem gerar impactos...")
+- Tabelas de score, critérios de pontuação e modelos de cálculo
+- Remissões internas ("Encaminhar para item 2.3.4", "ver item 2.3.2")
+- "OBS:", FAQ, indicadores, documentos correlatos
+- Seções introdutórias e de metodologia (1.x, 3.x, 4.x, 5.x, 6.x)
+
+EXECUTOR por etapa — o ator pode aparecer de três formas distintas:
+- No título da seção numerada (ex: "2.3.5 Diretiva CAGE" → executor = "Diretiva CAGE"; "2.3.6 ... Adjuntos e Contador-Geral do Estado" → executor = "Adjuntos e Contador-Geral")
+- Como linha isolada de cargo antes de um grupo de atividades (ex: "Auditor", "Seccional (Analista ou Auditor)" → usar como executor dos itens seguintes)
+- Como referência explícita no texto ("os adjuntos e o Contador-Geral avaliarão" → executor = "Adjuntos e Contador-Geral")
+Atribua o executor mais próximo e recente a cada etapa. Use "" se não identificado.
 
 POP:\n${texto}`;
     const rawText = await chamarIA('extrair_pop', prompt, loadEl);
