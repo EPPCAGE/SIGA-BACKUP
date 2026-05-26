@@ -1381,6 +1381,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
   <div id="dash-analytics"></div>
   <div id="dash-prazos"></div>
   <div id="dash-mapchart"></div>
+  <div id="dash-sem-indicadores"></div>
 </div></div>
 
 <div id="page-processos" class="page"><div style="padding:2rem">
@@ -3058,14 +3059,6 @@ function rPainelGestor(){
     </div>
   </div>`;
 
-  // Sem indicadores
-  const semInd=mapeados.filter(u=>!kpis.some(k=>(u.proc&&k.pid===u.proc.id)||k.arq_id===u.arq_id));
-  const semIndHtml=semInd.length?`<div style="background:var(--surf);border:1px solid var(--bdr);border-left:3px solid var(--amber);border-radius:var(--r);padding:1rem;margin-bottom:1.5rem">
-    <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:.5rem">⚠ Processos sem indicadores vinculados (${semInd.length})</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px">
-      ${semInd.map(u=>`<span style="font-size:11px;background:var(--bg2);border:1px solid var(--bdr);border-radius:99px;padding:2px 10px">${esc(u.nome)}</span>`).join('')}
-    </div>
-  </div>`:'';
 
   // Desatualizados (sem atividade há +1 ano)
   const umAnoAtras=new Date();umAnoAtras.setFullYear(umAnoAtras.getFullYear()-1);
@@ -3118,7 +3111,7 @@ function rPainelGestor(){
     </table></div>
   </div>`:'';
 
-  el.innerHTML=statsHtml+pieHtml+macroHtml+andHtml+relIndHtml+matHtml+semIndHtml+desatualHtml+relHtml;
+  el.innerHTML=statsHtml+pieHtml+macroHtml+andHtml+relIndHtml+matHtml+desatualHtml+relHtml;
 
   setTimeout(()=>{
     if(typeof Chart==='undefined') return;
@@ -4615,6 +4608,7 @@ function rDash(){
   document.getElementById('dash-analytics').innerHTML=buildAnalyticsHTML();
   document.getElementById('dash-prazos').innerHTML=buildPrazosCardHTML();
   document.getElementById('dash-mapchart').innerHTML=buildMapChartHTML();
+  document.getElementById('dash-sem-indicadores').innerHTML=buildSemIndicadoresHTML();
   setTimeout(()=>{initPrazosChart();initMapChart();},0);
 }
 function filtEtapaGo(etId){filtFaseAtual='';document.querySelectorAll('#fase-chips .chip').forEach((c,i)=>c.classList.toggle('on',i===0));go('processos',document.getElementById('nb-proc'));}
@@ -4857,6 +4851,18 @@ function initMapChart(){
       }
     }
   });
+}
+function buildSemIndicadoresHTML(){
+  const _etFinal=['publicacao','acompanha','auditoria'];
+  const mapeados=getUnidadesMapeaveis().filter(u=>(u.proc&&_etFinal.includes(u.proc.etapa))||isMapeado(u.arq_id));
+  const semInd=mapeados.filter(u=>!kpis.some(k=>(u.proc&&k.pid===u.proc.id)||k.arq_id===u.arq_id));
+  if(!semInd.length) return '';
+  return `<div style="background:var(--surf);border:1px solid var(--bdr);border-left:3px solid var(--amber);border-radius:var(--r);padding:1rem;margin-top:1rem">
+    <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:.5rem">⚠ Processos sem indicadores vinculados (${semInd.length})</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      ${semInd.map(u=>`<span style="font-size:11px;background:var(--bg2);border:1px solid var(--bdr);border-radius:99px;padding:2px 10px">${esc(u.nome)}</span>`).join('')}
+    </div>
+  </div>`;
 }
 // ═══════════════════════════════════════════
 // Q024: UPLOAD DE EVIDÊNCIAS (reutilizável)
