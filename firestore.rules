@@ -22,10 +22,17 @@ service cloud.firestore {
       allow write: if isEP();
     }
 
-    // Processos: qualquer usuário autenticado lê e escreve (dono edita o próprio).
+    // Processos: EP tem escrita plena. Não-EP pode atualizar dados do próprio
+    // processo (questionário, POP etc.) mas NÃO pode alterar etapa nem status_ciclo
+    // — campos que controlam o ciclo de vida e são validados só no servidor.
     match /processos/{procId} {
       allow read: if isAuth();
-      allow write: if isAuth();
+      allow create: if isEP();
+      allow delete: if isEP();
+      allow update: if isEP() ||
+        (isAuth() &&
+          !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['etapa', 'status_ciclo']));
     }
 
     // Publicações e metodologias: somente EP publica.

@@ -5067,12 +5067,12 @@ function renderProcs(){
   if(epSel){
     const prevEP=epSel.value;
     const eps=[...new Set(baseProcs.map(p=>p.resp_ep).filter(Boolean))].sort();
-    epSel.innerHTML='<option value="">EP: Todos</option>'+eps.map(v=>`<option${v===prevEP?' selected':''}>${v}</option>`).join('');
+    epSel.innerHTML='<option value="">EP: Todos</option>'+eps.map(v=>`<option${v===prevEP?' selected':''}>${esc(v)}</option>`).join('');
   }
   if(donoSel){
     const prevDono=donoSel.value;
     const donos=[...new Set(baseProcs.map(p=>p.dono).filter(Boolean))].sort();
-    donoSel.innerHTML='<option value="">Dono: Todos</option>'+donos.map(v=>`<option${v===prevDono?' selected':''}>${v}</option>`).join('');
+    donoSel.innerHTML='<option value="">Dono: Todos</option>'+donos.map(v=>`<option${v===prevDono?' selected':''}>${esc(v)}</option>`).join('');
   }
   const filtEP=epSel?.value||'';
   const filtDono=donoSel?.value||'';
@@ -7580,10 +7580,10 @@ function _rAcaoAppendEPBars(el, p, isPulada){
     ${_prazoHtml}
   </div>`;
   const btns=[];
-  btns.push(`<button type="button" class="btn" style="font-size:11px;padding:3px 9px" onclick="abrirAtribuirEtapa('${p.etapa}')">👤 Atribuir a...</button>`);
-  if(showPrazo) btns.push(`<button type="button" class="btn" style="font-size:11px;padding:3px 9px" onclick="definirPrazoEP('${p.etapa}')">✎ Definir prazo</button>`);
+  btns.push(`<button type="button" class="btn" style="font-size:11px;padding:3px 9px" data-etid="${esc(p.etapa)}" onclick="abrirAtribuirEtapa(this.dataset.etid)">👤 Atribuir a...</button>`);
+  if(showPrazo) btns.push(`<button type="button" class="btn" style="font-size:11px;padding:3px 9px" data-etid="${esc(p.etapa)}" onclick="definirPrazoEP(this.dataset.etid)">✎ Definir prazo</button>`);
   if(prevEt(p.etapa)) btns.push(`<button type="button" class="btn" style="font-size:11px;padding:3px 9px;color:var(--red)" onclick="voltarEtapaConfirm()">↩ Voltar etapa</button>`);
-  if(!isPulada&&hasNext) btns.push(`<button type="button" class="btn btn-a" style="font-size:11px;padding:3px 9px" onclick="pularEtapaConfirm('${p.etapa}')">⏭ Pular etapa</button>`);
+  if(!isPulada&&hasNext) btns.push(`<button type="button" class="btn btn-a" style="font-size:11px;padding:3px 9px" data-etid="${esc(p.etapa)}" onclick="pularEtapaConfirm(this.dataset.etid)">⏭ Pular etapa</button>`);
   if(hasAdvance){
     const advanceLabel = hasNext ? '✓ Salvar e ir para próxima →' : '✓ Salvar e concluir etapa';
     btns.push(
@@ -13271,7 +13271,7 @@ function rArqPopulateFilters(){
   if(aSel){
     const cur = aSel.value;
     aSel.innerHTML = '<option value="">Todas</option>' +
-      [...areas].sort().map(a=>`<option ${cur===a?'selected':''}>${a}</option>`).join('');
+      [...areas].sort().map(a=>`<option ${cur===a?'selected':''}>${esc(a)}</option>`).join('');
   }
   const oSel = document.getElementById('arq-f-obje');
   if(oSel){
@@ -13289,7 +13289,7 @@ function rArqPopulateFilters(){
     }));
     const cur = dSel.value;
     dSel.innerHTML = '<option value="">Todos</option>' +
-      [...donos].sort().map(d=>`<option ${cur===d?'selected':''}>${d}</option>`).join('');
+      [...donos].sort().map(d=>`<option ${cur===d?'selected':''}>${esc(d)}</option>`).join('');
     if(cur && !donos.has(cur)) dSel.value='';
   }
 }

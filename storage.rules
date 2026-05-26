@@ -5,6 +5,10 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    function isEP() {
+      return request.auth != null && request.auth.token.get('perfil', '') == 'ep';
+    }
+
     function withinSizeLimit() {
       return request.resource.size < 20 * 1024 * 1024; // 20 MB
     }
@@ -14,11 +18,13 @@ service firebase.storage {
       allow write: if isAuth() && withinSizeLimit();
     }
 
+    // Publicações institucionais: upload restrito ao EP (espelhando regra Firestore).
     match /publicacoes/{allPaths=**} {
       allow read: if isAuth();
-      allow write: if isAuth() && withinSizeLimit();
+      allow write: if isEP() && withinSizeLimit();
     }
 
+    // Auditoria: qualquer usuário autenticado pode fazer upload de evidências.
     match /auditoria/{allPaths=**} {
       allow read: if isAuth();
       allow write: if isAuth() && withinSizeLimit();
