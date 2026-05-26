@@ -14039,7 +14039,7 @@ function metaFieldsReadonly(item){
     ]).filter(Boolean).join('')}
   </div>` : '';
   const proc = processos.find(pr=>pr.arq_id===item.id);
-  if(!proc) return metaHTML + pubHTML;
+  if(!proc || !isEP()) return metaHTML + pubHTML;
   return metaHTML + pubHTML + _metaFieldsMapeamentoHTML(item, proc);
 }
 
