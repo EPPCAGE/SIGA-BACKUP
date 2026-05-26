@@ -3454,6 +3454,7 @@ function projTabExecucao(p) {
           <table style="width:100%;border-collapse:collapse;font-size:12px">
             <thead>
               <tr style="background:#f0f4ff">
+                <th style="padding:6px 4px;text-align:center;border-bottom:2px solid #d0d5e3;width:28px"></th>
                 <th style="padding:6px 8px;text-align:left;border-bottom:2px solid #d0d5e3;width:70px">Nº</th>
                 <th style="padding:6px 4px;text-align:center;border-bottom:2px solid #d0d5e3;width:24px">✓</th>
                 <th style="padding:6px 8px;text-align:left;border-bottom:2px solid #d0d5e3">Nome</th>
@@ -3463,8 +3464,10 @@ function projTabExecucao(p) {
                 <th style="padding:6px 8px;text-align:center;border-bottom:2px solid #d0d5e3;width:100px">Fim Prev.</th>
                 <th style="padding:6px 8px;text-align:left;border-bottom:2px solid #d0d5e3;width:120px">Responsável</th>
                 <th style="padding:6px 8px;text-align:center;border-bottom:2px solid #d0d5e3;width:70px">%</th>
+                <th style="padding:6px 8px;text-align:center;border-bottom:2px solid #d0d5e3;width:42px">Anot.</th>
                 <th style="padding:6px 8px;text-align:center;border-bottom:2px solid #d0d5e3;width:40px">Sub</th>
                 <th style="padding:6px 8px;text-align:center;border-bottom:2px solid #d0d5e3;width:30px"></th>
+                <th style="padding:6px 8px;text-align:center;border-bottom:2px solid #d0d5e3;width:56px">Ordem</th>
               </tr>
             </thead>
             <tbody id="exec-tarefas-body">
@@ -3605,7 +3608,14 @@ function projRenderTarefasRows(tarefas, depth, parentIdx) {
     const today = new Date().toISOString().slice(0,10);
     const overdue = !t.concluida && t.dt_fim && t.dt_fim < today;
     const rowBg = overdue ? 'background:#fef2f2' : (t.concluida ? 'background:#f0fdf4' : '');
+    const hasNotes = Array.isArray(t.anotacoes) && t.anotacoes.length > 0;
+    const canDrag = !hasSubs && parentIdx !== undefined && parentIdx !== null;
+    const canMoveUp = i > 0;
+    const canMoveDown = i < tarefas.length - 1;
     html += `<tr style="${rowBg}">
+      <td style="padding:5px 4px;text-align:center;border-bottom:1px solid #eaecf3">
+        ${canDrag ? `<button type="button" class="proj-task-drag-handle" draggable="true" title="Arrastar para reordenar no mesmo bloco" ondragstart="projTaskDragStart(event,'${path}')" ondragover="projTaskDragOver(event,'${path}')" ondrop="projTaskDrop(event,'${path}')" ondragend="projTaskDragEnd(event)">⋮⋮</button>` : ''}
+      </td>
       <td style="padding:5px 8px;border-bottom:1px solid #eaecf3;${strike};font-family:'DM Mono',monospace;font-size:11px;white-space:nowrap">${path.split('.').map(n=>Number.parseInt(n,10)+1).join('.')}.</td>
       <td style="padding:5px 4px;text-align:center;border-bottom:1px solid #eaecf3">
         ${!hasSubs ? `<input type="checkbox" ${t.concluida?'checked':''} onchange="projToggleTarefa('${path}')">` : ''}
@@ -3627,10 +3637,19 @@ function projRenderTarefasRows(tarefas, depth, parentIdx) {
           `<input type="number" min="0" max="100" value="${pct}" onchange="projUpdateTarefa('${path}','conclusao',Number.parseInt(this.value,10)||0)" style="font-size:11px;border:1px solid #ddd;border-radius:4px;padding:2px 4px;width:50px;text-align:center">`}
       </td>
       <td style="padding:5px 4px;text-align:center;border-bottom:1px solid #eaecf3">
+        <button type="button" class="proj-task-note-btn ${hasNotes?'on':''}" title="Anotações" onclick="projOpenTaskNotes('${path}')">✎</button>
+      </td>
+      <td style="padding:5px 4px;text-align:center;border-bottom:1px solid #eaecf3">
         <button type="button" title="Adicionar subtarefa" style="background:none;border:none;cursor:pointer;font-size:13px;padding:0" onclick="projAddTarefa('${path}')">＋</button>
       </td>
       <td style="padding:5px 4px;text-align:center;border-bottom:1px solid #eaecf3">
         <button type="button" title="Excluir" style="background:none;border:none;cursor:pointer;font-size:13px;color:#dc2626;padding:0" onclick="projRemoveTarefa('${path}')">✕</button>
+      </td>
+      <td style="padding:5px 4px;text-align:center;border-bottom:1px solid #eaecf3">
+        ${hasSubs ? `<div class="proj-task-order-controls">
+          <button type="button" title="Mover para cima" ${canMoveUp?'':'disabled'} onclick="projMoveTaskByButton('${path}',-1)">↑</button>
+          <button type="button" title="Mover para baixo" ${canMoveDown?'':'disabled'} onclick="projMoveTaskByButton('${path}',1)">↓</button>
+        </div>` : ''}
       </td>
     </tr>`;
     if(hasSubs) {
@@ -3655,6 +3674,181 @@ function projGetTarefaByPath(tarefas, path) {
     list = list[parts[i]].subtarefas || [];
   }
   return {list, index: parts[parts.length-1]};
+}
+
+let _projTaskDragPath = '';
+
+function projTaskParentPath(path) {
+  const text = String(path || '');
+  const idx = text.lastIndexOf('.');
+  return idx === -1 ? '' : text.slice(0, idx);
+}
+
+function projTaskIndexFromPath(path) {
+  const idx = Number.parseInt(String(path || '').split('.').pop(), 10);
+  return Number.isFinite(idx) ? idx : -1;
+}
+
+function projRefreshScheduleAfterMutation(proj) {
+  projSyncDerivedTaskDates(proj.execucao.tarefas);
+  if(proj.execucao.pct_mode === 'derivado') {
+    proj.percentual = projCalcDerivedPct(proj.execucao.tarefas);
+    proj.execucao.percentual = proj.percentual;
+  }
+  projSave();
+  projDetalheTab('execucao', document.querySelector('#proj-detalhe-tabs .proj-tab:nth-child(4)'));
+}
+
+function projMoveTaskToIndex(path, targetIndex) {
+  return projWithScheduleWrite(() => {
+    projLoad();
+    const proj = PROJETOS.find(p => String(p.id) === _projCurrentId);
+    if(!proj || !proj.execucao || !proj.execucao.tarefas) return;
+    const ref = projGetTarefaByPath(proj.execucao.tarefas, path);
+    if(!ref || !ref.list || !ref.list[ref.index]) return;
+    const boundedTarget = Math.max(0, Math.min(targetIndex, ref.list.length - 1));
+    if(ref.index === boundedTarget) return;
+    projEnsureCurrentScheduleBackupBeforeMutation(proj);
+    const [task] = ref.list.splice(ref.index, 1);
+    ref.list.splice(boundedTarget, 0, task);
+    projRefreshScheduleAfterMutation(proj);
+  });
+}
+
+function projMoveTaskByButton(path, direction) {
+  projLoad();
+  const proj = PROJETOS.find(p => String(p.id) === _projCurrentId);
+  if(!proj || !proj.execucao || !proj.execucao.tarefas) return;
+  const ref = projGetTarefaByPath(proj.execucao.tarefas, path);
+  const task = ref && ref.list ? ref.list[ref.index] : null;
+  if(!task || !(task.subtarefas || []).length) return;
+  projMoveTaskToIndex(path, ref.index + direction);
+}
+
+function projTaskDragStart(event, path) {
+  _projTaskDragPath = String(path || '');
+  if(event?.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', _projTaskDragPath);
+  }
+}
+
+function projTaskDragOver(event, path) {
+  const fromPath = _projTaskDragPath || event?.dataTransfer?.getData('text/plain') || '';
+  if(fromPath && projTaskParentPath(fromPath) === projTaskParentPath(path)) {
+    event.preventDefault();
+    if(event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  }
+}
+
+function projTaskDrop(event, targetPath) {
+  event.preventDefault();
+  const fromPath = _projTaskDragPath || event?.dataTransfer?.getData('text/plain') || '';
+  _projTaskDragPath = '';
+  if(!fromPath || fromPath === targetPath) return;
+  if(projTaskParentPath(fromPath) !== projTaskParentPath(targetPath)) {
+    projToast('Reordene tarefas apenas dentro do mesmo bloco.', '#d97706');
+    return;
+  }
+  const fromIndex = projTaskIndexFromPath(fromPath);
+  const targetIndex = projTaskIndexFromPath(targetPath);
+  if(fromIndex < 0 || targetIndex < 0) return;
+  projMoveTaskToIndex(fromPath, targetIndex);
+}
+
+function projTaskDragEnd() {
+  _projTaskDragPath = '';
+}
+
+function projFormatBrasiliaDateTime(value) {
+  if(!value) return '';
+  const date = new Date(value);
+  if(Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    dateStyle: 'short',
+    timeStyle: 'short'
+  }).format(date);
+}
+
+function projCloseTaskNotes() {
+  const el = document.getElementById('proj-task-notes-modal');
+  if(el) el.remove();
+}
+
+function projOpenTaskNotes(path) {
+  projLoad();
+  const proj = PROJETOS.find(p => String(p.id) === _projCurrentId);
+  const ref = proj && proj.execucao ? projGetTarefaByPath(proj.execucao.tarefas || [], path) : null;
+  const task = ref && ref.list ? ref.list[ref.index] : null;
+  if(!task) return;
+  projCloseTaskNotes();
+  const notes = Array.isArray(task.anotacoes) ? task.anotacoes : [];
+  const modal = document.createElement('div');
+  modal.id = 'proj-task-notes-modal';
+  modal.className = 'proj-task-notes-backdrop';
+  modal.innerHTML = `
+    <div class="proj-task-notes-card" role="dialog" aria-modal="true" aria-labelledby="proj-task-notes-title">
+      <div class="proj-task-notes-head">
+        <div>
+          <div id="proj-task-notes-title" class="proj-task-notes-title">Anotações</div>
+          <div class="proj-task-notes-subtitle">${projEsc(task.nome || 'Tarefa')}</div>
+        </div>
+        <button type="button" class="proj-task-notes-close" onclick="projCloseTaskNotes()" aria-label="Fechar">×</button>
+      </div>
+      <div class="proj-task-notes-list">
+        ${notes.length ? notes.map(n => `
+          <article class="proj-task-note-item">
+            <div class="proj-task-note-meta">${projEsc(n.autor_nome || 'Usuário')} · ${projEsc(projFormatBrasiliaDateTime(n.criado_em))} BRT</div>
+            <div class="proj-task-note-text">${projEsc(n.texto || '')}</div>
+          </article>
+        `).join('') : '<div class="proj-task-notes-empty">Nenhuma anotação publicada.</div>'}
+      </div>
+      <textarea id="proj-task-note-text" class="proj-fi proj-task-note-textarea" placeholder="Escreva uma anotação sobre esta tarefa"></textarea>
+      <div class="proj-task-notes-actions">
+        <button type="button" class="proj-btn" onclick="projCloseTaskNotes()">Cancelar</button>
+        <button type="button" class="proj-btn primary" onclick="projPublishTaskNote('${path}')">Publicar</button>
+      </div>
+    </div>
+  `;
+  modal.addEventListener('click', ev => {
+    if(ev.target === modal) projCloseTaskNotes();
+  });
+  document.body.appendChild(modal);
+  const input = document.getElementById('proj-task-note-text');
+  if(input) input.focus();
+}
+
+function projPublishTaskNote(path) {
+  const input = document.getElementById('proj-task-note-text');
+  const text = String(input?.value || '').trim();
+  if(!text) {
+    projToast('Escreva uma anotação antes de publicar.', '#d97706');
+    return;
+  }
+  return projWithScheduleWrite(() => {
+    projLoad();
+    const proj = PROJETOS.find(p => String(p.id) === _projCurrentId);
+    if(!proj || !proj.execucao || !proj.execucao.tarefas) return;
+    const ref = projGetTarefaByPath(proj.execucao.tarefas, path);
+    const task = ref && ref.list ? ref.list[ref.index] : null;
+    if(!task) return;
+    projEnsureCurrentScheduleBackupBeforeMutation(proj);
+    const currentUser = typeof usuarioLogado !== 'undefined' ? usuarioLogado : null;
+    const authorName = projUserDisplayName(currentUser) || String(currentUser?.email || 'Usuário');
+    if(!Array.isArray(task.anotacoes)) task.anotacoes = [];
+    task.anotacoes.push({
+      id: `note-${Date.now()}`,
+      texto: text,
+      autor_nome: authorName,
+      autor_email: String(currentUser?.email || '').trim().toLowerCase(),
+      criado_em: new Date().toISOString()
+    });
+    projSave();
+    projCloseTaskNotes();
+    projToast('Anotação publicada.', 'var(--teal)');
+    projDetalheTab('execucao', document.querySelector('#proj-detalhe-tabs .proj-tab:nth-child(4)'));
+  });
 }
 
 function projAddTarefa(parentPath) {
