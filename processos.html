@@ -14000,7 +14000,6 @@ function _procCentralInteligenciaHTML(proc){
 }
 
 function _metaFieldsMapeamentoHTML(item, proc){
-  const matNivel = proc.ent?.mat||0;
   const progBar = _metaFieldsProgBar(proc);
   const mapeandoBadge = ['acompanha','auditoria'].includes(proc.etapa) ? '' : '<span class="badge ba" style="font-size:10px;margin-left:auto">Em mapeamento</span>';
   return `
