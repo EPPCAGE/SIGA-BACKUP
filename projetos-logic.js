@@ -3598,6 +3598,7 @@ function projCalcDerivedPct(tarefas) {
 function projRenderTarefasRows(tarefas, depth, parentIdx) {
   if(!tarefas) return '';
   let html = '';
+  const canWriteSchedule = projCanWriteSchedule();
   tarefas.forEach((t, i) => {
     const path = parentIdx !== undefined && parentIdx !== null ? parentIdx+'.'+i : ''+i;
     const hasSubs = t.subtarefas && t.subtarefas.length > 0;
@@ -3609,7 +3610,7 @@ function projRenderTarefasRows(tarefas, depth, parentIdx) {
     const overdue = !t.concluida && t.dt_fim && t.dt_fim < today;
     const rowBg = overdue ? 'background:#fef2f2' : (t.concluida ? 'background:#f0fdf4' : '');
     const hasNotes = Array.isArray(t.anotacoes) && t.anotacoes.length > 0;
-    const canDrag = !hasSubs && parentIdx !== undefined && parentIdx !== null;
+    const canDrag = canWriteSchedule && !hasSubs && parentIdx !== undefined && parentIdx !== null;
     const canMoveUp = i > 0;
     const canMoveDown = i < tarefas.length - 1;
     html += `<tr style="${rowBg}">
@@ -3646,7 +3647,7 @@ function projRenderTarefasRows(tarefas, depth, parentIdx) {
         <button type="button" title="Excluir" style="background:none;border:none;cursor:pointer;font-size:13px;color:#dc2626;padding:0" onclick="projRemoveTarefa('${path}')">✕</button>
       </td>
       <td style="padding:5px 4px;text-align:center;border-bottom:1px solid #eaecf3">
-        ${hasSubs ? `<div class="proj-task-order-controls">
+        ${canWriteSchedule && hasSubs ? `<div class="proj-task-order-controls">
           <button type="button" title="Mover para cima" ${canMoveUp?'':'disabled'} onclick="projMoveTaskByButton('${path}',-1)">↑</button>
           <button type="button" title="Mover para baixo" ${canMoveDown?'':'disabled'} onclick="projMoveTaskByButton('${path}',1)">↓</button>
         </div>` : ''}
@@ -3776,6 +3777,23 @@ function projCloseTaskNotes() {
   if(el) el.remove();
 }
 
+function projCurrentUserForNote() {
+  const user = typeof usuarioLogado !== 'undefined' ? usuarioLogado : null;
+  return {
+    name: projUserDisplayName(user) || String(user?.email || 'Usuário'),
+    email: String(user?.email || '').trim().toLowerCase()
+  };
+}
+
+function projCanDeleteTaskNote(note) {
+  const currentUser = projCurrentUserForNote();
+  const noteEmail = String(note?.autor_email || '').trim().toLowerCase();
+  if(noteEmail && currentUser.email) return noteEmail === currentUser.email;
+  const currentName = projNormKey(currentUser.name);
+  const noteName = projNormKey(note?.autor_nome);
+  return Boolean(noteName && currentName && currentName !== 'usuário' && noteName === currentName);
+}
+
 function projOpenTaskNotes(path) {
   projLoad();
   const proj = PROJETOS.find(p => String(p.id) === _projCurrentId);
@@ -3784,6 +3802,7 @@ function projOpenTaskNotes(path) {
   if(!task) return;
   projCloseTaskNotes();
   const notes = Array.isArray(task.anotacoes) ? task.anotacoes : [];
+  const canWriteSchedule = projCanWriteSchedule(proj.id);
   const modal = document.createElement('div');
   modal.id = 'proj-task-notes-modal';
   modal.className = 'proj-task-notes-backdrop';
@@ -3799,15 +3818,18 @@ function projOpenTaskNotes(path) {
       <div class="proj-task-notes-list">
         ${notes.length ? notes.map(n => `
           <article class="proj-task-note-item">
-            <div class="proj-task-note-meta">${projEsc(n.autor_nome || 'Usuário')} · ${projEsc(projFormatBrasiliaDateTime(n.criado_em))} BRT</div>
+            <div class="proj-task-note-head">
+              <div class="proj-task-note-meta">${projEsc(n.autor_nome || 'Usuário')} · ${projEsc(projFormatBrasiliaDateTime(n.criado_em))} BRT</div>
+              ${canWriteSchedule && projCanDeleteTaskNote(n) ? `<button type="button" class="proj-task-note-delete" title="Excluir anotação" onclick="projDeleteTaskNote('${path}','${projEsc(n.id || '')}')">Excluir</button>` : ''}
+            </div>
             <div class="proj-task-note-text">${projEsc(n.texto || '')}</div>
           </article>
         `).join('') : '<div class="proj-task-notes-empty">Nenhuma anotação publicada.</div>'}
       </div>
-      <textarea id="proj-task-note-text" class="proj-fi proj-task-note-textarea" placeholder="Escreva uma anotação sobre esta tarefa"></textarea>
+      ${canWriteSchedule ? `<textarea id="proj-task-note-text" class="proj-fi proj-task-note-textarea" placeholder="Escreva uma anotação sobre esta tarefa"></textarea>` : '<div class="proj-task-notes-empty">Você pode visualizar as anotações, mas não editar o cronograma deste projeto.</div>'}
       <div class="proj-task-notes-actions">
         <button type="button" class="proj-btn" onclick="projCloseTaskNotes()">Cancelar</button>
-        <button type="button" class="proj-btn primary" onclick="projPublishTaskNote('${path}')">Publicar</button>
+        ${canWriteSchedule ? `<button type="button" class="proj-btn primary" onclick="projPublishTaskNote('${path}')">Publicar</button>` : ''}
       </div>
     </div>
   `;
@@ -3834,20 +3856,42 @@ function projPublishTaskNote(path) {
     const task = ref && ref.list ? ref.list[ref.index] : null;
     if(!task) return;
     projEnsureCurrentScheduleBackupBeforeMutation(proj);
-    const currentUser = typeof usuarioLogado !== 'undefined' ? usuarioLogado : null;
-    const authorName = projUserDisplayName(currentUser) || String(currentUser?.email || 'Usuário');
+    const currentUser = projCurrentUserForNote();
     if(!Array.isArray(task.anotacoes)) task.anotacoes = [];
     task.anotacoes.push({
       id: `note-${Date.now()}`,
       texto: text,
-      autor_nome: authorName,
-      autor_email: String(currentUser?.email || '').trim().toLowerCase(),
+      autor_nome: currentUser.name,
+      autor_email: currentUser.email,
       criado_em: new Date().toISOString()
     });
     projSave();
     projCloseTaskNotes();
     projToast('Anotação publicada.', 'var(--teal)');
     projDetalheTab('execucao', document.querySelector('#proj-detalhe-tabs .proj-tab:nth-child(4)'));
+  });
+}
+
+function projDeleteTaskNote(path, noteId) {
+  return projWithScheduleWrite(() => {
+    projLoad();
+    const proj = PROJETOS.find(p => String(p.id) === _projCurrentId);
+    if(!proj || !proj.execucao || !proj.execucao.tarefas) return;
+    const ref = projGetTarefaByPath(proj.execucao.tarefas, path);
+    const task = ref && ref.list ? ref.list[ref.index] : null;
+    if(!task || !Array.isArray(task.anotacoes)) return;
+    const index = task.anotacoes.findIndex(n => String(n.id || '') === String(noteId || ''));
+    const note = index >= 0 ? task.anotacoes[index] : null;
+    if(!note || !projCanDeleteTaskNote(note)) {
+      projToast('Você só pode excluir suas próprias anotações.', '#d97706');
+      return;
+    }
+    projEnsureCurrentScheduleBackupBeforeMutation(proj);
+    task.anotacoes.splice(index, 1);
+    projSave();
+    projToast('Anotação excluída.', 'var(--teal)');
+    projDetalheTab('execucao', document.querySelector('#proj-detalhe-tabs .proj-tab:nth-child(4)'));
+    projOpenTaskNotes(path);
   });
 }
 
