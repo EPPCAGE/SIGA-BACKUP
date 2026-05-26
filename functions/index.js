@@ -1,8 +1,45 @@
 const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
+const crypto = require("crypto");
 
 admin.initializeApp();
+
+// ---------------------------------------------------------------------------
+// Rate limiting — Firestore-backed sliding window counter.
+// key:      document ID under rate_limits/ (must be Firestore-safe)
+// maxCalls: maximum number of calls allowed within the window
+// windowMs: window duration in milliseconds
+// Returns true (allowed) or false (limit exceeded).
+// Fails-open on Firestore errors to avoid blocking legitimate requests.
+// ---------------------------------------------------------------------------
+async function checkRateLimit(key, maxCalls, windowMs) {
+  const db = admin.firestore();
+  const ref = db.doc(`rate_limits/${key}`);
+  const now = Date.now();
+  try {
+    return await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists || now > snap.data().reset_at) {
+        tx.set(ref, { count: 1, reset_at: now + windowMs });
+        return true;
+      }
+      const { count } = snap.data();
+      if (count >= maxCalls) return false;
+      tx.update(ref, { count: count + 1 });
+      return true;
+    });
+  } catch (e) {
+    console.error("checkRateLimit error:", e);
+    return true;
+  }
+}
+
+function getClientIpHash(req) {
+  const forwarded = req.headers["x-forwarded-for"];
+  const ip = forwarded ? forwarded.split(",")[0].trim() : (req.ip || "unknown");
+  return crypto.createHash("sha256").update(ip).digest("hex").substring(0, 16);
+}
 
 const ALLOWED_ORIGINS = new Set([
   "https://eppcage.com.br",
@@ -64,6 +101,13 @@ exports.checkEmail = onRequest(async (req, res) => {
   setCorsHeaders(req, res);
   if (req.method === "OPTIONS") { res.status(204).send(""); return; }
   if (req.method !== "POST") { res.status(405).json({ error: "Method not allowed" }); return; }
+
+  // Throttle: 10 calls per 15 minutes per IP to prevent user enumeration
+  const ipAllowed = await checkRateLimit(`email_${getClientIpHash(req)}`, 10, 15 * 60 * 1000);
+  if (!ipAllowed) {
+    res.status(429).json({ error: "Muitas tentativas. Aguarde alguns minutos." });
+    return;
+  }
 
   const email = req.body?.email;
   if (!email || typeof email !== "string" || email.length > 254) {
@@ -130,6 +174,13 @@ exports.ai = onRequest(
 
     const decoded = await verifyToken(req, res);
     if (!decoded) return;
+
+    // Rate limit: 30 calls per hour per authenticated user
+    const aiAllowed = await checkRateLimit(`ai_${decoded.uid}`, 30, 60 * 60 * 1000);
+    if (!aiAllowed) {
+      res.status(429).json({ error: "Limite de requisições atingido. Tente novamente em 1 hora." });
+      return;
+    }
 
     // Validate payload size
     if (JSON.stringify(req.body).length > MAX_PAYLOAD_BYTES) {
