@@ -1599,6 +1599,10 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
   <div class="fbar" style="align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:.75rem">
     <span class="fbar-l">Indicador</span>
     <select class="fi" id="ind-nome-sel" onchange="rInd()" style="max-width:220px"><option value="">Todos</option></select>
+    <span class="fbar-l ind-filtros-avancados">Macroprocesso</span>
+    <select class="fi ind-filtros-avancados" id="ind-macro-sel" onchange="_indMacroChange()" style="max-width:200px"><option value="">Todos</option></select>
+    <span class="fbar-l ind-filtros-avancados">Processo</span>
+    <select class="fi ind-filtros-avancados" id="ind-proc-sel" onchange="rInd()" style="max-width:200px"><option value="">Todos</option></select>
     <span class="fbar-l ind-filtros-avancados">Área</span>
     <select class="fi ind-filtros-avancados" id="ind-area-sel" onchange="rInd()" style="max-width:160px"><option value="">Todas</option></select>
     <span class="fbar-l ind-filtros-avancados">PPE?</span>
@@ -14757,12 +14761,24 @@ function _kpiPeriodoToIntervalo(periodo){
   return {trims:[], sems:[]};
 }
 
+function _kpiGetMacroProc(k){
+  if(k.arq_id){const u=getUnidadesMapeaveis().find(u=>u.arq_id===k.arq_id);if(u)return{macro:u.macro||'',proc:u.nome||''};}
+  if(k.pid){const p=processos.find(p=>p.id===k.pid);if(p)return{macro:p.macro||'',proc:p.nome||''};}
+  return{macro:'',proc:''};
+}
+function _indMacroChange(){
+  const procSel=document.getElementById('ind-proc-sel');
+  if(procSel) procSel.value='';
+  rInd();
+}
 function populateIndFilters(){
   const areaSel      = document.getElementById('ind-area-sel');
   const cicloSel     = document.getElementById('ind-ciclo-sel');
   const periSel      = document.getElementById('ind-periodo-sel');
   const nomeSel      = document.getElementById('ind-nome-sel');
   const intervaloSel = document.getElementById('ind-intervalo-sel');
+  const macroSel     = document.getElementById('ind-macro-sel');
+  const procSel      = document.getElementById('ind-proc-sel');
   if(!areaSel) return;
 
   const curArea      = areaSel.value;
@@ -14770,16 +14786,24 @@ function populateIndFilters(){
   const curPeri      = periSel.value;
   const curNome      = nomeSel ? nomeSel.value : '';
   const curIntervalo = intervaloSel ? intervaloSel.value : '';
+  const curMacro     = macroSel ? macroSel.value : '';
+  const curProc      = procSel  ? procSel.value  : '';
 
   const areas   = [...new Set(kpis.map(k=>k.area).filter(Boolean))].sort();
   const ciclos  = [...new Set(kpis.map(k=>k.ciclo).filter(Boolean))].sort();
   const periods = [...new Set(kpis.map(k=>k.periodo).filter(Boolean))].sort((a,b)=>periodoToNum(a)-periodoToNum(b));
   const nomes   = [...new Set(kpis.map(k=>k.nome).filter(Boolean))].sort();
+  const macros  = [...new Set(kpis.map(k=>_kpiGetMacroProc(k).macro).filter(Boolean))].sort();
+  const procs   = [...new Set(kpis
+    .filter(k=>!curMacro||_kpiGetMacroProc(k).macro===curMacro)
+    .map(k=>_kpiGetMacroProc(k).proc).filter(Boolean))].sort();
 
   areaSel.innerHTML  = '<option value="">Todas as áreas</option>'  + areas.map(a=>`<option ${curArea===a?'selected':''}>${esc(a)}</option>`).join('');
   cicloSel.innerHTML = '<option value="">Todos os ciclos</option>' + ciclos.map(a=>`<option ${curCiclo===a?'selected':''}>${esc(a)}</option>`).join('');
   periSel.innerHTML  = '<option value="">Todos os períodos</option>' + periods.map(a=>`<option ${curPeri===a?'selected':''}>${esc(a)}</option>`).join('');
   if(nomeSel) nomeSel.innerHTML = '<option value="">Todos os indicadores</option>' + nomes.map(a=>`<option ${curNome===a?'selected':''}>${esc(a)}</option>`).join('');
+  if(macroSel) macroSel.innerHTML = '<option value="">Todos os macroprocessos</option>' + macros.map(m=>`<option ${curMacro===m?'selected':''}>${esc(m)}</option>`).join('');
+  if(procSel)  procSel.innerHTML  = '<option value="">Todos os processos</option>'      + procs.map(p=>`<option ${curProc===p?'selected':''}>${esc(p)}</option>`).join('');
 
   // Intervalo: gera opções agrupadas por trimestre e semestre, diferenciando por ano
   if(intervaloSel){
@@ -14851,15 +14875,20 @@ function rInd(){
   const intervalo = document.getElementById('ind-intervalo-sel')?.value || '';
   const nome      = document.getElementById('ind-nome-sel')?.value      || '';
   const ppe       = document.getElementById('ind-ppe-sel')?.value       || '';
+  const macro     = document.getElementById('ind-macro-sel')?.value     || '';
+  const proc      = document.getElementById('ind-proc-sel')?.value      || '';
 
-  const lista = kpis.filter(k=>
-    (!area      || k.area   === area)   &&
-    (!ciclo     || k.ciclo  === ciclo)  &&
-    (!period    || k.periodo === period) &&
-    _periodoInIntervalo(k.periodo, intervalo) &&
-    (!nome      || k.nome   === nome)   &&
-    (!ppe       || k.ppe    === ppe)
-  );
+  const lista = kpis.filter(k=>{
+    const mp=(macro||proc)?_kpiGetMacroProc(k):{macro:'',proc:''};
+    return (!area      || k.area    === area)   &&
+      (!ciclo     || k.ciclo   === ciclo)  &&
+      (!period    || k.periodo === period) &&
+      _periodoInIntervalo(k.periodo, intervalo) &&
+      (!nome      || k.nome    === nome)   &&
+      (!ppe       || k.ppe     === ppe)    &&
+      (!macro     || mp.macro  === macro)  &&
+      (!proc      || mp.proc   === proc);
+  });
 
   const grupos = kpiGroupByKey(lista);
   const nGrupos = Object.keys(grupos).length;
