@@ -10882,15 +10882,14 @@ function _bpmnBuildFlatGwAware(outgoing, nodeInfo, flowLabels){
   return ordered;
 }
 function _bpmnGetSubprocessChildren(subEl, GW_TAGS, TASK_TAGS, laneMap){
-  const tagSet=new Set([
-    'startevent','endevent','intermediatethrowevent','intermediatecatchevent',
-    'task','usertask','servicetask','sendtask','receivetask','manualtask','scripttask',
-    'exclusivegateway','inclusivegateway','parallelgateway','complexgateway',
-  ]);
+  const taskTags=['startEvent','endEvent','intermediateThrowEvent','intermediateCatchEvent',
+    'task','userTask','serviceTask','sendTask','receiveTask','manualTask','scriptTask',
+    'exclusiveGateway','inclusiveGateway','parallelGateway','complexGateway'];
+  // getElementsByTagName('*') é mais robusto que .children em documentos XML
+  const directChildren=e=>e.parentElement===subEl;
   const nodeInfo={};
-  Array.from(subEl.children).forEach(e=>{
+  _bpmnFindAll(subEl, taskTags).filter(directChildren).forEach(e=>{
     const tag=e.localName.toLowerCase();
-    if(!tagSet.has(tag)) return;
     const id=e.getAttribute('id'); if(!id) return;
     const typeInfo=_bpmnNodeType(tag, GW_TAGS, TASK_TAGS);
     if(!typeInfo) return;
@@ -10900,8 +10899,7 @@ function _bpmnGetSubprocessChildren(subEl, GW_TAGS, TASK_TAGS, laneMap){
   if(!Object.keys(nodeInfo).length) return [];
   const outgoing={};
   const flowLabels={};
-  Array.from(subEl.children).forEach(sf=>{
-    if(sf.localName.toLowerCase()!=='sequenceflow') return;
+  _bpmnFindAll(subEl, ['sequenceFlow']).filter(directChildren).forEach(sf=>{
     const src=sf.getAttribute('sourceRef'), tgt=sf.getAttribute('targetRef');
     if(!src||!tgt) return;
     if(!outgoing[src]) outgoing[src]=[];
