@@ -2628,7 +2628,7 @@ function ibBadge(v){return '<span class="badge '+({Baixo:'bg',Medio:'ba',Alto:'b
 function updCounts(){
   document.getElementById('nb-total').textContent=processos.filter(isProcessoEmAndamento).length;
   document.getElementById('nb-pend').textContent=getPendenciasDashboard().length;
-  const _filaCnt=getTarefasUsr().length+(!isEP()?processos.filter(p=>['vencida','pendente'].includes(_revStatus(p))&&['acompanha','auditoria'].includes(p.etapa)&&(p.dono===usuarioLogado?.nome||p.dono_email===usuarioLogado?.email||usuarioTemAcessoArqId(usuarioLogado,p.arq_id))).length:0);
+  const _filaCnt=getTarefasUsr().length+(isEP()?0:processos.filter(p=>['vencida','pendente'].includes(_revStatus(p))&&['acompanha','auditoria'].includes(p.etapa)&&(p.dono===usuarioLogado?.nome||p.dono_email===usuarioLogado?.email||usuarioTemAcessoArqId(usuarioLogado,p.arq_id))).length);
   document.getElementById('nb-fila-cnt').textContent=_filaCnt;
   const meusProcCnt=document.getElementById('nb-meusproc-cnt');
   if(meusProcCnt) meusProcCnt.textContent=getMinhasUnidades().length;
@@ -4757,15 +4757,15 @@ function buildPrazosCardHTML(){
   const comPrazo=concluidos.filter(p=>p.ent?.dt_prev);
   const noPrazo=comPrazo.filter(p=>p.ent.dt_efetiva<=p.ent.dt_prev).length;
   const pctNo=comPrazo.length?Math.round(noPrazo/comPrazo.length*100):null;
-  const pctFora=pctNo!==null?100-pctNo:null;
+  const pctFora=pctNo===null?null:100-pctNo;
   if(tMedio===null&&pctNo===null) return '';
   const statBase='background:var(--bg2);border-radius:var(--r);padding:.8rem;text-align:center';
   return `<div class="card" style="margin-bottom:1rem">
     <div class="card-t">Prazos e duração dos mapeamentos</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:${comPrazo.length?'1rem':'0'}">
-      ${tMedio!==null?`<div style="${statBase}"><div style="font-size:22px;font-weight:700;color:var(--blue)">${tMedio}d</div><div style="font-size:11px;color:var(--ink3)">Tempo médio (início → entrega)</div></div>`:''}
-      ${pctNo!==null?`<div style="${statBase}"><div style="font-size:22px;font-weight:700;color:var(--teal)">${pctNo}%</div><div style="font-size:11px;color:var(--ink3)">Entregues no prazo</div></div>`:''}
-      ${pctFora!==null?`<div style="${statBase}"><div style="font-size:22px;font-weight:700;color:var(--red)">${pctFora}%</div><div style="font-size:11px;color:var(--ink3)">Entregues fora do prazo</div></div>`:''}
+      ${tMedio===null?'':`<div style="${statBase}"><div style="font-size:22px;font-weight:700;color:var(--blue)">${tMedio}d</div><div style="font-size:11px;color:var(--ink3)">Tempo médio (início → entrega)</div></div>`}
+      ${pctNo===null?'':`<div style="${statBase}"><div style="font-size:22px;font-weight:700;color:var(--teal)">${pctNo}%</div><div style="font-size:11px;color:var(--ink3)">Entregues no prazo</div></div>`}
+      ${pctFora===null?'':`<div style="${statBase}"><div style="font-size:22px;font-weight:700;color:var(--red)">${pctFora}%</div><div style="font-size:11px;color:var(--ink3)">Entregues fora do prazo</div></div>`}
       <div style="${statBase}"><div style="font-size:22px;font-weight:700;color:var(--ink2)">${concluidos.length}</div><div style="font-size:11px;color:var(--ink3)">Mapeamentos concluídos</div></div>
     </div>
     ${comPrazo.length?`<div style="display:flex;justify-content:center"><div style="position:relative;height:180px;width:240px"><canvas id="dash-prazos-canvas"></canvas></div></div>`:''}
@@ -11690,7 +11690,7 @@ function rEnt(p){
             <td style="padding:5px 6px;border-bottom:1px solid var(--bdr)">${ord}${isLast&&!isRetro?' <span style="font-size:10px;color:var(--teal);font-weight:600">atual</span>':''}${isRetro?' <span style="font-size:10px;color:var(--ink3);font-weight:600" title="Registro reconstruído automaticamente a partir dos dados existentes">retroativo</span>':''}</td>
             <td style="padding:5px 6px;border-bottom:1px solid var(--bdr)">${dt}</td>
             <td style="text-align:center;padding:5px 6px;border-bottom:1px solid var(--bdr);font-weight:700;color:var(--blue)">${h.nivel||'—'}/5</td>
-            <td style="text-align:center;padding:5px 6px;border-bottom:1px solid var(--bdr)">${h.media!=null?Number(h.media).toFixed(1):'—'}</td>
+            <td style="text-align:center;padding:5px 6px;border-bottom:1px solid var(--bdr)">${h.media==null?'—':Number(h.media).toFixed(1)}</td>
           </tr>`;}).join('')}</tbody>
       </table>`:''}
     </div>
@@ -12129,7 +12129,7 @@ async function gerarPopPdf(){
   try{anexo=await _popPdfAnexo(p);}catch(ex){console.warn('_popPdfAnexo:',ex);}
   if(btn){btn.disabled=false;btn.textContent='⬇ Gerar POP em PDF';}
   const cageLogo=await _fetchCageLogoBase64();
-  const nomeCSS=(p?.nome||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/[\r\n]/g,' ');
+  const nomeCSS=(p?.nome||'').replaceAll(/\\/g,String.raw`\\`).replaceAll(/"/g,String.raw`\"`).replaceAll(/[\r\n]/g,' ');
   const _pgHdr=`@page{size:A4 portrait;margin:22mm 20mm;@top-left{content:"POP — Procedimento Operacional Padrão${nomeCSS?' — '+nomeCSS:''}";font-family:'Segoe UI',Arial,sans-serif;font-size:10px;font-weight:700;color:#1a1a2e;vertical-align:bottom;padding-bottom:3px;border-bottom:1px solid #e0e0f0}}`;
   const logoFixed='';
   const fullHtml=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${nome}</title>
@@ -12166,7 +12166,7 @@ async function gerarPopPdfDireto(){
   let anexo='';
   try{anexo=await _popPdfAnexo(p);}catch(ex){console.warn('_popPdfAnexo:',ex);}
   const cageLogo=await _fetchCageLogoBase64();
-  const nomeCSS=(p?.nome||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/[\r\n]/g,' ');
+  const nomeCSS=(p?.nome||'').replaceAll(/\\/g,String.raw`\\`).replaceAll(/"/g,String.raw`\"`).replaceAll(/[\r\n]/g,' ');
   const _pgHdr=`@page{size:A4 portrait;margin:22mm 20mm;@top-left{content:"POP — Procedimento Operacional Padrão${nomeCSS?' — '+nomeCSS:''}";font-family:'Segoe UI',Arial,sans-serif;font-size:10px;font-weight:700;color:#1a1a2e;vertical-align:bottom;padding-bottom:3px;border-bottom:1px solid #e0e0f0}}`;
   const logoFixed='';
   const fullHtml=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${nome}</title>
@@ -18376,7 +18376,7 @@ async function _fbLoadPublicacoes(){
 async function _fbLoadRelatoriosPat(){
   const doc = await configRepository.get('relatorios_pat');
   if(doc.exists() && doc.data().data){
-    try { relatoriosPat = JSON.parse(doc.data().data); } catch(e){ relatoriosPat = []; }
+    try { relatoriosPat = JSON.parse(doc.data().data); } catch(e){ console.warn('relatoriosPat parse error:',e); relatoriosPat = []; }
   }
 }
 async function _fbSaveRelatoriosPat(){
@@ -20014,7 +20014,7 @@ POP:\n${texto}`;
     if(!jsonStr.startsWith('{')){const s=jsonStr.indexOf('{'),e=jsonStr.lastIndexOf('}');if(s!==-1&&e>s)jsonStr=jsonStr.slice(s,e+1);}
     let extracted;
     try{ extracted=JSON.parse(jsonStr); }
-    catch(e){ throw new Error('A IA não retornou um JSON válido. Tente novamente ou verifique se o arquivo contém texto extraível (não apenas imagens).'); }
+    catch{ throw new Error('A IA não retornou um JSON válido. Tente novamente ou verifique se o arquivo contém texto extraível (não apenas imagens).'); }
     document.getElementById('pop-nome').value=extracted.nome||'';
     document.getElementById('pop-area').value=extracted.area||'';
     document.getElementById('pop-objetivo').value=extracted.objetivo||'';
