@@ -1566,6 +1566,131 @@ select.proj-fi { cursor:pointer; }
   justify-content:flex-end;
   gap:8px;
 }
+.proj-ppe-toolbar {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:14px;
+  padding:14px 16px;
+  border:1px solid var(--bdr);
+  border-radius:10px;
+  background:#fff;
+}
+.proj-ppe-title {
+  font-family:'Syne',sans-serif;
+  font-size:15px;
+  font-weight:800;
+  color:#172033;
+}
+.proj-ppe-subtitle {
+  margin-top:3px;
+  font-size:12px;
+  color:#64748b;
+}
+.proj-ppe-cycle {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex:none;
+}
+.proj-ppe-arrow {
+  width:32px;
+  height:32px;
+  border:1px solid #d0d7e8;
+  border-radius:8px;
+  background:#fff;
+  color:var(--blue);
+  cursor:pointer;
+  font-size:20px;
+  line-height:26px;
+}
+.proj-ppe-arrow:hover:not(:disabled) {
+  background:#f8fbff;
+  border-color:var(--blue);
+}
+.proj-ppe-arrow:disabled {
+  opacity:.35;
+  cursor:not-allowed;
+}
+.proj-ppe-select {
+  height:32px;
+  min-width:142px;
+  border:1px solid #d0d7e8;
+  border-radius:8px;
+  background:#fff;
+  color:#172033;
+  font-family:'DM Sans',sans-serif;
+  font-size:12px;
+  font-weight:800;
+  padding:0 10px;
+}
+.proj-ppe-summary {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+  margin-bottom:14px;
+}
+.proj-ppe-summary > div {
+  border:1px solid #d9e5f5;
+  border-radius:9px;
+  background:#f8fbff;
+  padding:10px 12px;
+}
+.proj-ppe-summary strong {
+  display:block;
+  color:var(--blue);
+  font-size:18px;
+  font-weight:800;
+}
+.proj-ppe-summary span {
+  display:block;
+  color:#64748b;
+  font-size:11px;
+  margin-top:2px;
+}
+.proj-ppe-list {
+  display:grid;
+  gap:12px;
+}
+.proj-ppe-card {
+  border:1px solid var(--bdr);
+  border-radius:10px;
+  background:#fff;
+  padding:14px;
+}
+.proj-ppe-card-head {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:10px;
+}
+.proj-ppe-project {
+  font-size:14px;
+  font-weight:800;
+  color:#172033;
+}
+.proj-ppe-meta {
+  margin-top:2px;
+  color:#64748b;
+  font-size:11.5px;
+}
+.proj-ppe-text {
+  min-height:104px;
+  line-height:1.5;
+}
+@media(max-width:760px) {
+  .proj-ppe-toolbar {
+    align-items:stretch;
+    flex-direction:column;
+  }
+  .proj-ppe-cycle {
+    justify-content:flex-start;
+  }
+  .proj-ppe-summary {
+    grid-template-columns:1fr;
+  }
+}
 .proj-g2 { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
 .proj-g3 { display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px; }
 

@@ -79,7 +79,7 @@
   }
 </script>
 <link rel="stylesheet" href="fonts/fonts.css">
-<link rel="stylesheet" href="styles.css?v=20260526-2">
+<link rel="stylesheet" href="styles.css?v=20260527-1">
 </head>
 <body>
 <!-- Modal de confirmação (substitui confirm() nativo) -->
@@ -207,6 +207,10 @@
           <svg viewBox="0 0 16 16" fill="none"><rect x="2" y="1.5" width="12" height="13" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M5 5h6M5 8h6M5 11h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
           Relatório Executivo
         </button>
+        <button type="button" class="proj-nav-btn" onclick="projGo('ppe',this)" id="pnb-ppe">
+          <svg viewBox="0 0 16 16" fill="none"><path d="M2.5 13.5h11" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/><path d="M4 11V5.8L8 2.4l4 3.4V11" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/><path d="M6.2 8.2h3.5M6.2 10.2h2.3" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>
+          PPE
+        </button>
         <button type="button" class="proj-nav-btn" onclick="projGo('indicadores',this)" id="pnb-indicadores">
           <svg viewBox="0 0 16 16" fill="none"><path d="M2 13.5h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><rect x="3" y="7" width="2.3" height="5" rx=".8" stroke="currentColor" stroke-width="1.3"/><rect x="6.85" y="4" width="2.3" height="8" rx=".8" stroke="currentColor" stroke-width="1.3"/><rect x="10.7" y="2" width="2.3" height="10" rx=".8" stroke="currentColor" stroke-width="1.3"/></svg>
           Indicadores
@@ -224,7 +228,7 @@
           <svg viewBox="0 0 16 16" fill="none" width="14" height="14"><path d="M10 12l-4-4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Voltar ao Hub
         </button>
-        <div style="margin-top:10px;font-size:9.5px;color:#94a3b8;letter-spacing:.02em">deploy 26/05/2026 15:24 BRT</div>
+        <div style="margin-top:10px;font-size:9.5px;color:#94a3b8;letter-spacing:.02em">deploy 27/05/2026 14:01 BRT</div>
       </div>
     </div>
     <!-- Toggle button -->
@@ -364,7 +368,23 @@
       </div>
     </div>
 
-    <!-- PÁGINA: NOVO PROJETO -->
+    <!-- PAGINA: PPE -->
+    <div id="proj-page-ppe" class="proj-page">
+      <div style="padding:2rem">
+        <div class="proj-ph">
+          <div>
+            <div class="proj-ph-t">PPE</div>
+            <div class="proj-ph-s">Metas de projetos para o Pr&ecirc;mio de Produtividade e Efici&ecirc;ncia</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" class="proj-btn primary" onclick="projExportPpePDF()">Gerar PDF</button>
+          </div>
+        </div>
+        <div id="proj-ppe-content"></div>
+      </div>
+    </div>
+
+    <!-- PAGINA: INDICADORES -->
     <div id="proj-page-indicadores" class="proj-page">
       <div style="padding:2rem">
         <div class="proj-ph">
@@ -505,6 +525,6 @@
 
 <!-- ⭐ FASE 0: Módulos compartilhados e boot sequence -->
 <script src="src/shared/projetos/projetos-boot.js"></script>
-<script src="projetos-logic.js?v=20260526-2"></script>
+<script src="projetos-logic.js?v=20260527-1"></script>
 </body>
 </html>

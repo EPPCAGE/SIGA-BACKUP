@@ -663,6 +663,7 @@ function projGo(pageId, btnEl) {
     case 'reunioes':  projRenderReunioesPage(); break;
     case 'usuarios':  projRenderUsuariosPage(); break;
     case 'status-report': projRenderStatusReport(); break;
+    case 'ppe':       projRenderPpePage(); break;
     case 'indicadores': projRenderIndicadoresPage(); break;
     case 'novo':      projRenderNovo(); break;
   }
@@ -1455,6 +1456,255 @@ function projRenderUsuariosPage() {
       ${table}
     </div>
   `;
+}
+
+const PROJ_PPE_FIRST_YEAR = 2026;
+const PROJ_PPE_FIRST_QUARTER = 3;
+const PROJ_PPE_LAST_YEAR = 2040;
+const PROJ_PPE_LAST_QUARTER = 4;
+let _projPpeCycle = null;
+
+function projPpeCycleKey(year, quarter) {
+  return `${year}Q${quarter}`;
+}
+
+function projPpeCycleLabel(cycleKey) {
+  const parsed = projPpeParseCycle(cycleKey);
+  return parsed ? `${parsed.quarter}º Tri ${parsed.year}` : '3º Tri 2026';
+}
+
+function projPpeParseCycle(cycleKey) {
+  const match = String(cycleKey || '').match(/^(\d{4})Q([1-4])$/);
+  if(!match) return null;
+  return { year: Number.parseInt(match[1], 10), quarter: Number.parseInt(match[2], 10) };
+}
+
+function projPpeCycleIndex(cycleKey) {
+  const parsed = projPpeParseCycle(cycleKey);
+  if(!parsed) return -1;
+  return (parsed.year * 4) + parsed.quarter;
+}
+
+function projPpeCycles() {
+  const cycles = [];
+  for(let year = PROJ_PPE_FIRST_YEAR; year <= PROJ_PPE_LAST_YEAR; year++) {
+    const startQ = year === PROJ_PPE_FIRST_YEAR ? PROJ_PPE_FIRST_QUARTER : 1;
+    for(let quarter = startQ; quarter <= PROJ_PPE_LAST_QUARTER; quarter++) {
+      cycles.push({ key: projPpeCycleKey(year, quarter), year, quarter, label: `${quarter}º Tri ${year}` });
+    }
+  }
+  return cycles;
+}
+
+function projPpeClampCycle(cycleKey) {
+  const cycles = projPpeCycles();
+  const idx = cycles.findIndex(c => c.key === cycleKey);
+  if(idx >= 0) return cycleKey;
+  const parsed = projPpeParseCycle(cycleKey);
+  if(!parsed) return cycles[0].key;
+  return projPpeCycleIndex(cycleKey) < projPpeCycleIndex(cycles[0].key) ? cycles[0].key : cycles[cycles.length - 1].key;
+}
+
+function projPpeCurrentBrazilParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: 'numeric'
+  }).formatToParts(date);
+  return {
+    year: Number(parts.find(p => p.type === 'year')?.value || date.getFullYear()),
+    month: Number(parts.find(p => p.type === 'month')?.value || (date.getMonth() + 1))
+  };
+}
+
+function projPpeDefaultCycle(date = new Date()) {
+  const parts = projPpeCurrentBrazilParts(date);
+  const currentQuarter = Math.floor((parts.month - 1) / 3) + 1;
+  let quarter = currentQuarter + 1;
+  let year = parts.year;
+  if(quarter > 4) {
+    quarter = 1;
+    year += 1;
+  }
+  return projPpeClampCycle(projPpeCycleKey(year, quarter));
+}
+
+function projPpeSelectedCycle() {
+  if(!_projPpeCycle) _projPpeCycle = projPpeDefaultCycle();
+  _projPpeCycle = projPpeClampCycle(_projPpeCycle);
+  return _projPpeCycle;
+}
+
+function projPpeMoveCycle(direction) {
+  projSavePpeFromForm(projPpeSelectedCycle());
+  const cycles = projPpeCycles();
+  const idx = cycles.findIndex(c => c.key === projPpeSelectedCycle());
+  const next = Math.max(0, Math.min(cycles.length - 1, idx + direction));
+  _projPpeCycle = cycles[next].key;
+  projRenderPpePage();
+}
+
+function projPpeSelectCycle(value) {
+  projSavePpeFromForm(projPpeSelectedCycle());
+  _projPpeCycle = projPpeClampCycle(value);
+  projRenderPpePage();
+}
+
+function projPpeEntry(project, cycleKey) {
+  const map = project?.ppe_ciclos;
+  if(!map || typeof map !== 'object' || Array.isArray(map)) return { texto: '' };
+  const entry = map[cycleKey];
+  if(typeof entry === 'string') return { texto: entry };
+  return entry && typeof entry === 'object' ? entry : { texto: '' };
+}
+
+function projPpeText(project, cycleKey) {
+  return String(projPpeEntry(project, cycleKey).texto || '');
+}
+
+function projPpeActiveProjects() {
+  return (PROJETOS || [])
+    .filter(p => p.status === 'ativo')
+    .slice()
+    .sort((a, b) => {
+      const programCompare = projProgramaNome(a).localeCompare(projProgramaNome(b), 'pt-BR');
+      return programCompare || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
+    });
+}
+
+function projRenderPpePage() {
+  projLoad();
+  const el = document.getElementById('proj-ppe-content');
+  if(!el) return;
+  if(!projCanWriteExec()) {
+    el.innerHTML = '<div class="proj-ib proj-ib-amber">A aba PPE é exclusiva para usuários EPP. Usuários com acesso apenas de visualização não podem editar ou gerar este relatório.</div>';
+    return;
+  }
+  const cycle = projPpeSelectedCycle();
+  const cycles = projPpeCycles();
+  const cycleIdx = cycles.findIndex(c => c.key === cycle);
+  const ativos = projPpeActiveProjects();
+  const preenchidos = ativos.filter(p => projPpeText(p, cycle).trim()).length;
+  el.innerHTML = `
+    <div class="proj-ppe-toolbar">
+      <div>
+        <div class="proj-ppe-title">Metas PPE do próximo ciclo</div>
+        <div class="proj-ppe-subtitle">Textos salvos por trimestre para compor o relatório à Coordenação de Gestão Estratégica.</div>
+      </div>
+      <div class="proj-ppe-cycle">
+        <button type="button" class="proj-ppe-arrow" ${cycleIdx <= 0 ? 'disabled' : ''} onclick="projPpeMoveCycle(-1)" title="Ciclo anterior">‹</button>
+        <select class="proj-ppe-select" aria-label="Selecionar ciclo PPE" onchange="projPpeSelectCycle(this.value)">
+          ${cycles.map(c => `<option value="${projEsc(c.key)}" ${c.key === cycle ? 'selected' : ''}>${projEsc(c.label)}</option>`).join('')}
+        </select>
+        <button type="button" class="proj-ppe-arrow" ${cycleIdx >= cycles.length - 1 ? 'disabled' : ''} onclick="projPpeMoveCycle(1)" title="Próximo ciclo">›</button>
+      </div>
+    </div>
+    <div class="proj-ppe-summary">
+      <div><strong>${ativos.length}</strong><span>Projetos ativos</span></div>
+      <div><strong>${preenchidos}</strong><span>Com metas indicadas</span></div>
+      <div><strong>${projEsc(projPpeCycleLabel(cycle))}</strong><span>Ciclo selecionado</span></div>
+    </div>
+    ${ativos.length ? `<div class="proj-ppe-list">
+      ${ativos.map(p => `
+        <div class="proj-ppe-card">
+          <div class="proj-ppe-card-head">
+            ${projIconHtml(p, 'proj-status-icon')}
+            <div>
+              <div class="proj-ppe-project">${projEsc(p.nome || 'Projeto')}</div>
+              <div class="proj-ppe-meta">Programa: ${projEsc(projProgramaNome(p))} · Gerente: ${projEsc(p.gerente || 'Não informado')} · ${p.percentual || 0}%</div>
+            </div>
+          </div>
+          <textarea class="proj-fi proj-ppe-text" data-proj-id="${projEsc(String(p.id))}" rows="4" placeholder="Indique as atividades/metas deste projeto para o PPE no ciclo selecionado..." onchange="projSalvarPpeTexto('${projEsc(String(p.id))}', '${projEsc(cycle)}', this.value)">${projEsc(projPpeText(p, cycle))}</textarea>
+        </div>
+      `).join('')}
+    </div>` : '<div style="text-align:center;padding:2rem;color:#b0b8cc;font-size:13px">Nenhum projeto ativo encontrado.</div>'}
+  `;
+}
+
+function projSalvarPpeTexto(projId, cycleKey, value, silent) {
+  if(!projCanWriteExec()) {
+    if(!silent) projToast('Somente EPP pode editar as metas PPE.', '#d97706');
+    return;
+  }
+  const safeCycle = projPpeClampCycle(cycleKey);
+  projLoad();
+  const proj = PROJETOS.find(p => String(p.id) === String(projId));
+  if(!proj) return;
+  if(!proj.ppe_ciclos || typeof proj.ppe_ciclos !== 'object' || Array.isArray(proj.ppe_ciclos)) proj.ppe_ciclos = {};
+  proj.ppe_ciclos[safeCycle] = {
+    texto: String(value || ''),
+    atualizado_em: new Date().toISOString(),
+    atualizado_por: projUserDisplayName(typeof usuarioLogado !== 'undefined' ? usuarioLogado : null) || ''
+  };
+  projSave();
+  if(!silent) projToast('Meta PPE salva.');
+}
+
+function projSavePpeFromForm(cycleKey = projPpeSelectedCycle()) {
+  if(!projCanWriteExec()) return;
+  let changed = false;
+  const safeCycle = projPpeClampCycle(cycleKey);
+  document.querySelectorAll('.proj-ppe-text[data-proj-id]').forEach(txt => {
+    const proj = PROJETOS.find(p => String(p.id) === String(txt.dataset.projId));
+    if(!proj) return;
+    const current = projPpeText(proj, safeCycle);
+    if(current !== txt.value) {
+      if(!proj.ppe_ciclos || typeof proj.ppe_ciclos !== 'object' || Array.isArray(proj.ppe_ciclos)) proj.ppe_ciclos = {};
+      proj.ppe_ciclos[safeCycle] = {
+        texto: txt.value,
+        atualizado_em: new Date().toISOString(),
+        atualizado_por: projUserDisplayName(typeof usuarioLogado !== 'undefined' ? usuarioLogado : null) || ''
+      };
+      changed = true;
+    }
+  });
+  if(changed) projSave();
+}
+
+function projExportPpePDF() {
+  if(!projEnsureWriteExec('Somente EPP pode gerar o relatório PPE.')) return;
+  projLoad();
+  const cycle = projPpeSelectedCycle();
+  projSavePpeFromForm(cycle);
+  const blob = new Blob([projBuildPpeReportHTML(cycle)], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const w = window.open(url, '_blank');
+  if(!w) {
+    projToast('Permita pop-ups para exportar o PDF.', '#d97706');
+    URL.revokeObjectURL(url);
+  }
+}
+
+function projBuildPpeReportHTML(cycleKey) {
+  const cycle = projPpeClampCycle(cycleKey);
+  const label = projPpeCycleLabel(cycle);
+  const data = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+  const reportLogo = new URL(PROJ_CAGE_REPORT_LOGO, window.location.href).href;
+  const ativos = projPpeActiveProjects();
+  const rows = ativos
+    .map(p => ({ p, texto: projPpeText(p, cycle).trim() }))
+    .filter(row => row.texto);
+  const groups = {};
+  rows.forEach(row => {
+    const program = projProgramaNome(row.p);
+    if(!groups[program]) groups[program] = [];
+    groups[program].push(row);
+  });
+  const groupsHtml = Object.entries(groups).map(([program, items]) => `
+    <section class="ppe-program">
+      <h2>${projEsc(program)}</h2>
+      ${items.map(({p, texto}) => `
+        <article class="ppe-card">
+          <div>
+            <h3>${projEsc(p.nome || 'Projeto')}</h3>
+            <div class="ppe-sub">Gerente: ${projEsc(p.gerente || 'Não informado')} · Patrocinador: ${projEsc(p.patrocinador || 'Não informado')} · Conclusão: ${p.percentual || 0}%</div>
+          </div>
+          <div class="ppe-note"><span>Metas/atividades indicadas para o PPE</span><p>${projEsc(texto).replace(/\n/g, '<br>')}</p></div>
+        </article>
+      `).join('')}
+    </section>
+  `).join('');
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório PPE - ${projEsc(label)}</title><style>:root{--blue:#005a9c;--teal:#00bfb3;--ink:#172033;--muted:#5f6b80}@page{size:A4;margin:13mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:var(--ink);margin:0;background:#fff}.ppe-cover{display:flex;align-items:center;justify-content:space-between;gap:22px;padding:18px 20px;margin-bottom:18px;border:1px solid #d8e6f5;border-left:8px solid var(--blue);background:linear-gradient(90deg,#f5fbff,#fff)}.ppe-logo{width:185px;max-height:72px;object-fit:contain}.ppe-kicker{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--blue)}h1{margin:4px 0;font-size:27px;color:#0f2746}.ppe-meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.ppe-date{font-size:12px;color:var(--muted)}.ppe-ref{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--blue);border:1px solid #cfe0f4;background:#f8fbff;border-radius:999px;padding:3px 9px}.ppe-intro{border:1px solid #d9e5f5;border-radius:10px;background:#f8fbff;padding:12px 14px;margin-bottom:16px;font-size:12px;line-height:1.5;color:#334155}.ppe-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}.ppe-chip{border:1px solid #d9e5f5;border-radius:8px;padding:9px 12px;font-size:12px;background:#f8fbff}.ppe-chip strong{font-size:20px;color:var(--blue);display:block}.ppe-program{margin-top:20px}.ppe-program h2{font-size:16px;color:var(--blue);border-bottom:2px solid var(--teal);padding-bottom:5px;margin:0 0 12px}.ppe-card{border:1px solid #d9e2ef;border-radius:10px;padding:14px;margin-bottom:12px;break-inside:avoid;background:#fff}h3{font-size:15px;margin:0;color:#0f2746}.ppe-sub{font-size:10.5px;color:#6b7588;margin-top:3px}.ppe-note{margin-top:10px;border-left:3px solid #f59e0b;padding-left:12px}.ppe-note span{display:block;font-size:9px;color:var(--blue);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}.ppe-note p{font-size:12px;line-height:1.5;margin:0;color:#334155}.ppe-empty{padding:14px;border:1px dashed #d0d7e8;border-radius:10px;color:#5f6b80;font-size:12px}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><header class="ppe-cover"><div><div class="ppe-kicker">CAGE-RS · Escritório de Projetos e Processos</div><h1>Relatório de Metas PPE</h1><div class="ppe-meta"><span class="ppe-date">Emitido em ${data}</span><span class="ppe-ref">${projEsc(label)}</span></div></div><img class="ppe-logo" src="${reportLogo}" alt="CAGE"></header><section class="ppe-intro">Relatório gerado a partir do SIGA para indicar à Coordenação de Gestão Estratégica as atividades e metas de projetos propostas para o Prêmio de Produtividade e Eficiência no ciclo selecionado.</section><div class="ppe-summary"><div class="ppe-chip"><strong>${ativos.length}</strong>Projetos ativos</div><div class="ppe-chip"><strong>${rows.length}</strong>Projetos com metas PPE</div><div class="ppe-chip"><strong>${projEsc(label)}</strong>Ciclo</div></div>${groupsHtml || '<div class="ppe-empty">Nenhuma meta PPE foi indicada para este ciclo.</div>'}<script>setTimeout(function(){window.print();},450);<\/script></body></html>`;
 }
 
 function projRenderStatusReport() {
