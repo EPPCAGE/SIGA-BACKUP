@@ -940,7 +940,7 @@ function projRenderInicio() {
       axisInner += `<div class="proj-launchpad-axis-lbl" style="left:${pct}%">${pct}%</div>`;
     }
 
-    lpContainer.innerHTML = ` // lgtm[js/xss-through-dom]
+    lpContainer.innerHTML = `
       <div class="proj-launchpad-wrap">
         <div class="proj-launchpad-grid-bg"></div>
         <div class="proj-launchpad-glow"></div>
@@ -1316,7 +1316,7 @@ function projRenderPortfolio() {
       html += '<div style="font-family:\'Syne\',sans-serif;font-size:13px;font-weight:700;color:#1a2540;margin:1.5rem 0 .8rem">Projetos sem programa</div>';
       html += soltos.map(projRenderProjItem).join('');
     }
-    el.innerHTML = html; // lgtm[js/xss-through-dom]
+    el.innerHTML = html;
   }
 
   // Link to concluded projects
@@ -1351,7 +1351,7 @@ function projRenderConcluidos() {
     html = '<div style="text-align:center;padding:3rem;color:#b0b8cc;font-size:13px">Nenhum projeto concluído ou cancelado.</div>';
   }
   el.textContent = '';
-  el.insertAdjacentHTML('beforeend', html); // lgtm[js/xss-through-dom]
+  el.insertAdjacentHTML('beforeend', html);
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -1587,7 +1587,7 @@ function projRenderPpePage() {
   const cycleIdx = cycles.findIndex(c => c.key === cycle);
   const ativos = projPpeActiveProjects();
   const preenchidos = ativos.filter(p => projPpeText(p, cycle).trim()).length;
-  el.innerHTML = ` // lgtm[js/xss-through-dom]
+  el.innerHTML = `
     <div class="proj-ppe-toolbar">
       <div>
         <div class="proj-ppe-title">Metas PPE do próximo ciclo</div>
@@ -1718,7 +1718,7 @@ function projRenderStatusReport() {
     el.innerHTML = '<div style="text-align:center;padding:2rem;color:#b0b8cc;font-size:13px">Nenhum projeto em andamento encontrado.</div>';
     return;
   }
-  el.innerHTML = ` // lgtm[js/xss-through-dom]
+  el.innerHTML = `
     <div class="proj-ib proj-ib-blue">Preencha a observação livre de cada projeto. Esse texto será exibido ao lado do projeto no PDF do Relatório Executivo.</div>
     <div class="proj-status-grid">
       ${ativos.map(p => `
@@ -2573,7 +2573,7 @@ function projGoReunioesProj(projId) {
     html += `</div></div>`;
   }
 
-  el.innerHTML = html; // lgtm[js/xss-through-dom]
+  el.innerHTML = html;
 }
 
 // ── Helper: render a single reunião item ──
@@ -2816,7 +2816,7 @@ function projRenderDetalhe(p) {
     <div class="proj-tab ${i===0?'on':''}" onclick="projDetalheTab('${f.id}',this)">${f.label}</div>
   `).join('');
 
-  el.innerHTML = ` // lgtm[js/xss-through-dom]
+  el.innerHTML = `
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.4rem;flex-wrap:wrap">
       <button type="button" class="proj-btn" style="font-size:12px;padding:5px 11px" onclick="projGo('portfolio',document.getElementById('pnb-portfolio'))">← Portfólio</button>
       <div style="font-size:28px;cursor:pointer;padding:2px 6px;border-radius:8px;border:1px dashed transparent;transition:all .2s" title="Alterar ícone" onclick="projShowEmojiPicker(${JSON.stringify(String(p.id))})" onmouseover="this.style.borderColor='#1A5DC8';this.style.background='#ebf1fc'" onmouseout="this.style.borderColor='transparent';this.style.background='none'">${p.icone_url ? '<img src="'+projEsc(p.icone_url)+'" style="width:32px;height:32px;object-fit:cover;border-radius:6px">' : projEsc(p.icone_emoji || '📁')}</div>
@@ -4640,7 +4640,7 @@ function progAbrirModalEditar(id) {
 function _progModal(pg, titulo) {
   const modal = document.createElement('div');
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1rem;overflow-y:auto';
-  modal.innerHTML = ` // lgtm[js/xss-through-dom]
+  modal.innerHTML = `
     <div style="background:#fff;border-radius:16px;padding:1.6rem;width:100%;max-width:540px;box-shadow:0 16px 48px rgba(0,0,0,.2)">
       <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:#1a2540;margin-bottom:1.2rem">${titulo}</div>
       <div class="proj-fg">
@@ -4748,7 +4748,7 @@ function progAbrirDetalhe(id) {
 
   const modal = document.createElement('div');
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1rem;overflow-y:auto';
-  modal.innerHTML = ` // lgtm[js/xss-through-dom]
+  modal.innerHTML = `
     <div style="background:#fff;border-radius:16px;padding:1.8rem;width:100%;max-width:720px;box-shadow:0 16px 48px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;gap:12px">
         <div style="flex:1;min-width:0">

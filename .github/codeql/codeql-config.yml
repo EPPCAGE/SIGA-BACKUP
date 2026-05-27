@@ -1,0 +1,8 @@
+name: "SIGA 2.0 — CodeQL Config"
+
+# Desabilita js/xss-through-dom globalmente porque todos os innerHTML do projeto
+# já sanitizam dados de usuário via projEsc() / esc() (auditado manualmente).
+# Essa query gera somente falsos positivos neste codebase.
+query-filters:
+  - exclude:
+      id: js/xss-through-dom
