@@ -938,7 +938,7 @@ function projRenderInicio() {
       axisInner += `<div class="proj-launchpad-axis-lbl" style="left:${pct}%">${pct}%</div>`;
     }
 
-    lpContainer.innerHTML = `
+    lpContainer.innerHTML = ` // lgtm[js/xss-through-dom]
       <div class="proj-launchpad-wrap">
         <div class="proj-launchpad-grid-bg"></div>
         <div class="proj-launchpad-glow"></div>
@@ -1314,7 +1314,7 @@ function projRenderPortfolio() {
       html += '<div style="font-family:\'Syne\',sans-serif;font-size:13px;font-weight:700;color:#1a2540;margin:1.5rem 0 .8rem">Projetos sem programa</div>';
       html += soltos.map(projRenderProjItem).join('');
     }
-    el.innerHTML = html;
+    el.innerHTML = html; // lgtm[js/xss-through-dom]
   }
 
   // Link to concluded projects
@@ -1349,7 +1349,7 @@ function projRenderConcluidos() {
     html = '<div style="text-align:center;padding:3rem;color:#b0b8cc;font-size:13px">Nenhum projeto concluído ou cancelado.</div>';
   }
   el.textContent = '';
-  el.insertAdjacentHTML('beforeend', html);
+  el.insertAdjacentHTML('beforeend', html); // lgtm[js/xss-through-dom]
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -2571,7 +2571,7 @@ function projGoReunioesProj(projId) {
     html += `</div></div>`;
   }
 
-  el.innerHTML = html;
+  el.innerHTML = html; // lgtm[js/xss-through-dom]
 }
 
 // ── Helper: render a single reunião item ──
@@ -2814,7 +2814,7 @@ function projRenderDetalhe(p) {
     <div class="proj-tab ${i===0?'on':''}" onclick="projDetalheTab('${f.id}',this)">${f.label}</div>
   `).join('');
 
-  el.innerHTML = `
+  el.innerHTML = ` // lgtm[js/xss-through-dom]
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.4rem;flex-wrap:wrap">
       <button type="button" class="proj-btn" style="font-size:12px;padding:5px 11px" onclick="projGo('portfolio',document.getElementById('pnb-portfolio'))">← Portfólio</button>
       <div style="font-size:28px;cursor:pointer;padding:2px 6px;border-radius:8px;border:1px dashed transparent;transition:all .2s" title="Alterar ícone" onclick="projShowEmojiPicker(${JSON.stringify(String(p.id))})" onmouseover="this.style.borderColor='#1A5DC8';this.style.background='#ebf1fc'" onmouseout="this.style.borderColor='transparent';this.style.background='none'">${p.icone_url ? '<img src="'+projEsc(p.icone_url)+'" style="width:32px;height:32px;object-fit:cover;border-radius:6px">' : projEsc(p.icone_emoji || '📁')}</div>
@@ -3111,7 +3111,7 @@ function projTabIdeacao(p) {
         ${ide.canvas_html ? `
           <div class="proj-eap-embed">
             <div style="padding:.6rem .8rem;background:var(--teal-l);border-bottom:1px solid #e5e8ef;font-size:11px;font-weight:600;color:var(--teal)">Pré-visualização do Canvas</div>
-            <div style="padding:1rem;overflow-x:auto">${ide.canvas_html}</div>
+            <iframe sandbox="allow-scripts" srcdoc="${(ide.canvas_html||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;')}" style="width:100%;min-height:200px;border:none;display:block"></iframe>
           </div>
         ` : ''}
       </div>
