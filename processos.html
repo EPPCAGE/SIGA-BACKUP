@@ -12129,7 +12129,7 @@ async function gerarPopPdf(){
   try{anexo=await _popPdfAnexo(p);}catch(ex){console.warn('_popPdfAnexo:',ex);}
   if(btn){btn.disabled=false;btn.textContent='⬇ Gerar POP em PDF';}
   const cageLogo=await _fetchCageLogoBase64();
-  const nomeCSS=(p?.nome||'').replaceAll(/\\/g,'\\').replaceAll(/"/g,'"').replaceAll(/[\r\n]/g,' ');
+  const nomeCSS=(p?.nome||'').replaceAll(/[\r\n]/g,' ');
   const _pgHdr=`@page{size:A4 portrait;margin:22mm 20mm;@top-left{content:"POP — Procedimento Operacional Padrão${nomeCSS?' — '+nomeCSS:''}";font-family:'Segoe UI',Arial,sans-serif;font-size:10px;font-weight:700;color:#1a1a2e;vertical-align:bottom;padding-bottom:3px;border-bottom:1px solid #e0e0f0}}`;
   const logoFixed='';
   const fullHtml=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${nome}</title>
@@ -12166,7 +12166,7 @@ async function gerarPopPdfDireto(){
   let anexo='';
   try{anexo=await _popPdfAnexo(p);}catch(ex){console.warn('_popPdfAnexo:',ex);}
   const cageLogo=await _fetchCageLogoBase64();
-  const nomeCSS=(p?.nome||'').replaceAll(/\\/g,'\\').replaceAll(/"/g,'"').replaceAll(/[\r\n]/g,' ');
+  const nomeCSS=(p?.nome||'').replaceAll(/[\r\n]/g,' ');
   const _pgHdr=`@page{size:A4 portrait;margin:22mm 20mm;@top-left{content:"POP — Procedimento Operacional Padrão${nomeCSS?' — '+nomeCSS:''}";font-family:'Segoe UI',Arial,sans-serif;font-size:10px;font-weight:700;color:#1a1a2e;vertical-align:bottom;padding-bottom:3px;border-bottom:1px solid #e0e0f0}}`;
   const logoFixed='';
   const fullHtml=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${nome}</title>
