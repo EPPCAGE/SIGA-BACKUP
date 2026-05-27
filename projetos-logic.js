@@ -1598,6 +1598,52 @@ function projPpeText(project, cycleKey) {
   return String(projPpeEntry(project, cycleKey).texto || '');
 }
 
+function projSetPpeText(project, cycleKey, value) {
+  if(!project.ppe_ciclos || typeof project.ppe_ciclos !== 'object' || Array.isArray(project.ppe_ciclos)) project.ppe_ciclos = {};
+  project.ppe_ciclos[cycleKey] = {
+    texto: String(value || ''),
+    atualizado_em: new Date().toISOString(),
+    atualizado_por: projUserDisplayName(typeof usuarioLogado !== 'undefined' ? usuarioLogado : null) || ''
+  };
+}
+
+function projFinishPpeCloudSave() {
+  _projFbState.saving = false;
+  if(_projFbState.pendingRender) {
+    _projFbState.pendingRender = false;
+    projRenderCurrentPage();
+  }
+}
+
+async function projPersistPpeProjects(projects, silent) {
+  const targets = (projects || []).filter(Boolean);
+  if(!targets.length) return true;
+  if(!fbReady()) {
+    const saved = projSave();
+    if(saved && !silent) projToast('Meta PPE salva.');
+    return saved;
+  }
+  _projFbState.saving = true;
+  try {
+    await Promise.all(targets.map(project => projetosRepository.set(project.id, _fsClean({
+      ppe_ciclos: project.ppe_ciclos || {}
+    }), { merge: true })));
+    try {
+      localStorage.setItem(PROJ_STORAGE_KEY, JSON.stringify(PROJETOS || []));
+    } catch(e) {
+      console.warn('projPersistPpeProjects/cache:', e.message);
+    }
+    if(!silent) projToast('Meta PPE salva.');
+    return true;
+  } catch(e) {
+    console.warn('projPersistPpeProjects:', e.message);
+    if(!silent) projToast('Erro ao salvar meta PPE na nuvem: ' + e.message, '#dc2626');
+    return false;
+  } finally {
+    projFinishPpeCloudSave();
+  }
+}
+
 function projPpeActiveProjects() {
   return (PROJETOS || [])
     .filter(p => p.status === 'ativo')
@@ -1666,35 +1712,26 @@ function projSalvarPpeTexto(projId, cycleKey, value, silent) {
   projLoad();
   const proj = PROJETOS.find(p => String(p.id) === String(projId));
   if(!proj) return;
-  if(!proj.ppe_ciclos || typeof proj.ppe_ciclos !== 'object' || Array.isArray(proj.ppe_ciclos)) proj.ppe_ciclos = {};
-  proj.ppe_ciclos[safeCycle] = {
-    texto: String(value || ''),
-    atualizado_em: new Date().toISOString(),
-    atualizado_por: projUserDisplayName(typeof usuarioLogado !== 'undefined' ? usuarioLogado : null) || ''
-  };
-  projSave();
-  if(!silent) projToast('Meta PPE salva.');
+  projSetPpeText(proj, safeCycle, value);
+  projPersistPpeProjects([proj], silent).catch(() => {});
 }
 
 function projSavePpeFromForm(cycleKey = projPpeSelectedCycle()) {
   if(!projCanWriteExec()) return;
   let changed = false;
+  const changedProjects = [];
   const safeCycle = projPpeClampCycle(cycleKey);
   document.querySelectorAll('.proj-ppe-text[data-proj-id]').forEach(txt => {
     const proj = PROJETOS.find(p => String(p.id) === String(txt.dataset.projId));
     if(!proj) return;
     const current = projPpeText(proj, safeCycle);
     if(current !== txt.value) {
-      if(!proj.ppe_ciclos || typeof proj.ppe_ciclos !== 'object' || Array.isArray(proj.ppe_ciclos)) proj.ppe_ciclos = {};
-      proj.ppe_ciclos[safeCycle] = {
-        texto: txt.value,
-        atualizado_em: new Date().toISOString(),
-        atualizado_por: projUserDisplayName(typeof usuarioLogado !== 'undefined' ? usuarioLogado : null) || ''
-      };
+      projSetPpeText(proj, safeCycle, txt.value);
+      changedProjects.push(proj);
       changed = true;
     }
   });
-  if(changed) projSave();
+  if(changed) projPersistPpeProjects(changedProjects, true).catch(() => {});
 }
 
 function projExportPpePDF() {
