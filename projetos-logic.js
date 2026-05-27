@@ -326,11 +326,13 @@ async function projFbSaveAll(options){
 function projFbAutoSave(label){
   if(!fbReady()) return Promise.resolve();
   clearTimeout(_projFbState.saveTimer);
+  _projFbState.saving = true;
   return new Promise((resolve, reject)=>{
     _projFbState.saveTimer = setTimeout(()=>{
     projFbSaveAll({includeConfig: label === 'listas' || label === 'importar'}).catch(e=>{
       console.warn('projFbAutoSave('+label+'):', e.message);
       try { projToast('Erro ao salvar na nuvem: ' + e.message, '#dc2626'); } catch(_e){}
+      _projFbState.saving = false;
       reject(e);
     }).then(resolve);
     }, 500);
