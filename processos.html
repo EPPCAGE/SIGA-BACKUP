@@ -10885,12 +10885,9 @@ function _bpmnGetSubprocessChildren(subEl, GW_TAGS, TASK_TAGS, laneMap){
   const taskTags=['startEvent','endEvent','intermediateThrowEvent','intermediateCatchEvent',
     'task','userTask','serviceTask','sendTask','receiveTask','manualTask','scriptTask',
     'exclusiveGateway','inclusiveGateway','parallelGateway','complexGateway'];
-  const directChildren=e=>e.parentElement===subEl;
-  const allDesc=Array.from(subEl.getElementsByTagName('*'));
-  console.log('[BPMN-SUB] subEl.id=',subEl.getAttribute('id'),'totalDescendants=',allDesc.length);
-  console.log('[BPMN-SUB] directChildren tags=',allDesc.filter(directChildren).map(e=>e.localName));
   const nodeInfo={};
-  _bpmnFindAll(subEl, taskTags).filter(directChildren).forEach(e=>{
+  // Busca em todos os descendentes (não só filhos diretos) para suportar subprocessos aninhados
+  _bpmnFindAll(subEl, taskTags).forEach(e=>{
     const tag=e.localName.toLowerCase();
     const id=e.getAttribute('id'); if(!id) return;
     const typeInfo=_bpmnNodeType(tag, GW_TAGS, TASK_TAGS);
@@ -10898,11 +10895,10 @@ function _bpmnGetSubprocessChildren(subEl, GW_TAGS, TASK_TAGS, laneMap){
     const gatewayDir=GW_TAGS.has(tag)?(e.getAttribute('gatewayDirection')||''):'';
     nodeInfo[id]={xmlId:id, nome:e.getAttribute('name')||'', executor:laneMap[id]||'', gatewayDir, ...typeInfo};
   });
-  console.log('[BPMN-SUB] nodeInfo keys=',Object.keys(nodeInfo));
   if(!Object.keys(nodeInfo).length) return [];
   const outgoing={};
   const flowLabels={};
-  _bpmnFindAll(subEl, ['sequenceFlow']).filter(directChildren).forEach(sf=>{
+  _bpmnFindAll(subEl, ['sequenceFlow']).forEach(sf=>{
     const src=sf.getAttribute('sourceRef'), tgt=sf.getAttribute('targetRef');
     if(!src||!tgt) return;
     if(!outgoing[src]) outgoing[src]=[];
@@ -10916,14 +10912,11 @@ function _bpmnExpandSubprocesses(elems, xml, GW_TAGS, TASK_TAGS, laneMap){
   const result=[];
   elems.forEach(elem=>{
     if(!elem.isSubProcess){ result.push(elem); return; }
-    console.log('[BPMN-EXP] expanding subprocess bpmn_id=',elem.bpmn_id,'nome=',elem.nome);
     const subEls=Array.from(xml.getElementsByTagName('*')).filter(
       e=>e.localName.toLowerCase()==='subprocess'&&e.getAttribute('id')===elem.bpmn_id
     );
-    console.log('[BPMN-EXP] subEls found=',subEls.length);
     if(!subEls.length){ result.push(elem); return; }
     const children=_bpmnGetSubprocessChildren(subEls[0], GW_TAGS, TASK_TAGS, laneMap);
-    console.log('[BPMN-EXP] children=',children.length);
     if(!children.length){ result.push(elem); return; }
     result.push(elem);
     children.forEach(c=>{ c.fromSubProcess=true; result.push(c); });
