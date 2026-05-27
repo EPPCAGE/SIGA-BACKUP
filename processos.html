@@ -316,6 +316,8 @@ select.fi{cursor:pointer}
 .et-evento-fim{background:var(--red-b);color:var(--red)}
 .et-decisao{background:var(--amber-l);color:var(--amber)}
 .et-coment{background:var(--bg3);color:var(--ink3)}
+.et-subproc{background:var(--purple-l);color:var(--purple)}
+.etapa-sub-filho{border-left:3px solid var(--purple-b);padding-left:.5rem;margin-left:.5rem}
 .etapa-nome{font-size:13px;font-weight:600;color:var(--ink);flex:1}
 /* audit executive report */
 .aud-report{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);overflow:hidden;margin-bottom:.5rem}
@@ -10325,7 +10327,8 @@ function inferNatureza(nome){
 }
 let etapasIdC=100;
 
-function tipoCls(t,sub){
+function tipoCls(t,sub,isSubProc){
+  if(isSubProc)      return 'et-subproc';
   if(t==='Atividade') return 'et-ativ';
   if(t==='Decisao')  return 'et-decisao';
   if(t==='Evento')   return sub==='Fim' ? 'et-evento-fim' : 'et-evento';
@@ -10591,7 +10594,7 @@ function renderEtapasProc(etapas, reworkData=null){
     const reworkLabel=isConfirmado?'Retrabalho':'Retrabalho?';
     const reworkBadge=isSuspeito?`<button type="button" onclick="_toggleRetrabalho('${esc(e.id)}','${which}')" title="${reworkTitle}" style="border:none;cursor:pointer;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;flex-shrink:0;background:${reworkBg};color:${reworkColor};border:1px solid ${reworkBorder}" id="rework-badge-${which}-${esc(e.id)}">↺ ${reworkLabel}</button>`:'';
     return `
-    <div class="etapa-proc" id="ep-${e.id}" draggable="true"
+    <div class="etapa-proc${e.fromSubProcess?' etapa-sub-filho':''}" id="ep-${e.id}" draggable="true"
       onmouseenter="bpmnHoverEtapa(event,'${e.id}')"
       onmouseleave="bpmnHoverEtapa(event,null)"
       ondragstart="onEtapaDragStart(event,'${e.id}')"
@@ -10601,7 +10604,7 @@ function renderEtapasProc(etapas, reworkData=null){
       <div class="etapa-proc-hd">
         <span class="etapa-drag-handle" title="Arrastar para reordenar">⠿</span>
         <div class="etapa-seq">${e.seq}</div>
-        <span class="etapa-tipo ${tipoCls(e.tipo,e.subtipo_evento)}">${e.tipo}${e.subtipo_evento?' · '+e.subtipo_evento:''}</span>
+        <span class="etapa-tipo ${tipoCls(e.tipo,e.subtipo_evento,e.isSubProcess)}">${e.isSubProcess?'Subprocesso':e.tipo}${e.subtipo_evento?' · '+e.subtipo_evento:''}</span>
         <div class="etapa-nome">
           ${e.nome}
           ${_gwBadge(e)}
@@ -10820,7 +10823,8 @@ function _bpmnNodeToEtapa(node, id, gwCtx){
     tipo:node.tipo, subtipo_evento:node.subtipo||null,
     natureza:node.natureza||naturezaFallback, modo:node.modo||null,
     executor:node.executor||'', desc:node.desc||'', caminhos:[],
-    vinculo_gw: gwCtx ? {gw_ep_id:gwCtx.epId,label:gwCtx.label} : null
+    vinculo_gw: gwCtx ? {gw_ep_id:gwCtx.epId,label:gwCtx.label} : null,
+    ...(node.isSubProcess && {isSubProcess:true})
   };
 }
 function _bpmnPopulateGatewayPaths(elem, id, outgoing, flowLabels){
@@ -10917,7 +10921,8 @@ function _bpmnExpandSubprocesses(elems, xml, GW_TAGS, TASK_TAGS, laneMap){
     if(!subEls.length){ result.push(elem); return; }
     const children=_bpmnGetSubprocessChildren(subEls[0], GW_TAGS, TASK_TAGS, laneMap);
     if(!children.length){ result.push(elem); return; }
-    children.forEach(c=>result.push(c));
+    result.push(elem);
+    children.forEach(c=>{ c.fromSubProcess=true; result.push(c); });
   });
   return result;
 }
