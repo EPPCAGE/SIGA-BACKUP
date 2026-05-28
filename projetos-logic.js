@@ -615,6 +615,7 @@ function projFixDefaults(p) {
     programa_id: p.programa_id || null,
     macroprocessos: p.macroprocessos || [],
     objetivos_estrategicos: p.objetivos_estrategicos || [],
+    ppe_ciclos: (p.ppe_ciclos && typeof p.ppe_ciclos === 'object' && !Array.isArray(p.ppe_ciclos)) ? p.ppe_ciclos : {},
     // Dados de cada fase
     aprovacao: p.aprovacao || {
       motivo_inicio: '', aprovado: false, dt_aprovacao: '', obs: ''
