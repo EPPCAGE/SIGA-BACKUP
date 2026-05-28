@@ -2206,9 +2206,14 @@ function nextEt(id,p){const et=getEtapas(p||curProc);const i=et.findIndex(e=>e.i
 function prevEt(id,p){const et=getEtapas(p||curProc);const i=et.findIndex(e=>e.id===id);return i>0?et[i-1].id:null;}
 function fBadge(etId){const f=etFase(etId);return '<span class="badge '+(FASE_COR[f]||'bgr')+'">'+(FASE_LABEL[f]||f)+'</span>';}
 function eBadge(etId){return '<span class="badge '+(EBADGE[etId]||'bgr')+'">'+etLb(etId)+'</span>';}
+// Effective next follow-up date: derived from latest meeting when available (field may be stale)
+function _dtProxAcomp(p){
+  const _u=(p.reunioes_acomp||[]).filter(r=>r.data).sort((a,b)=>a.data<b.data?1:-1)[0];
+  return _u?.data?_addDias(_u.data,180):(p.dt_proximo_acompanhamento||'');
+}
 function _eBadgeAcomp(p){
   if(p.etapa!=='acompanha') return eBadge(p.etapa);
-  const dtProx=p.dt_proximo_acompanhamento;
+  const dtProx=_dtProxAcomp(p);
   const vencido=dtProx&&dtProx<new Date().toISOString().slice(0,10);
   return vencido
     ?'<span class="badge" style="background:var(--red-l);color:var(--red)">⚠ Acompanhamento</span>'
@@ -5095,7 +5100,7 @@ function _procMetaLinhaHTML(p){
 }
 function _procCardConcluidoHTML(p){
   const fmtD=d=>d?d.split('-').reverse().join('/'):'—';
-  const dtProx=p.dt_proximo_acompanhamento;
+  const dtProx=_dtProxAcomp(p);
   const acompVenc=dtProx&&dtProx<new Date().toISOString().slice(0,10);
   const concCor=acompVenc?'var(--red)':'var(--ink3)';
   const concWarn=acompVenc?' ⚠':'';
@@ -7087,9 +7092,7 @@ function _acompReuniaoCardHtml(r, i){
 }
 function _acompAgendamentoBannerHtml(p){
   const fmtDtAcomp = d => d ? d.split('-').reverse().join('/') : '—';
-  // Derive from latest registered meeting; fall back to stored field to avoid stale values
-  const _ultimaReu = (p.reunioes_acomp||[]).filter(r=>r.data).sort((a,b)=>a.data<b.data?1:-1)[0];
-  const dtProx = _ultimaReu?.data ? _addDias(_ultimaReu.data, 180) : p.dt_proximo_acompanhamento;
+  const dtProx = _dtProxAcomp(p);
   if(!dtProx) return '';
   const dtEfetiva = p.ent && p.ent.dt_efetiva;
   const diasAteAcomp = Math.round((new Date(dtProx) - Date.now()) / (1000*60*60*24));
