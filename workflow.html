@@ -158,23 +158,23 @@
   <!-- Sidebar de navegação -->
   <nav class="wf-sidebar">
     <div class="wf-sidebar-logo">SIGA <span>Workflow</span></div>
-    <div class="wf-nav-item ativo" onclick="wfNavegar('tarefas')" id="nav-tarefas">
+    <div class="wf-nav-item ativo" onclick="wfNavegar('tarefas')" onkeydown="if(event.key==='Enter'||event.key===' ')wfNavegar('tarefas')" id="nav-tarefas" role="button" tabindex="0">
       <span>📋</span> <span>Minhas Tarefas</span>
       <span class="wf-nav-badge" id="badge-tarefas" style="display:none">0</span>
     </div>
-    <div class="wf-nav-item" onclick="wfNavegar('instancias')" id="nav-instancias">
+    <div class="wf-nav-item" onclick="wfNavegar('instancias')" onkeydown="if(event.key==='Enter'||event.key===' ')wfNavegar('instancias')" id="nav-instancias" role="button" tabindex="0">
       <span>🔄</span> <span>Processos Ativos</span>
     </div>
-    <div class="wf-nav-item" onclick="wfNavegar('novo-processo')" id="nav-novo-processo">
+    <div class="wf-nav-item" onclick="wfNavegar('novo-processo')" onkeydown="if(event.key==='Enter'||event.key===' ')wfNavegar('novo-processo')" id="nav-novo-processo" role="button" tabindex="0">
       <span>▶</span> <span>Iniciar Processo</span>
     </div>
-    <div class="wf-nav-item" onclick="wfNavegar('modelagem')" id="nav-modelagem" data-perfis="ep,gestor">
+    <div class="wf-nav-item" onclick="wfNavegar('modelagem')" onkeydown="if(event.key==='Enter'||event.key===' ')wfNavegar('modelagem')" id="nav-modelagem" data-perfis="ep,gestor" role="button" tabindex="0">
       <span>🗂️</span> <span>Modelagem</span>
     </div>
-    <div class="wf-nav-item" onclick="wfNavegar('formularios')" id="nav-formularios" data-perfis="ep,gestor">
+    <div class="wf-nav-item" onclick="wfNavegar('formularios')" onkeydown="if(event.key==='Enter'||event.key===' ')wfNavegar('formularios')" id="nav-formularios" data-perfis="ep,gestor" role="button" tabindex="0">
       <span>📝</span> <span>Formulários</span>
     </div>
-    <div class="wf-nav-item" onclick="wfNavegar('notificacoes')" id="nav-notificacoes">
+    <div class="wf-nav-item" onclick="wfNavegar('notificacoes')" onkeydown="if(event.key==='Enter'||event.key===' ')wfNavegar('notificacoes')" id="nav-notificacoes" role="button" tabindex="0">
       <span>🔔</span> <span>Notificações</span>
       <span class="wf-nav-badge" id="badge-notif" style="display:none">0</span>
     </div>
