@@ -1,0 +1,45 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "wf_instancia_processos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "solicitante_uid", "order": "ASCENDING" },
+        { "fieldPath": "iniciado_em", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "wf_tarefa_workflows",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "responsavel_uid", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "wf_tarefa_workflows",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "instancia_id", "order": "ASCENDING" },
+        { "fieldPath": "_criado_em", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "wf_transicao_fluxos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "processo_modelo_id", "order": "ASCENDING" },
+        { "fieldPath": "etapa_origem_id", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "wf_etapa_modelos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "processo_modelo_id", "order": "ASCENDING" },
+        { "fieldPath": "ordem", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
