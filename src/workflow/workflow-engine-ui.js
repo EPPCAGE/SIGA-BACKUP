@@ -13,6 +13,13 @@
     camposFormulario: [],
   };
 
+  // Retorna o UID do usuário autenticado de forma segura
+  function _uid() {
+    return _uid()
+      || globalScope.fb?.()?.auth?.currentUser?.uid
+      || null;
+  }
+
   // ── Helpers Firestore ─────────────────────────────────────────────────────
   function _db() { return globalScope.fb().db; }
 
@@ -125,7 +132,8 @@
     if (!el) return;
     el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Carregando…</div>';
     try {
-      const uid = globalScope.usuarioLogado?.uid;
+      const uid = _uid();
+      if (!uid) { el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Usuário não autenticado.</div>'; return; }
       const { where, orderBy } = globalScope.fb();
       const tarefas = await _getAll('wf_tarefa_workflows',
         where('responsavel_uid', '==', uid),
@@ -231,7 +239,7 @@
         await _avancarFluxo(instancia, tarefa.etapa_modelo_id, acao);
       }
 
-      await _registrarHistorico(tarefa.instancia_id, 'tarefa_concluida', globalScope.usuarioLogado?.uid,
+      await _registrarHistorico(tarefa.instancia_id, 'tarefa_concluida', _uid(),
         tarefa.etapa_modelo_id, tarefa.id,
         `Tarefa concluída com ação "${acao}".`,
         { acao_tomada: acao, observacao: obs });
@@ -319,7 +327,8 @@
     if (!el) return;
     el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Carregando…</div>';
     try {
-      const uid = globalScope.usuarioLogado?.uid;
+      const uid = _uid();
+      if (!uid) { el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Usuário não autenticado.</div>'; return; }
       const { where, orderBy } = globalScope.fb();
       const instancias = await _getAll('wf_instancia_processos',
         where('solicitante_uid', '==', uid),
@@ -380,7 +389,7 @@
     const motivo = prompt('Motivo do cancelamento:');
     if (motivo === null) return;
     await _updateDoc('wf_instancia_processos', _st.instanciaAtual.id, { status: 'cancelado', concluido_em: new Date() });
-    await _registrarHistorico(_st.instanciaAtual.id, 'instancia_cancelada', globalScope.usuarioLogado?.uid,
+    await _registrarHistorico(_st.instanciaAtual.id, 'instancia_cancelada', _uid(),
       null, null, `Processo cancelado. Motivo: ${motivo}`, { motivo });
     wfNavWorkflow('instancias');
   }
@@ -417,6 +426,8 @@
     const modeloId = document.getElementById('wf-np-modelo').value;
     const titulo = document.getElementById('wf-np-titulo').value.trim();
     if (!modeloId) { alert('Selecione um processo.'); return; }
+    const uid = _uid();
+    if (!uid) { alert('Usuário não autenticado.'); return; }
     try {
       const modelo = await _getDoc('wf_processo_modelos', modeloId);
       if (!modelo) throw new Error('Modelo não encontrado.');
@@ -429,7 +440,6 @@
         if (arq) snapshotProcesso = { id: arq.id, nome: arq.nome || arq.titulo || '', codigo: arq.codigo || null };
       }
 
-      const uid = globalScope.usuarioLogado?.uid;
       const instanciaId = await _addDoc('wf_instancia_processos', {
         processo_modelo_id: modeloId,
         processo_modelo_versao: modelo.versao || 1,
@@ -486,7 +496,7 @@
     _addDoc('wf_processo_modelos', {
       nome: nome.trim(), descricao: descricao.trim(),
       versao: 1, status: 'rascunho', etapa_inicial: null,
-      criado_por: globalScope.usuarioLogado?.uid,
+      criado_por: _uid(),
       perfis_permitidos: ['ep', 'gestor', 'dono'],
     }).then(id => {
       alert(`Modelo criado! Agora configure as etapas.`);
@@ -817,7 +827,7 @@
       titulo,
       campos: _st.camposFormulario,
       versao: 1,
-      criado_por: globalScope.usuarioLogado?.uid,
+      criado_por: _uid(),
     });
     document.querySelector('#_wf-form-modal')?.remove();
     await wfCarregarFormularios();
