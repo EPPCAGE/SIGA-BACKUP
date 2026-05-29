@@ -1304,6 +1304,10 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
     <svg viewBox="0 0 16 16" fill="none"><path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" stroke-width="1.4"/><path d="M10 2v3h3" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M5 8h6M5 11h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
     Publicações
   </button>
+  <button type="button" class="nav-btn ep-only" onclick="go('workflow',this)" id="nb-workflow">
+    <svg viewBox="0 0 16 16" fill="none"><rect x="1" y="2" width="5" height="4" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="1" y="10" width="5" height="4" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="10" y="6" width="5" height="4" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M6 4h2a2 2 0 012 2v2M6 12h2a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+    Workflow
+  </button>
   <button type="button" class="nav-btn" onclick="go('notificacoes',this)" id="nb-notif">
     <svg viewBox="0 0 16 16" fill="none"><path d="M8 2a5 5 0 00-5 5v3l-1 2h12l-1-2V7a5 5 0 00-5-5z" stroke="currentColor" stroke-width="1.4"/><path d="M6.5 13a1.5 1.5 0 003 0" stroke="currentColor" stroke-width="1.4"/></svg>
     Notificações <span class="nav-cnt" id="nb-notif-cnt">0</span>
@@ -2049,6 +2053,150 @@ Não responda este e-mail.</pre>
   </div>
 </div></div>
 
+<!-- ===== WORKFLOW ===== -->
+<div id="page-workflow" class="page ep-only"><div style="padding:2rem">
+  <div class="ph">
+    <div>
+      <div class="ph-t">Workflow</div>
+      <div class="ph-s">Modele e execute processos institucionais como workflows com formulários, SLA e histórico</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button type="button" class="btn btn-p" id="wf-btn-novo-modelo" onclick="wfAbrirModalNovoModelo()">+ Novo modelo</button>
+      <button type="button" class="btn" id="wf-btn-iniciar" onclick="wfNavWorkflow('iniciar')">▶ Iniciar processo</button>
+    </div>
+  </div>
+
+  <!-- Sub-navegação interna -->
+  <div style="display:flex;gap:4px;border-bottom:1px solid var(--bdr);margin-bottom:1.5rem;padding-bottom:0">
+    <button type="button" class="btn" id="wf-tab-tarefas" onclick="wfNavWorkflow('tarefas')" style="border-radius:6px 6px 0 0;border-bottom:none">📋 Minhas Tarefas</button>
+    <button type="button" class="btn" id="wf-tab-instancias" onclick="wfNavWorkflow('instancias')" style="border-radius:6px 6px 0 0;border-bottom:none">🔄 Ativos</button>
+    <button type="button" class="btn ep-only" id="wf-tab-modelagem" onclick="wfNavWorkflow('modelagem')" style="border-radius:6px 6px 0 0;border-bottom:none">🗂️ Modelagem</button>
+    <button type="button" class="btn ep-only" id="wf-tab-formularios" onclick="wfNavWorkflow('formularios')" style="border-radius:6px 6px 0 0;border-bottom:none">📝 Formulários</button>
+  </div>
+
+  <!-- Painel: Minhas Tarefas -->
+  <div id="wf-painel-tarefas">
+    <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+      <select id="wf-filtro-status" class="fi" onchange="wfCarregarTarefas()" style="max-width:180px">
+        <option value="">Todos os status</option>
+        <option value="pendente">Pendente</option>
+        <option value="em_execucao">Em Execução</option>
+        <option value="vencida">Vencida</option>
+      </select>
+    </div>
+    <div id="wf-lista-tarefas" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+      <div style="color:var(--ink3);font-size:14px">Carregando tarefas…</div>
+    </div>
+  </div>
+
+  <!-- Painel: Processos Ativos -->
+  <div id="wf-painel-instancias" style="display:none">
+    <div id="wf-lista-instancias" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+      <div style="color:var(--ink3);font-size:14px">Carregando…</div>
+    </div>
+  </div>
+
+  <!-- Painel: Iniciar Processo -->
+  <div id="wf-painel-iniciar" style="display:none;max-width:520px">
+    <div class="card" style="padding:20px">
+      <div style="margin-bottom:14px">
+        <label class="lbl">Processo</label>
+        <select id="wf-np-modelo" class="fi" onchange="wfExibirDetalhesModelo()" style="width:100%;margin-top:4px">
+          <option value="">Selecione o processo a iniciar…</option>
+        </select>
+      </div>
+      <div id="wf-np-detalhes" style="display:none;background:var(--blue-l);border:1px solid var(--blue-b);border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px;color:var(--ink)"></div>
+      <div style="margin-bottom:14px">
+        <label class="lbl">Título (opcional)</label>
+        <input type="text" id="wf-np-titulo" class="fi" placeholder="Deixe em branco para gerar automaticamente" style="width:100%;margin-top:4px">
+      </div>
+      <button type="button" class="btn btn-p" onclick="wfIniciarProcesso()">Iniciar Processo</button>
+    </div>
+  </div>
+
+  <!-- Painel: Modelagem -->
+  <div id="wf-painel-modelagem" style="display:none">
+    <div id="wf-lista-modelos" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+      <div style="color:var(--ink3);font-size:14px">Carregando…</div>
+    </div>
+  </div>
+
+  <!-- Painel: Config Modelo (etapas e transições) -->
+  <div id="wf-painel-config-modelo" style="display:none">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <button type="button" class="btn" onclick="wfNavWorkflow('modelagem')">← Voltar</button>
+      <h3 id="wf-config-titulo" style="margin:0;font-size:17px;color:var(--ink)"></h3>
+      <span id="wf-config-status-badge" style="padding:2px 10px;border-radius:999px;font-size:11px;font-weight:600"></span>
+      <button type="button" class="btn btn-p" id="wf-btn-publicar" onclick="wfPublicarModelo()" style="display:none;margin-left:auto">Publicar</button>
+    </div>
+    <!-- Processo mapeado vinculado -->
+    <div style="background:var(--blue-l);border:1px solid var(--blue-b);border-radius:8px;padding:14px;margin-bottom:20px;max-width:680px">
+      <div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:6px">Processo mapeado vinculado</div>
+      <div id="wf-config-arq-info" style="font-size:13px;color:var(--ink)">Nenhum processo vinculado.</div>
+      <button type="button" class="btn btn-sm" style="margin-top:8px" onclick="wfAbrirModalVincularArquitetura()">Vincular processo existente</button>
+    </div>
+    <div style="max-width:680px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <strong style="font-size:14px">Etapas do Fluxo</strong>
+        <button type="button" class="btn btn-p btn-sm" onclick="wfAbrirModalEtapa()">+ Etapa</button>
+      </div>
+      <div id="wf-config-etapas" style="margin-bottom:20px"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <strong style="font-size:14px">Transições</strong>
+        <button type="button" class="btn btn-sm" onclick="wfAbrirModalTransicao()">+ Transição</button>
+      </div>
+      <div id="wf-config-transicoes" style="font-size:13px;color:var(--ink3)">Nenhuma transição.</div>
+    </div>
+  </div>
+
+  <!-- Painel: Formulários -->
+  <div id="wf-painel-formularios" style="display:none">
+    <div id="wf-lista-formularios" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+      <div style="color:var(--ink3);font-size:14px">Carregando…</div>
+    </div>
+  </div>
+
+  <!-- Painel: Executar Tarefa -->
+  <div id="wf-painel-executar" style="display:none;max-width:680px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <button type="button" class="btn" onclick="wfNavWorkflow('tarefas')">← Voltar</button>
+      <h3 id="wf-exec-titulo" style="margin:0;font-size:17px;color:var(--ink)"></h3>
+    </div>
+    <div class="card" style="padding:20px">
+      <div id="wf-exec-instrucoes" style="background:var(--blue-l);border-radius:6px;padding:12px;font-size:13px;color:var(--blue);margin-bottom:16px;display:none"></div>
+      <div id="wf-exec-dados-anteriores" style="display:none;margin-bottom:16px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">Dados do processo</div>
+        <div id="wf-exec-dados-anteriores-conteudo"></div>
+        <hr style="margin:12px 0;border-color:var(--bdr)">
+      </div>
+      <div id="wf-exec-formulario"></div>
+      <div style="margin-top:14px">
+        <label class="lbl">Observação (opcional)</label>
+        <textarea id="wf-exec-obs" class="fi" rows="3" style="width:100%;margin-top:4px;resize:vertical"></textarea>
+      </div>
+      <div id="wf-exec-acoes" style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap"></div>
+    </div>
+  </div>
+
+  <!-- Painel: Histórico -->
+  <div id="wf-painel-historico" style="display:none;max-width:640px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <button type="button" class="btn" onclick="wfNavWorkflow('instancias')">← Voltar</button>
+      <h3 id="wf-hist-titulo" style="margin:0;font-size:17px;color:var(--ink)"></h3>
+      <button type="button" class="btn btn-r btn-sm" id="wf-hist-btn-cancelar" onclick="wfCancelarInstancia()" style="display:none;margin-left:auto">Cancelar processo</button>
+    </div>
+    <div class="card" style="padding:16px;margin-bottom:16px">
+      <div id="wf-hist-resumo"></div>
+    </div>
+    <strong style="font-size:13px">Linha do tempo</strong>
+    <div id="wf-hist-timeline" style="margin-top:12px;padding-left:20px;border-left:2px solid var(--bdr)">
+      <div style="color:var(--ink3);font-size:14px">Carregando…</div>
+    </div>
+  </div>
+
+</div></div>
+<!-- ===== /WORKFLOW ===== -->
+
 </main>
 </div>
 <script>
@@ -2526,10 +2674,10 @@ function go(page,btn){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('on'));
   document.getElementById('page-'+page).classList.add('on');
   if(btn)btn.classList.add('on');
-  ({fila:rFila,meusprocessos:rMeusProc,dashboard:rDash,processos:renderProcs,arq:rArq,solicitacoes:rSolicitacoes,faq:rFaq,indicadores:()=>{rInd();},notificacoes:()=>{rNotif();},auditoria:rAuditoria,publicacoes:()=>{rPub();},admin:renderAdmin,plano:rPlano,avisos:rAvisos,trilhas:rTrilhas,painelgestor:rPainelGestor}[page]||function(){})();
+  ({fila:rFila,meusprocessos:rMeusProc,dashboard:rDash,processos:renderProcs,arq:rArq,solicitacoes:rSolicitacoes,faq:rFaq,indicadores:()=>{rInd();},notificacoes:()=>{rNotif();},auditoria:rAuditoria,publicacoes:()=>{rPub();},admin:renderAdmin,plano:rPlano,avisos:rAvisos,trilhas:rTrilhas,painelgestor:rPainelGestor,workflow:rWorkflow}[page]||function(){})();
   // Mobile: close drawer, update title
   if(globalThis.innerWidth<=720){mobClose();}
-  const ttl={fila:'Minhas tarefas',meusprocessos:'Meus Processos',dashboard:'Painel geral',processos:'Processos',arq:'Arquitetura',solicitacoes:'Solicitações',faq:'Base de FAQs',indicadores:'Indicadores',plano:'PAT',notificacoes:'Notificações',auditoria:'Análise de Aderência',publicacoes:'Publicações',admin:'Usuários',avisos:'Avisos',detalhe:'Processo',trilhas:'Trilhas de capacitação',painelgestor:'Painel do Gestor'};
+  const ttl={fila:'Minhas tarefas',meusprocessos:'Meus Processos',dashboard:'Painel geral',processos:'Processos',arq:'Arquitetura',solicitacoes:'Solicitações',faq:'Base de FAQs',indicadores:'Indicadores',plano:'PAT',notificacoes:'Notificações',auditoria:'Análise de Aderência',publicacoes:'Publicações',admin:'Usuários',avisos:'Avisos',detalhe:'Processo',trilhas:'Trilhas de capacitação',painelgestor:'Painel do Gestor',workflow:'Workflow'};
   const el=document.getElementById('mob-page-title');if(el)el.textContent=ttl[page]||'SIGA 2.0';
 }
 // Re-renderiza a página ativa sem alterar a navegação.
@@ -2541,7 +2689,7 @@ function _renderCurrentPage(){
   ({fila:rFila,meusprocessos:rMeusProc,dashboard:rDash,processos:renderProcs,
     arq:rArq,solicitacoes:rSolicitacoes,faq:rFaq,indicadores:()=>{rInd();},
     notificacoes:()=>{rNotif();},auditoria:rAuditoria,publicacoes:()=>{rPub();},
-    admin:renderAdmin,plano:rPlano,avisos:rAvisos,trilhas:rTrilhas,painelgestor:rPainelGestor}[page]||function(){})();
+    admin:renderAdmin,plano:rPlano,avisos:rAvisos,trilhas:rTrilhas,painelgestor:rPainelGestor,workflow:rWorkflow}[page]||function(){})();
 }
 globalThis._renderCurrentPage = _renderCurrentPage;
 
@@ -19948,5 +20096,9 @@ function confirmarImportPOP(){
     </div>
   </div>
 </div>
+
+<script src="src/workflow/workflow-constants.js"></script>
+<script src="src/workflow/form-renderer.js"></script>
+<script src="src/workflow/workflow-engine-ui.js"></script>
 </body>
 </html>
