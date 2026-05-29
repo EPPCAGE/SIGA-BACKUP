@@ -15,7 +15,7 @@
 
   // Retorna o UID do usuário autenticado de forma segura
   function _uid() {
-    return _uid()
+    return globalScope.usuarioLogado?.uid
       || globalScope.fb?.()?.auth?.currentUser?.uid
       || null;
   }
