@@ -1375,7 +1375,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     if (!titulo) { alert('Informe o título do formulário.'); return; }
 
     const campos = _st.formularioCampos.map(c => ({
-      id: c.id || `campo_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      id: c.id || `campo_${Date.now()}`,
       label: c.label || '',
       tipo: c.tipo || 'texto',
       obrigatorio: !!c.obrigatorio,
