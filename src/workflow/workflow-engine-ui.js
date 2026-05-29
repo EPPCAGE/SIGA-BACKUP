@@ -1517,7 +1517,6 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     // Designer
     wfImportarMapeamento,
     wfAbrirDesigner,
-    wfDesignerSoltarNo,
     wfDesignerRemoverArestaSel,
     wfDesignerCampoNo,
     wfDesignerCampoCfg,
