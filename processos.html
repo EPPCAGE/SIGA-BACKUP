@@ -2058,32 +2058,20 @@ Não responda este e-mail.</pre>
   <div class="ph">
     <div>
       <div class="ph-t">Workflow</div>
-      <div class="ph-s">Modele e execute processos institucionais como workflows com formulários, SLA e histórico</div>
+      <div class="ph-s">Execute processos institucionais já mapeados como workflows rastreáveis com histórico e SLA</div>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button type="button" class="btn btn-p" id="wf-btn-novo-modelo" onclick="wfAbrirModalNovoModelo()">+ Novo modelo</button>
-      <button type="button" class="btn" id="wf-btn-iniciar" onclick="wfNavWorkflow('iniciar')">▶ Iniciar processo</button>
-    </div>
+    <button type="button" class="btn btn-p" onclick="wfNavWorkflow('iniciar')">▶ Iniciar processo</button>
   </div>
 
   <!-- Sub-navegação interna -->
   <div style="display:flex;gap:4px;border-bottom:1px solid var(--bdr);margin-bottom:1.5rem;padding-bottom:0">
     <button type="button" class="btn" id="wf-tab-tarefas" onclick="wfNavWorkflow('tarefas')" style="border-radius:6px 6px 0 0;border-bottom:none">📋 Minhas Tarefas</button>
-    <button type="button" class="btn" id="wf-tab-instancias" onclick="wfNavWorkflow('instancias')" style="border-radius:6px 6px 0 0;border-bottom:none">🔄 Ativos</button>
-    <button type="button" class="btn ep-only" id="wf-tab-modelagem" onclick="wfNavWorkflow('modelagem')" style="border-radius:6px 6px 0 0;border-bottom:none">🗂️ Modelagem</button>
-    <button type="button" class="btn ep-only" id="wf-tab-formularios" onclick="wfNavWorkflow('formularios')" style="border-radius:6px 6px 0 0;border-bottom:none">📝 Formulários</button>
+    <button type="button" class="btn" id="wf-tab-instancias" onclick="wfNavWorkflow('instancias')" style="border-radius:6px 6px 0 0;border-bottom:none">🔄 Processos Ativos</button>
+    <button type="button" class="btn" id="wf-tab-iniciar" onclick="wfNavWorkflow('iniciar')" style="border-radius:6px 6px 0 0;border-bottom:none">▶ Iniciar</button>
   </div>
 
   <!-- Painel: Minhas Tarefas -->
   <div id="wf-painel-tarefas">
-    <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-      <select id="wf-filtro-status" class="fi" onchange="wfCarregarTarefas()" style="max-width:180px">
-        <option value="">Todos os status</option>
-        <option value="pendente">Pendente</option>
-        <option value="em_execucao">Em Execução</option>
-        <option value="vencida">Vencida</option>
-      </select>
-    </div>
     <div id="wf-lista-tarefas" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
       <div style="color:var(--ink3);font-size:14px">Carregando tarefas…</div>
     </div>
@@ -2096,63 +2084,13 @@ Não responda este e-mail.</pre>
     </div>
   </div>
 
-  <!-- Painel: Iniciar Processo -->
-  <div id="wf-painel-iniciar" style="display:none;max-width:520px">
-    <div class="card" style="padding:20px">
-      <div style="margin-bottom:14px">
-        <label class="lbl">Processo</label>
-        <select id="wf-np-modelo" class="fi" onchange="wfExibirDetalhesModelo()" style="width:100%;margin-top:4px">
-          <option value="">Selecione o processo a iniciar…</option>
-        </select>
-      </div>
-      <div id="wf-np-detalhes" style="display:none;background:var(--blue-l);border:1px solid var(--blue-b);border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px;color:var(--ink)"></div>
-      <div style="margin-bottom:14px">
-        <label class="lbl">Título (opcional)</label>
-        <input type="text" id="wf-np-titulo" class="fi" placeholder="Deixe em branco para gerar automaticamente" style="width:100%;margin-top:4px">
-      </div>
-      <button type="button" class="btn btn-p" onclick="wfIniciarProcesso()">Iniciar Processo</button>
+  <!-- Painel: Iniciar — lista processos mapeados disponíveis -->
+  <div id="wf-painel-iniciar" style="display:none">
+    <div class="ib ibb" style="margin-bottom:16px">
+      Selecione um processo já mapeado para iniciar sua execução como workflow rastreável. O sistema usará as etapas do TO BE (quando disponível) ou do AS IS.
     </div>
-  </div>
-
-  <!-- Painel: Modelagem -->
-  <div id="wf-painel-modelagem" style="display:none">
-    <div id="wf-lista-modelos" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
-      <div style="color:var(--ink3);font-size:14px">Carregando…</div>
-    </div>
-  </div>
-
-  <!-- Painel: Config Modelo (etapas e transições) -->
-  <div id="wf-painel-config-modelo" style="display:none">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
-      <button type="button" class="btn" onclick="wfNavWorkflow('modelagem')">← Voltar</button>
-      <h3 id="wf-config-titulo" style="margin:0;font-size:17px;color:var(--ink)"></h3>
-      <span id="wf-config-status-badge" style="padding:2px 10px;border-radius:999px;font-size:11px;font-weight:600"></span>
-      <button type="button" class="btn btn-p" id="wf-btn-publicar" onclick="wfPublicarModelo()" style="display:none;margin-left:auto">Publicar</button>
-    </div>
-    <!-- Processo mapeado vinculado -->
-    <div style="background:var(--blue-l);border:1px solid var(--blue-b);border-radius:8px;padding:14px;margin-bottom:20px;max-width:680px">
-      <div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:6px">Processo mapeado vinculado</div>
-      <div id="wf-config-arq-info" style="font-size:13px;color:var(--ink)">Nenhum processo vinculado.</div>
-      <button type="button" class="btn btn-sm" style="margin-top:8px" onclick="wfAbrirModalVincularArquitetura()">Vincular processo existente</button>
-    </div>
-    <div style="max-width:680px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <strong style="font-size:14px">Etapas do Fluxo</strong>
-        <button type="button" class="btn btn-p btn-sm" onclick="wfAbrirModalEtapa()">+ Etapa</button>
-      </div>
-      <div id="wf-config-etapas" style="margin-bottom:20px"></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <strong style="font-size:14px">Transições</strong>
-        <button type="button" class="btn btn-sm" onclick="wfAbrirModalTransicao()">+ Transição</button>
-      </div>
-      <div id="wf-config-transicoes" style="font-size:13px;color:var(--ink3)">Nenhuma transição.</div>
-    </div>
-  </div>
-
-  <!-- Painel: Formulários -->
-  <div id="wf-painel-formularios" style="display:none">
-    <div id="wf-lista-formularios" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
-      <div style="color:var(--ink3);font-size:14px">Carregando…</div>
+    <div id="wf-lista-mapeamentos" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">
+      <div style="color:var(--ink3);font-size:14px">Carregando processos mapeados…</div>
     </div>
   </div>
 
@@ -2163,9 +2101,10 @@ Não responda este e-mail.</pre>
       <h3 id="wf-exec-titulo" style="margin:0;font-size:17px;color:var(--ink)"></h3>
     </div>
     <div class="card" style="padding:20px">
+      <div id="wf-exec-progresso"></div>
       <div id="wf-exec-instrucoes" style="background:var(--blue-l);border-radius:6px;padding:12px;font-size:13px;color:var(--blue);margin-bottom:16px;display:none"></div>
       <div id="wf-exec-dados-anteriores" style="display:none;margin-bottom:16px">
-        <div style="font-size:13px;font-weight:600;margin-bottom:8px">Dados do processo</div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">Dados registrados nas etapas anteriores</div>
         <div id="wf-exec-dados-anteriores-conteudo"></div>
         <hr style="margin:12px 0;border-color:var(--bdr)">
       </div>
@@ -2178,7 +2117,7 @@ Não responda este e-mail.</pre>
     </div>
   </div>
 
-  <!-- Painel: Histórico -->
+  <!-- Painel: Histórico da instância -->
   <div id="wf-painel-historico" style="display:none;max-width:640px">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
       <button type="button" class="btn" onclick="wfNavWorkflow('instancias')">← Voltar</button>

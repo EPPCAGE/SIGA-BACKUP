@@ -5,7 +5,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "solicitante_uid", "order": "ASCENDING" },
-        { "fieldPath": "iniciado_em", "order": "DESCENDING" }
+        { "fieldPath": "_criado_em", "order": "DESCENDING" }
       ]
     },
     {
