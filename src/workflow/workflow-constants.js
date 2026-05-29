@@ -178,6 +178,7 @@
   // Ações que podem ser tomadas numa etapa e que rotulam as transições
   const ACAO = Object.freeze({
     AVANCAR: 'avancar',
+    CONCLUIR: 'concluir',
     APROVAR: 'aprovar',
     REJEITAR: 'rejeitar',
     DEVOLVER: 'devolver',
@@ -186,6 +187,7 @@
 
   const ACAO_LABELS = Object.freeze({
     avancar: 'Avançar',
+    concluir: 'Concluir',
     aprovar: 'Aprovar',
     rejeitar: 'Rejeitar',
     devolver: 'Devolver',
@@ -194,6 +196,7 @@
 
   const ACAO_COR = Object.freeze({
     avancar: '#3b82f6',
+    concluir: '#10b981',
     aprovar: '#10b981',
     rejeitar: '#ef4444',
     devolver: '#f59e0b',

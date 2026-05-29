@@ -272,11 +272,11 @@
     const acoesEl = document.getElementById('wf-exec-acoes');
     const acoes = (tarefa.acoes_disponiveis && tarefa.acoes_disponiveis.length)
       ? tarefa.acoes_disponiveis
-      : (proxEtapaLegado(instancia, tarefa) ? ['avancar'] : ['avancar']);
+      : (proxEtapaLegado(instancia, tarefa) ? ['avancar'] : ['concluir']);
     const ACAO_LABELS = globalScope.WF_ACAO_LABELS || {};
     const ACAO_COR = globalScope.WF_ACAO_COR || {};
     const btnClasse = (a) => a === 'rejeitar' ? 'btn btn-r'
-      : a === 'aprovar' || a === 'avancar' ? 'btn btn-p' : 'btn';
+      : a === 'aprovar' || a === 'avancar' || a === 'concluir' ? 'btn btn-p' : 'btn';
     acoesEl.innerHTML = acoes.map(a => {
       const cor = ACAO_COR[a];
       const style = (a === 'devolver' || a === 'solicitar_ajuste') && cor
@@ -430,8 +430,10 @@
         });
       }
     }
-    // se nenhum papel resolveu, garante ao menos uma tarefa para o solicitante
+    // Nenhum papel configurado: cria tarefa de executor para o solicitante via o mesmo caminho
     if (!criados.length) {
+      papeis.executor = 'solicitante';
+      const uidResp = _resolverPapel('solicitante', instancia);
       const tarefaId = await _addDoc('wf_tarefa_workflows', {
         instancia_id: instancia.id,
         processo_nome: instancia.titulo,
@@ -440,7 +442,7 @@
         etapa_nome: no.nome,
         etapa_desc: cfg.instrucoes || null,
         etapa_tipo: no.tipo,
-        responsavel_uid: instancia.solicitante_uid,
+        responsavel_uid: uidResp,
         papel_responsavel: 'executor',
         papel_alvo: 'solicitante',
         acoes_disponiveis: acoesNo,
@@ -449,6 +451,17 @@
         formulario_id: cfg.formulario_id || null,
         status: 'pendente', prazo, dados_formulario: {}, observacao: null,
       });
+      if (uidResp) {
+        await _addDoc('wf_notificacoes', {
+          destinatario_uid: uidResp,
+          tipo: 'tarefa_criada',
+          titulo: `Nova etapa: ${no.nome}`,
+          mensagem: `Processo "${instancia.titulo}" — etapa "${no.nome}" aguarda sua ação.`,
+          instancia_id: instancia.id,
+          tarefa_id: tarefaId,
+          lida: false,
+        });
+      }
       criados.push(tarefaId);
     }
     return criados;
@@ -833,7 +846,7 @@
     const ids = etapasExec.map((_, i) => `task_${i + 1}`);
     let processXml = '<startEvent id="start" name="Início"/>\n';
     etapasExec.forEach((e, i) => {
-      const tipo = e.tipo === 'Aprovação' ? 'userTask' : 'userTask';
+      const tipo = e.tipo === 'Aprovação' ? 'exclusiveGateway' : 'userTask';
       processXml += `    <${tipo} id="${ids[i]}" name="${(e.nome || `Etapa ${i+1}`).replace(/"/g, '&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}"/>\n`;
     });
     processXml += '    <endEvent id="end" name="Fim"/>\n';
@@ -938,7 +951,8 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 
   function _wfInitModeler(modelo) {
     const loadingEl = document.getElementById('wf-bpmn-loading');
-    const wrapEl = document.getElementById('wf-bpmn-wrap');
+    const canvasEl = document.getElementById('wf-bpmn-canvas');
+    const wrapEl = canvasEl?.parentElement || null;
 
     if (typeof BpmnJS === 'undefined') {
       if (loadingEl) loadingEl.innerHTML = '<div style="text-align:center;padding:2rem"><div style="font-size:28px;margin-bottom:8px">📦</div><div style="font-size:13px;font-weight:600">Editor BPMN não disponível offline</div></div>';
@@ -1361,7 +1375,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     if (!titulo) { alert('Informe o título do formulário.'); return; }
 
     const campos = _st.formularioCampos.map(c => ({
-      id: c.id || `campo_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      id: c.id || `campo_${Date.now()}`,
       label: c.label || '',
       tipo: c.tipo || 'texto',
       obrigatorio: !!c.obrigatorio,
