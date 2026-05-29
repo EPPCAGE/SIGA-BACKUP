@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Workflow — SIGA 2.0</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* ---- Layout base ---- */
+    body { font-family: 'Segoe UI', sans-serif; background: #f3f4f6; color: #1f2937; margin: 0; }
+    .wf-shell { display: flex; min-height: 100vh; }
+
+    /* ---- Sidebar ---- */
+    .wf-sidebar {
+      width: 220px; background: #1e3a5f; color: #e2e8f0; padding: 24px 0;
+      display: flex; flex-direction: column; flex-shrink: 0;
+    }
+    .wf-sidebar-logo { padding: 0 20px 20px; font-size: 18px; font-weight: 700; color: #fff; border-bottom: 1px solid #2d5a8e; }
+    .wf-sidebar-logo span { color: #60a5fa; }
+    .wf-nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 20px; cursor: pointer; transition: background .15s;
+      border-left: 3px solid transparent; font-size: 14px;
+    }
+    .wf-nav-item:hover { background: #2d5a8e; }
+    .wf-nav-item.ativo { background: #2d5a8e; border-left-color: #60a5fa; color: #fff; }
+    .wf-nav-badge {
+      margin-left: auto; background: #ef4444; color: #fff;
+      border-radius: 9999px; padding: 1px 7px; font-size: 11px;
+    }
+
+    /* ---- Conteúdo principal ---- */
+    .wf-main { flex: 1; padding: 28px; overflow-y: auto; }
+    .wf-tela { display: none; }
+    .wf-tela.ativa { display: block; }
+
+    /* ---- Cabeçalho de tela ---- */
+    .wf-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .wf-header h2 { margin: 0; font-size: 22px; color: #1e3a5f; }
+    .wf-btn {
+      padding: 8px 18px; border-radius: 6px; border: none; cursor: pointer;
+      font-size: 14px; font-weight: 500; transition: opacity .15s;
+    }
+    .wf-btn:hover { opacity: .85; }
+    .wf-btn-primary { background: #2563eb; color: #fff; }
+    .wf-btn-success { background: #10b981; color: #fff; }
+    .wf-btn-danger  { background: #ef4444; color: #fff; }
+    .wf-btn-secondary { background: #e5e7eb; color: #374151; }
+    .wf-btn-sm { padding: 5px 12px; font-size: 12px; }
+
+    /* ---- Cards ---- */
+    .wf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .wf-card {
+      background: #fff; border-radius: 10px; padding: 18px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08); border: 1px solid #e5e7eb;
+    }
+    .wf-card-titulo { font-size: 15px; font-weight: 600; color: #1e3a5f; margin-bottom: 6px; }
+    .wf-card-sub { font-size: 13px; color: #6b7280; margin-bottom: 12px; }
+    .wf-card-footer { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    /* ---- Badges de status ---- */
+    .wf-badge {
+      display: inline-block; padding: 2px 10px; border-radius: 9999px;
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+    }
+
+    /* ---- SLA ---- */
+    .wf-sla { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-top: 8px; }
+    .wf-sla-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ---- Formulário dinâmico ---- */
+    .wf-form { max-width: 600px; }
+    .wf-form-titulo { font-size: 16px; font-weight: 600; color: #1e3a5f; margin: 0 0 16px; }
+    .wf-campo-grupo { margin-bottom: 16px; }
+    .wf-campo-label { display: block; font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 6px; }
+    .wf-campo-input {
+      width: 100%; padding: 8px 12px; border: 1px solid #d1d5db;
+      border-radius: 6px; font-size: 14px; box-sizing: border-box;
+      transition: border-color .15s;
+    }
+    .wf-campo-input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+    .wf-campo-textarea { resize: vertical; min-height: 100px; }
+    .wf-campo-select { appearance: auto; }
+    .wf-campo-checkbox-wrapper { display: flex; align-items: center; gap: 8px; }
+    .wf-campo-checkbox { width: auto; }
+    .wf-campo-checkbox-label { font-size: 14px; }
+    .wf-campo-erro { color: #ef4444; font-size: 12px; margin-top: 4px; display: block; }
+    .wf-campo-leitura { padding: 8px 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 14px; }
+    .wf-campo-anexo-existente { font-size: 12px; color: #6b7280; margin-bottom: 6px; }
+
+    /* ---- Timeline de histórico ---- */
+    .wf-timeline { position: relative; padding-left: 24px; }
+    .wf-timeline::before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: #e5e7eb; }
+    .wf-timeline-item { position: relative; margin-bottom: 20px; }
+    .wf-timeline-dot {
+      position: absolute; left: -20px; top: 4px;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: #2563eb; border: 2px solid #fff; box-shadow: 0 0 0 2px #2563eb;
+    }
+    .wf-timeline-data { font-size: 11px; color: #9ca3af; margin-bottom: 2px; }
+    .wf-timeline-desc { font-size: 14px; color: #374151; }
+    .wf-timeline-extra { font-size: 12px; color: #6b7280; margin-top: 4px; }
+
+    /* ---- Modelador de etapas ---- */
+    .wf-etapas-lista { list-style: none; padding: 0; margin: 0 0 16px; }
+    .wf-etapa-item {
+      display: flex; align-items: center; gap: 12px;
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;
+      padding: 12px 16px; margin-bottom: 8px; cursor: grab;
+    }
+    .wf-etapa-item:active { cursor: grabbing; }
+    .wf-etapa-ordem { width: 28px; height: 28px; background: #1e3a5f; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+    .wf-etapa-info { flex: 1; }
+    .wf-etapa-nome { font-weight: 600; font-size: 14px; }
+    .wf-etapa-meta { font-size: 12px; color: #6b7280; }
+    .wf-etapa-acoes { display: flex; gap: 6px; }
+
+    /* ---- Filtros ---- */
+    .wf-filtros { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .wf-filtro-select { padding: 7px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; }
+
+    /* ---- Modal ---- */
+    .wf-modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.4); z-index: 9000;
+      align-items: center; justify-content: center;
+    }
+    .wf-modal-overlay.visivel { display: flex; }
+    .wf-modal {
+      background: #fff; border-radius: 12px; padding: 28px;
+      width: 100%; max-width: 560px; max-height: 85vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    }
+    .wf-modal-titulo { font-size: 18px; font-weight: 700; color: #1e3a5f; margin: 0 0 20px; }
+    .wf-modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+    /* ---- Campo de formulário de modelagem ---- */
+    .wf-form-grupo { margin-bottom: 14px; }
+    .wf-form-label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 5px; }
+    .wf-form-input {
+      width: 100%; padding: 8px 12px; border: 1px solid #d1d5db;
+      border-radius: 6px; font-size: 14px; box-sizing: border-box;
+    }
+    .wf-form-input:focus { outline: none; border-color: #2563eb; }
+    .wf-form-select { appearance: auto; }
+
+    /* ---- Responsivo ---- */
+    @media (max-width: 640px) {
+      .wf-sidebar { width: 60px; }
+      .wf-sidebar-logo, .wf-nav-item span { display: none; }
+      .wf-main { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+<div class="wf-shell">
+
+  <!-- Sidebar de navegação -->
+  <nav class="wf-sidebar">
+    <div class="wf-sidebar-logo">SIGA <span>Workflow</span></div>
+    <div class="wf-nav-item ativo" onclick="wfNavegar('tarefas')" id="nav-tarefas">
+      <span>📋</span> <span>Minhas Tarefas</span>
+      <span class="wf-nav-badge" id="badge-tarefas" style="display:none">0</span>
+    </div>
+    <div class="wf-nav-item" onclick="wfNavegar('instancias')" id="nav-instancias">
+      <span>🔄</span> <span>Processos Ativos</span>
+    </div>
+    <div class="wf-nav-item" onclick="wfNavegar('novo-processo')" id="nav-novo-processo">
+      <span>▶</span> <span>Iniciar Processo</span>
+    </div>
+    <div class="wf-nav-item" onclick="wfNavegar('modelagem')" id="nav-modelagem" data-perfis="ep,gestor">
+      <span>🗂️</span> <span>Modelagem</span>
+    </div>
+    <div class="wf-nav-item" onclick="wfNavegar('formularios')" id="nav-formularios" data-perfis="ep,gestor">
+      <span>📝</span> <span>Formulários</span>
+    </div>
+    <div class="wf-nav-item" onclick="wfNavegar('notificacoes')" id="nav-notificacoes">
+      <span>🔔</span> <span>Notificações</span>
+      <span class="wf-nav-badge" id="badge-notif" style="display:none">0</span>
+    </div>
+  </nav>
+
+  <!-- Conteúdo principal -->
+  <main class="wf-main">
+
+    <!-- ==================== TELA: Minhas Tarefas ==================== -->
+    <div id="tela-tarefas" class="wf-tela ativa">
+      <div class="wf-header">
+        <h2>📋 Minhas Tarefas</h2>
+      </div>
+      <div class="wf-filtros">
+        <select class="wf-filtro-select" id="filtro-tarefas-status" onchange="wfCarregarTarefas()">
+          <option value="">Todos os status</option>
+          <option value="pendente">Pendente</option>
+          <option value="em_execucao">Em Execução</option>
+          <option value="vencida">Vencida</option>
+        </select>
+      </div>
+      <div class="wf-grid" id="lista-tarefas">
+        <div style="color:#6b7280; font-size:14px;">Carregando tarefas…</div>
+      </div>
+    </div>
+
+    <!-- ==================== TELA: Execução de Tarefa ==================== -->
+    <div id="tela-executar-tarefa" class="wf-tela">
+      <div class="wf-header">
+        <div>
+          <button class="wf-btn wf-btn-secondary wf-btn-sm" onclick="wfNavegar('tarefas')">← Voltar</button>
+          <h2 style="margin-top:10px" id="exec-titulo-etapa">Tarefa</h2>
+        </div>
+      </div>
+      <div class="wf-card" style="max-width:720px">
+        <div id="exec-instrucoes" style="background:#eff6ff;border-radius:6px;padding:12px 16px;font-size:14px;color:#1e40af;margin-bottom:20px;display:none"></div>
+
+        <!-- Dados de etapas anteriores (somente leitura) -->
+        <div id="exec-dados-anteriores" style="display:none">
+          <h4 style="font-size:14px;color:#374151;margin-bottom:10px">Dados do processo</h4>
+          <div id="exec-dados-anteriores-conteudo"></div>
+          <hr style="margin:16px 0;border-color:#e5e7eb">
+        </div>
+
+        <!-- Formulário dinâmico da etapa atual -->
+        <div id="exec-formulario"></div>
+
+        <!-- Campo de observação -->
+        <div class="wf-campo-grupo" style="margin-top:16px">
+          <label class="wf-campo-label" for="exec-observacao">Observação (opcional)</label>
+          <textarea id="exec-observacao" class="wf-campo-input wf-campo-textarea" rows="3" placeholder="Adicione um comentário…"></textarea>
+        </div>
+
+        <!-- Botões de ação (transições) -->
+        <div id="exec-acoes" class="wf-modal-footer" style="justify-content:flex-start;margin-top:20px"></div>
+      </div>
+    </div>
+
+    <!-- ==================== TELA: Iniciar Processo ==================== -->
+    <div id="tela-novo-processo" class="wf-tela">
+      <div class="wf-header">
+        <h2>▶ Iniciar Processo</h2>
+      </div>
+      <div class="wf-card" style="max-width:560px">
+        <div class="wf-form-grupo">
+          <label class="wf-form-label" for="np-modelo">Processo</label>
+          <select id="np-modelo" class="wf-form-input wf-form-select" onchange="wfExibirDetalhesModelo()">
+            <option value="">Selecione o processo a iniciar…</option>
+          </select>
+        </div>
+        <div id="np-detalhes" style="display:none;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:14px;margin-bottom:14px;font-size:13px;color:#374151">
+          <div id="np-detalhes-desc"></div>
+        </div>
+        <div class="wf-form-grupo">
+          <label class="wf-form-label" for="np-titulo">Título (opcional)</label>
+          <input type="text" id="np-titulo" class="wf-form-input" placeholder="Deixe em branco para gerar automaticamente">
+        </div>
+        <button class="wf-btn wf-btn-success" onclick="wfIniciarProcesso()">Iniciar Processo</button>
+      </div>
+    </div>
+
+    <!-- ==================== TELA: Processos Ativos ==================== -->
+    <div id="tela-instancias" class="wf-tela">
+      <div class="wf-header">
+        <h2>🔄 Processos Ativos</h2>
+      </div>
+      <div class="wf-filtros">
+        <select class="wf-filtro-select" id="filtro-instancias-status" onchange="wfCarregarInstancias()">
+          <option value="em_andamento">Em Andamento</option>
+          <option value="">Todos</option>
+          <option value="concluido">Concluídos</option>
+          <option value="cancelado">Cancelados</option>
+        </select>
+      </div>
+      <div class="wf-grid" id="lista-instancias">
+        <div style="color:#6b7280;font-size:14px;">Carregando…</div>
+      </div>
+    </div>
+
+    <!-- ==================== TELA: Histórico da Instância ==================== -->
+    <div id="tela-historico" class="wf-tela">
+      <div class="wf-header">
+        <div>
+          <button class="wf-btn wf-btn-secondary wf-btn-sm" onclick="wfNavegar('instancias')">← Voltar</button>
+          <h2 id="hist-titulo" style="margin-top:10px">Histórico</h2>
+        </div>
+        <button class="wf-btn wf-btn-danger wf-btn-sm" id="hist-btn-cancelar" onclick="wfCancelarInstancia()" style="display:none">Cancelar Processo</button>
+      </div>
+      <div style="max-width:680px">
+        <div class="wf-card" style="margin-bottom:20px">
+          <div id="hist-resumo"></div>
+        </div>
+        <h4 style="font-size:14px;font-weight:600;color:#374151;margin-bottom:12px">Linha do Tempo</h4>
+        <div class="wf-timeline" id="hist-timeline">
+          <div style="color:#6b7280;font-size:14px;">Carregando…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== TELA: Modelagem de Processos ==================== -->
+    <div id="tela-modelagem" class="wf-tela">
+      <div class="wf-header">
+        <h2>🗂️ Modelagem de Processos</h2>
+        <button class="wf-btn wf-btn-primary" onclick="wfAbrirModalNovoModelo()">+ Novo Modelo</button>
+      </div>
+      <div class="wf-grid" id="lista-modelos">
+        <div style="color:#6b7280;font-size:14px;">Carregando…</div>
+      </div>
+    </div>
+
+    <!-- ==================== TELA: Configuração de Etapas ==================== -->
+    <div id="tela-config-modelo" class="wf-tela">
+      <div class="wf-header">
+        <div>
+          <button class="wf-btn wf-btn-secondary wf-btn-sm" onclick="wfNavegar('modelagem')">← Voltar</button>
+          <h2 id="config-modelo-titulo" style="margin-top:10px">Configurar Processo</h2>
+        </div>
+        <div style="display:flex;gap:8px">
+          <span id="config-modelo-status-badge" class="wf-badge"></span>
+          <button class="wf-btn wf-btn-success wf-btn-sm" id="config-btn-publicar" onclick="wfPublicarModelo()" style="display:none">Publicar</button>
+        </div>
+      </div>
+
+      <!-- Painel: Processo mapeado vinculado -->
+      <div id="config-painel-arquitetura" class="wf-card" style="max-width:720px;margin-bottom:20px;background:#eff6ff;border-color:#bfdbfe">
+        <div style="font-size:13px;font-weight:600;color:#1e40af;margin-bottom:8px">Processo mapeado vinculado</div>
+        <div id="config-arquitetura-info" style="font-size:13px;color:#374151">Nenhum processo vinculado.</div>
+        <button class="wf-btn wf-btn-secondary wf-btn-sm" style="margin-top:10px" onclick="wfAbrirModalVincularArquitetura()">Vincular processo existente</button>
+      </div>
+
+      <div style="max-width:720px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <h4 style="margin:0;font-size:15px;color:#1e3a5f">Etapas do Fluxo</h4>
+          <button class="wf-btn wf-btn-primary wf-btn-sm" onclick="wfAbrirModalEtapa()">+ Adicionar Etapa</button>
+        </div>
+        <ul class="wf-etapas-lista" id="config-etapas-lista">
+          <li style="color:#6b7280;font-size:14px;padding:10px">Nenhuma etapa cadastrada.</li>
+        </ul>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;margin-top:20px">
+          <h4 style="margin:0;font-size:15px;color:#1e3a5f">Transições</h4>
+          <button class="wf-btn wf-btn-secondary wf-btn-sm" onclick="wfAbrirModalTransicao()">+ Adicionar Transição</button>
+        </div>
+        <div id="config-transicoes-lista" style="font-size:13px;color:#6b7280">Nenhuma transição.</div>
+      </div>
+    </div>
+
+    <!-- ==================== TELA: Formulários ==================== -->
+    <div id="tela-formularios" class="wf-tela">
+      <div class="wf-header">
+        <h2>📝 Formulários Dinâmicos</h2>
+        <button class="wf-btn wf-btn-primary" onclick="wfAbrirModalNovoFormulario()">+ Novo Formulário</button>
+      </div>
+      <div class="wf-grid" id="lista-formularios">
+        <div style="color:#6b7280;font-size:14px;">Carregando…</div>
+      </div>
+    </div>
+
+    <!-- ==================== TELA: Notificações ==================== -->
+    <div id="tela-notificacoes" class="wf-tela">
+      <div class="wf-header">
+        <h2>🔔 Notificações</h2>
+        <button class="wf-btn wf-btn-secondary wf-btn-sm" onclick="wfMarcarTodasLidas()">Marcar todas como lidas</button>
+      </div>
+      <div id="lista-notificacoes" style="max-width:600px"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ==================== MODAIS ==================== -->
+
+<!-- Modal: Novo/Editar Modelo -->
+<div class="wf-modal-overlay" id="modal-modelo">
+  <div class="wf-modal">
+    <h3 class="wf-modal-titulo" id="modal-modelo-titulo">Novo Modelo de Processo</h3>
+    <input type="hidden" id="modal-modelo-id">
+    <div class="wf-form-grupo">
+      <label class="wf-form-label">Nome do processo *</label>
+      <input type="text" id="mm-nome" class="wf-form-input" placeholder="Ex: Aprovação de Despesa">
+    </div>
+    <div class="wf-form-grupo">
+      <label class="wf-form-label">Descrição</label>
+      <textarea id="mm-descricao" class="wf-form-input" rows="3" placeholder="Descreva o objetivo do processo…"></textarea>
+    </div>
+    <div class="wf-form-grupo">
+      <label class="wf-form-label">Perfis que podem iniciar</label>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <label><input type="checkbox" value="ep" class="mm-perfil"> EP</label>
+        <label><input type="checkbox" value="gestor" class="mm-perfil"> Gestor</label>
+        <label><input type="checkbox" value="dono" class="mm-perfil"> Dono</label>
+        <label><input type="checkbox" value="gerente_projeto" class="mm-perfil"> Gerente Projeto</label>
+      </div>
+    </div>
+    <div class="wf-modal-footer">
+      <button class="wf-btn wf-btn-secondary" onclick="wfFecharModal('modal-modelo')">Cancelar</button>
+      <button class="wf-btn wf-btn-primary" onclick="wfSalvarModelo()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Nova/Editar Etapa -->
+<div class="wf-modal-overlay" id="modal-etapa">
+  <div class="wf-modal">
+    <h3 class="wf-modal-titulo">Configurar Etapa</h3>
+    <input type="hidden" id="modal-etapa-id">
+    <div class="wf-form-grupo">
+      <label class="wf-form-label">Nome da etapa *</label>
+      <input type="text" id="me-nome" class="wf-form-input" placeholder="Ex: Análise do Gestor">
+    </div>
+    <div class="wf-form-grupo">
+      <label class="wf-form-label">Tipo</label>
+      <select id="me-tipo" class="wf-form-input wf-form-select">
+        <option value="tarefa">Tarefa</option>
+        <option value="aprovacao">Aprovação</option>
+        <option value="inicio">Início</option>
+        <option value="fim">Fim</option>
+      </select>
+    </div>
+    <div class="wf-form-grupo">
+      <label class="wf-form-label">Responsável</label>
+      <select id="me-resp-tipo" class="wf-form-input wf-form-select" onchange="wfToggleResponsavelValor()">
+        <option value="solicitante">Próprio solicitante</option>
+        <option value="perfil">Perfil do sistema</option>
+        <option value="usuario_especifico">Usuário específico</option>
+      </select>
+    </div>
+    <div class="wf-form-grupo" id="me-resp-valor-grupo" style="display:none">
+      <label class="wf-form-label" id="me-resp-valor-label">Valor</label>
+      <input type="text" id="me-resp-valor" class="wf-form-input" placeholder="Perfil (ep, gestor…) ou UID">
+    </div>
+    <div class="wf-form-grupo">
+      <label class="wf-form-label">SLA (horas úteis, 0 = sem prazo)</label>
+      <input type="number" id="me-sla" class="wf-form-input" min="0" value="0">
+    </div>
+    <div class="wf-form-grupo">
+      <label class="wf-form-label">Formulário dinâmico</label>
+      <select id="me-formulario" class="wf-form-input wf-form-select">
+        <option value="">Nenhum</option>
+      </select>
+    </div>
+    <div class="wf-form-grupo">
+      <label class="wf-form-label">Instruções para o responsável</label>
+      <textarea id="me-instrucoes" class="wf-form-input" rows="2"></textarea>
+    </div>
+    <div class="wf-modal-footer">
+      <button class="wf-btn wf-btn-secondary" onclick="wfFecharModal('modal-etapa')">Cancelar</button>
+      <button class="wf-btn wf-btn-primary" onclick="wfSalvarEtapa()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Nova Transição -->
+<div class="wf-modal-overlay" id="modal-transicao">
+  <div class="wf-modal">
+    <h3 class="wf-modal-titulo">Configurar Transição</h3>
+    <div class="wf-form-grupo">
+      <label class="wf-form-label">Etapa de origem</label>
+      <select id="mt-origem" class="wf-form-input wf-form-select"></select>
+    </div>
+    <div class="wf-form-grupo">
+      <label class="wf-form-label">Etapa de destino</label>
+      <select id="mt-destino" class="wf-form-input wf-form-select"></select>
+    </div>
+    <div class="wf-form-grupo">
+      <label class="wf-form-label">Condição</label>
+      <select id="mt-condicao" class="wf-form-input wf-form-select">
+        <option value="sempre">Sempre (avança automático)</option>
+        <option value="aprovado">Aprovado</option>
+        <option value="rejeitado">Rejeitado</option>
+      </select>
+    </div>
+    <div class="wf-form-grupo">
+      <label class="wf-form-label">Label do botão (ex: "Aprovar")</label>
+      <input type="text" id="mt-label" class="wf-form-input" placeholder="Avançar">
+    </div>
+    <div class="wf-modal-footer">
+      <button class="wf-btn wf-btn-secondary" onclick="wfFecharModal('modal-transicao')">Cancelar</button>
+      <button class="wf-btn wf-btn-primary" onclick="wfSalvarTransicao()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Vincular Arquitetura -->
+<div class="wf-modal-overlay" id="modal-arquitetura">
+  <div class="wf-modal">
+    <h3 class="wf-modal-titulo">Vincular Processo Mapeado</h3>
+    <p style="font-size:13px;color:#6b7280;margin-bottom:16px">
+      Selecione um processo já modelado na arquitetura institucional para vincular a este workflow.
+    </p>
+    <div class="wf-form-grupo">
+      <label class="wf-form-label">Processo da arquitetura</label>
+      <select id="arq-processo" class="wf-form-input wf-form-select">
+        <option value="">Carregando…</option>
+      </select>
+    </div>
+    <div id="arq-preview" style="display:none;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:12px;font-size:13px;margin-top:8px"></div>
+    <div class="wf-modal-footer">
+      <button class="wf-btn wf-btn-secondary" onclick="wfFecharModal('modal-arquitetura')">Cancelar</button>
+      <button class="wf-btn wf-btn-primary" onclick="wfVincularArquitetura()">Vincular</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Novo Formulário -->
+<div class="wf-modal-overlay" id="modal-formulario">
+  <div class="wf-modal" style="max-width:680px">
+    <h3 class="wf-modal-titulo">Editor de Formulário</h3>
+    <div class="wf-form-grupo">
+      <label class="wf-form-label">Título do formulário *</label>
+      <input type="text" id="mf-titulo" class="wf-form-input" placeholder="Ex: Solicitação de Compra">
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:14px;font-weight:600">Campos</span>
+        <button class="wf-btn wf-btn-primary wf-btn-sm" onclick="wfAdicionarCampo()">+ Adicionar Campo</button>
+      </div>
+      <div id="mf-campos-lista"></div>
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#374151">Preview</div>
+      <div id="mf-preview" style="border:1px solid #e5e7eb;border-radius:8px;padding:16px;background:#fafafa;min-height:60px"></div>
+    </div>
+    <div class="wf-modal-footer">
+      <button class="wf-btn wf-btn-secondary" onclick="wfFecharModal('modal-formulario')">Cancelar</button>
+      <button class="wf-btn wf-btn-primary" onclick="wfSalvarFormulario()">Salvar Formulário</button>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="config/config.local.js" onerror="console.warn('config.local.js não encontrado — use emulador')"></script>
+<script src="src/shared/firebase-helpers.js"></script>
+<script src="src/processos/security-utils.js"></script>
+<script src="src/workflow/workflow-constants.js"></script>
+<script src="src/workflow/form-renderer.js"></script>
+<script>
+// ---------------------------------------------------------------------------
+// Estado global do módulo
+// ---------------------------------------------------------------------------
+const WF_BASE_URL = typeof AI_FUNCTION_URL !== 'undefined'
+  ? AI_FUNCTION_URL.replace('/ai', '')
+  : 'https://us-central1-sigaepp.cloudfunctions.net';
+
+const _wfState = {
+  usuario: null,
+  perfil: null,
+  telaAtual: 'tarefas',
+  modeloAtual: null,
+  instanciaAtual: null,
+  tarefaAtual: null,
+  etapasModelo: [],
+  formsDisponiveis: [],
+  arquiteturaDisponivel: [],
+  // campos em edição no modal de formulário
+  camposFormulario: [],
+};
+
+// ---------------------------------------------------------------------------
+// Inicialização Firebase
+// ---------------------------------------------------------------------------
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const auth = firebase.auth();
+    auth.onAuthStateChanged(async user => {
+      if (!user) { window.location.href = 'index.html'; return; }
+      const token = await user.getIdTokenResult();
+      _wfState.usuario = user;
+      _wfState.perfil = token.claims.perfil || 'dono';
+      _aplicarPermissoesSidebar();
+      wfCarregarTarefas();
+      wfAtualizarBadges();
+    });
+  } catch (e) {
+    console.error('[WF] Erro de inicialização:', e);
+  }
+});
+
+function _aplicarPermissoesSidebar() {
+  document.querySelectorAll('[data-perfis]').forEach(el => {
+    const permitidos = el.dataset.perfis.split(',');
+    if (!permitidos.includes(_wfState.perfil)) el.style.display = 'none';
+  });
+}
+
+// ---------------------------------------------------------------------------
+// API — requisições autenticadas
+// ---------------------------------------------------------------------------
+async function _wfApi(metodo, path, body) {
+  const token = await _wfState.usuario.getIdToken();
+  const resp = await fetch(`${WF_BASE_URL}/${path.replace(/^\//, '')}`, {
+    method: metodo,
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await resp.json();
+  if (!resp.ok) throw Object.assign(new Error(data.mensagem || data.erro), { code: data.erro, status: resp.status });
+  return data;
+}
+
+// ---------------------------------------------------------------------------
+// Navegação
+// ---------------------------------------------------------------------------
+function wfNavegar(tela) {
+  _wfState.telaAtual = tela;
+  document.querySelectorAll('.wf-tela').forEach(el => el.classList.remove('ativa'));
+  document.querySelectorAll('.wf-nav-item').forEach(el => el.classList.remove('ativo'));
+
+  const telaEl = document.getElementById(`tela-${tela}`);
+  if (telaEl) telaEl.classList.add('ativa');
+
+  const navEl = document.getElementById(`nav-${tela}`);
+  if (navEl) navEl.classList.add('ativo');
+
+  // Carrega dados ao navegar
+  const carregadores = {
+    tarefas: wfCarregarTarefas,
+    instancias: wfCarregarInstancias,
+    'novo-processo': wfCarregarModelosParaIniciar,
+    modelagem: wfCarregarModelos,
+    formularios: wfCarregarFormularios,
+    notificacoes: wfCarregarNotificacoes,
+  };
+  carregadores[tela]?.();
+}
+
+// ---------------------------------------------------------------------------
+// Helpers de UI
+// ---------------------------------------------------------------------------
+function _badgeHtml(texto, cor) {
+  return `<span class="wf-badge" style="background:${cor}20;color:${cor}">${esc(texto)}</span>`;
+}
+
+function _slaHtml(tarefa) {
+  if (!tarefa.prazo) return '';
+  const prazo = tarefa.prazo?.toDate ? tarefa.prazo.toDate() : new Date(tarefa.prazo._seconds * 1000);
+  const status = _calcularStatusSla(tarefa);
+  const cor = WF_STATUS_SLA_COR[status];
+  const label = WF_STATUS_SLA_LABELS[status];
+  const dataStr = prazo.toLocaleString('pt-BR');
+  return `<div class="wf-sla"><div class="wf-sla-dot" style="background:${cor}"></div><span style="color:${cor}">${esc(label)}</span><span style="color:#9ca3af"> — ${esc(dataStr)}</span></div>`;
+}
+
+function _calcularStatusSla(tarefa) {
+  if (!tarefa.prazo) return 'sem_sla';
+  const prazo = tarefa.prazo?.toDate ? tarefa.prazo.toDate() : new Date(tarefa.prazo._seconds * 1000);
+  const agora = new Date();
+  const alertaMs = 2 * 60 * 60 * 1000;
+  if (agora > prazo) return 'vencido';
+  if (agora >= new Date(prazo - alertaMs)) return 'vencendo';
+  return 'no_prazo';
+}
+
+function wfAbrirModal(id) { document.getElementById(id).classList.add('visivel'); }
+function wfFecharModal(id) { document.getElementById(id).classList.remove('visivel'); }
+
+// ---------------------------------------------------------------------------
+// Tela: Tarefas
+// ---------------------------------------------------------------------------
+async function wfCarregarTarefas() {
+  const el = document.getElementById('lista-tarefas');
+  el.innerHTML = '<div style="color:#6b7280;font-size:14px;">Carregando…</div>';
+  try {
+    const tarefas = await _wfApi('GET', 'wfTarefas');
+    if (!tarefas.length) { el.innerHTML = '<div style="color:#6b7280;font-size:14px;">Nenhuma tarefa pendente.</div>'; return; }
+
+    el.innerHTML = tarefas.map(t => `
+      <div class="wf-card">
+        <div class="wf-card-titulo">${esc(t.etapa_modelo_id)}</div>
+        <div class="wf-card-sub">${esc(t.instancia_id)}</div>
+        ${_slaHtml(t)}
+        <div class="wf-card-footer" style="margin-top:12px">
+          ${_badgeHtml(WF_STATUS_TAREFA_LABELS[t.status] || t.status, WF_STATUS_TAREFA_COR[t.status] || '#6b7280')}
+          <button class="wf-btn wf-btn-primary wf-btn-sm" onclick="wfAbrirTarefa('${esc(t.id)}')">Abrir Tarefa</button>
+        </div>
+      </div>
+    `).join('');
+
+    document.getElementById('badge-tarefas').textContent = tarefas.length;
+    document.getElementById('badge-tarefas').style.display = tarefas.length ? 'inline' : 'none';
+  } catch (e) {
+    el.innerHTML = `<div style="color:#ef4444;font-size:14px;">${esc(e.message)}</div>`;
+  }
+}
+
+async function wfAbrirTarefa(tarefaId) {
+  try {
+    const tarefa = await _wfApi('GET', `wfTarefas/${tarefaId}`);
+    _wfState.tarefaAtual = tarefa;
+
+    // Inicia a tarefa (idempotente)
+    await _wfApi('POST', `wfTarefas/${tarefaId}/iniciar`, {});
+
+    // Carrega etapa e formulário
+    const etapas = await _wfApi('GET', `wfEtapas/${tarefa.instancia_id}`).catch(() => []);
+
+    document.getElementById('exec-titulo-etapa').textContent = tarefa.etapa_modelo_id;
+    document.getElementById('exec-observacao').value = '';
+
+    // Instruções
+    const instrDiv = document.getElementById('exec-instrucoes');
+    instrDiv.style.display = 'none';
+
+    // Formulário dinâmico
+    const formEl = document.getElementById('exec-formulario');
+    formEl.innerHTML = '';
+
+    // Botões de ação: carrega transições do processo
+    const acoes = document.getElementById('exec-acoes');
+    acoes.innerHTML = `
+      <button class="wf-btn wf-btn-success" onclick="wfConcluirTarefa('sempre')">Concluir</button>
+      <button class="wf-btn wf-btn-secondary" onclick="wfNavegar('tarefas')">Cancelar</button>
+    `;
+
+    wfNavegar('executar-tarefa');
+  } catch (e) {
+    alert('Erro ao abrir tarefa: ' + e.message);
+  }
+}
+
+async function wfConcluirTarefa(acao) {
+  if (!_wfState.tarefaAtual) return;
+
+  const obs = document.getElementById('exec-observacao').value.trim();
+  const dadosFormulario = {};
+
+  // Coleta dados do formulário dinâmico se existir
+  const formEl = document.getElementById('exec-formulario');
+  const formContainer = formEl.querySelector('.wf-form');
+  if (formContainer && _wfState.tarefaAtual._campos) {
+    const resultado = wfColetarDadosFormulario(formContainer, _wfState.tarefaAtual._campos);
+    if (!resultado.valido) return; // erros já exibidos pelo renderer
+    Object.assign(dadosFormulario, resultado.dados);
+  }
+
+  try {
+    await _wfApi('POST', `wfTarefas/${_wfState.tarefaAtual.id}/concluir`, {
+      acao,
+      observacao: obs,
+      dados_formulario: dadosFormulario,
+    });
+    wfNavegar('tarefas');
+  } catch (e) {
+    alert('Erro ao concluir tarefa: ' + e.message);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tela: Instâncias
+// ---------------------------------------------------------------------------
+async function wfCarregarInstancias() {
+  const el = document.getElementById('lista-instancias');
+  el.innerHTML = '<div style="color:#6b7280;font-size:14px;">Carregando…</div>';
+  try {
+    const instancias = await _wfApi('GET', 'wfInstancias');
+    if (!instancias.length) { el.innerHTML = '<div style="color:#6b7280;font-size:14px;">Nenhum processo ativo.</div>'; return; }
+
+    el.innerHTML = instancias.map(i => `
+      <div class="wf-card">
+        <div class="wf-card-titulo">${esc(i.titulo || i.id)}</div>
+        <div class="wf-card-sub">Etapa atual: ${esc(i.etapa_atual_id || '—')}</div>
+        <div class="wf-card-footer">
+          ${_badgeHtml(WF_STATUS_INSTANCIA_LABELS[i.status] || i.status, WF_STATUS_INSTANCIA_COR[i.status] || '#6b7280')}
+          <button class="wf-btn wf-btn-secondary wf-btn-sm" onclick="wfAbrirHistorico('${esc(i.id)}', '${esc(i.titulo || i.id)}', '${esc(i.status)}')">Histórico</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    el.innerHTML = `<div style="color:#ef4444;font-size:14px;">${esc(e.message)}</div>`;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tela: Histórico
+// ---------------------------------------------------------------------------
+async function wfAbrirHistorico(instanciaId, titulo, status) {
+  _wfState.instanciaAtual = { id: instanciaId, titulo, status };
+  document.getElementById('hist-titulo').textContent = titulo;
+
+  const podeCancelar = ['em_andamento', 'suspenso'].includes(status) && ['ep', 'gestor'].includes(_wfState.perfil);
+  document.getElementById('hist-btn-cancelar').style.display = podeCancelar ? 'inline-block' : 'none';
+
+  document.getElementById('hist-resumo').innerHTML = `
+    <div style="display:flex;gap:12px;align-items:center">
+      <div>
+        <div style="font-size:12px;color:#6b7280">Status</div>
+        <div>${_badgeHtml(WF_STATUS_INSTANCIA_LABELS[status] || status, WF_STATUS_INSTANCIA_COR[status] || '#6b7280')}</div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:#6b7280">ID</div>
+        <div style="font-size:13px;font-family:monospace">${esc(instanciaId)}</div>
+      </div>
+    </div>
+  `;
+
+  const timeline = document.getElementById('hist-timeline');
+  timeline.innerHTML = '<div style="color:#6b7280;font-size:14px;">Carregando…</div>';
+
+  try {
+    const historico = await _wfApi('GET', `wfInstanciaItem/${instanciaId}/historico`);
+    if (!historico.length) { timeline.innerHTML = '<div style="color:#6b7280;font-size:14px;">Nenhum evento registrado.</div>'; }
+    else {
+      timeline.innerHTML = historico.map(h => {
+        const data = h.ocorrido_em?._seconds
+          ? new Date(h.ocorrido_em._seconds * 1000).toLocaleString('pt-BR')
+          : '—';
+        const extra = h.dados && Object.keys(h.dados).length
+          ? `<div class="wf-timeline-extra">${esc(JSON.stringify(h.dados)).substring(0, 120)}</div>` : '';
+        return `
+          <div class="wf-timeline-item">
+            <div class="wf-timeline-dot"></div>
+            <div class="wf-timeline-data">${esc(data)} ${h.usuario_uid ? '— ' + esc(h.usuario_uid) : ''}</div>
+            <div class="wf-timeline-desc">${esc(h.descricao || WF_TIPO_EVENTO_LABELS[h.tipo_evento] || h.tipo_evento)}</div>
+            ${extra}
+          </div>
+        `;
+      }).join('');
+    }
+  } catch (e) {
+    timeline.innerHTML = `<div style="color:#ef4444;font-size:14px;">${esc(e.message)}</div>`;
+  }
+
+  wfNavegar('historico');
+}
+
+async function wfCancelarInstancia() {
+  if (!_wfState.instanciaAtual) return;
+  const motivo = prompt('Motivo do cancelamento:');
+  if (motivo === null) return;
+  try {
+    await _wfApi('POST', `wfInstanciaItem/${_wfState.instanciaAtual.id}/cancelar`, { motivo });
+    wfNavegar('instancias');
+  } catch (e) {
+    alert('Erro: ' + e.message);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tela: Novo Processo
+// ---------------------------------------------------------------------------
+async function wfCarregarModelosParaIniciar() {
+  try {
+    const modelos = await _wfApi('GET', 'wfProcessosModelo');
+    const publicados = modelos.filter(m => m.status === 'publicado');
+    const sel = document.getElementById('np-modelo');
+    sel.innerHTML = '<option value="">Selecione o processo a iniciar…</option>';
+    publicados.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = m.nome;
+      opt.dataset.desc = m.descricao || '';
+      sel.appendChild(opt);
+    });
+    _wfState._modelosCache = publicados;
+  } catch (e) {
+    console.error('[WF] Erro ao carregar modelos:', e);
+  }
+}
+
+function wfExibirDetalhesModelo() {
+  const sel = document.getElementById('np-modelo');
+  const opt = sel.options[sel.selectedIndex];
+  const div = document.getElementById('np-detalhes');
+  if (!opt.value) { div.style.display = 'none'; return; }
+  document.getElementById('np-detalhes-desc').textContent = opt.dataset.desc || 'Sem descrição.';
+  div.style.display = 'block';
+}
+
+async function wfIniciarProcesso() {
+  const modeloId = document.getElementById('np-modelo').value;
+  const titulo = document.getElementById('np-titulo').value.trim();
+  if (!modeloId) { alert('Selecione um processo.'); return; }
+  try {
+    const instancia = await _wfApi('POST', 'wfInstancias', { processo_modelo_id: modeloId, titulo: titulo || undefined });
+    alert(`Processo iniciado! ID: ${instancia.id}`);
+    wfNavegar('tarefas');
+  } catch (e) {
+    alert('Erro ao iniciar processo: ' + e.message);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tela: Modelagem
+// ---------------------------------------------------------------------------
+async function wfCarregarModelos() {
+  const el = document.getElementById('lista-modelos');
+  el.innerHTML = '<div style="color:#6b7280;font-size:14px;">Carregando…</div>';
+  try {
+    const modelos = await _wfApi('GET', 'wfProcessosModelo');
+    if (!modelos.length) { el.innerHTML = '<div style="color:#6b7280;font-size:14px;">Nenhum modelo cadastrado.</div>'; return; }
+    el.innerHTML = modelos.map(m => `
+      <div class="wf-card">
+        <div class="wf-card-titulo">${esc(m.nome)}</div>
+        <div class="wf-card-sub">${esc(m.descricao || 'Sem descrição')}</div>
+        <div class="wf-card-footer">
+          ${_badgeHtml(WF_STATUS_PROCESSO_MODELO_LABELS[m.status] || m.status, WF_STATUS_PROCESSO_MODELO_COR[m.status] || '#6b7280')}
+          <span style="font-size:12px;color:#9ca3af">v${m.versao || 1}</span>
+          <button class="wf-btn wf-btn-primary wf-btn-sm" onclick="wfAbrirConfigModelo('${esc(m.id)}')">Configurar</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    el.innerHTML = `<div style="color:#ef4444;font-size:14px;">${esc(e.message)}</div>`;
+  }
+}
+
+function wfAbrirModalNovoModelo() {
+  document.getElementById('modal-modelo-titulo').textContent = 'Novo Modelo de Processo';
+  document.getElementById('modal-modelo-id').value = '';
+  document.getElementById('mm-nome').value = '';
+  document.getElementById('mm-descricao').value = '';
+  document.querySelectorAll('.mm-perfil').forEach(cb => cb.checked = false);
+  wfAbrirModal('modal-modelo');
+}
+
+async function wfSalvarModelo() {
+  const id = document.getElementById('modal-modelo-id').value;
+  const nome = document.getElementById('mm-nome').value.trim();
+  const descricao = document.getElementById('mm-descricao').value.trim();
+  const perfis = [...document.querySelectorAll('.mm-perfil:checked')].map(cb => cb.value);
+  if (!nome) { alert('Informe o nome do processo.'); return; }
+  try {
+    if (id) {
+      await _wfApi('PUT', `wfProcessoModeloItem/${id}`, { nome, descricao, perfis_permitidos: perfis });
+    } else {
+      await _wfApi('POST', 'wfProcessosModelo', { nome, descricao, perfis_permitidos: perfis });
+    }
+    wfFecharModal('modal-modelo');
+    wfCarregarModelos();
+  } catch (e) {
+    alert('Erro: ' + e.message);
+  }
+}
+
+async function wfAbrirConfigModelo(modeloId) {
+  try {
+    const modelo = await _wfApi('GET', `wfProcessoModeloItem/${modeloId}`);
+    _wfState.modeloAtual = modelo;
+
+    document.getElementById('config-modelo-titulo').textContent = modelo.nome;
+    const badge = document.getElementById('config-modelo-status-badge');
+    badge.textContent = WF_STATUS_PROCESSO_MODELO_LABELS[modelo.status] || modelo.status;
+    badge.style.background = (WF_STATUS_PROCESSO_MODELO_COR[modelo.status] || '#6b7280') + '20';
+    badge.style.color = WF_STATUS_PROCESSO_MODELO_COR[modelo.status] || '#6b7280';
+
+    const btnPublicar = document.getElementById('config-btn-publicar');
+    btnPublicar.style.display = modelo.status === 'rascunho' && _wfState.perfil === 'ep' ? 'inline-block' : 'none';
+
+    // Painel de arquitetura
+    if (modelo.arquitetura_id) {
+      document.getElementById('config-arquitetura-info').innerHTML =
+        `<strong>${esc(modelo.arquitetura_id)}</strong> — ${esc(modelo.nome)}`;
+    }
+
+    await wfCarregarEtapasModelo(modeloId);
+    await wfCarregarTransicoesModelo(modeloId);
+
+    wfNavegar('config-modelo');
+  } catch (e) {
+    alert('Erro ao abrir modelo: ' + e.message);
+  }
+}
+
+async function wfCarregarEtapasModelo(modeloId) {
+  try {
+    const etapas = await _wfApi('GET', `wfEtapas/${modeloId}`);
+    _wfState.etapasModelo = etapas;
+    const ul = document.getElementById('config-etapas-lista');
+    if (!etapas.length) { ul.innerHTML = '<li style="color:#6b7280;font-size:14px;padding:10px">Nenhuma etapa.</li>'; return; }
+    ul.innerHTML = etapas.map((e, i) => `
+      <li class="wf-etapa-item">
+        <div class="wf-etapa-ordem">${i + 1}</div>
+        <div class="wf-etapa-info">
+          <div class="wf-etapa-nome">${esc(WF_TIPO_ETAPA_ICONE[e.tipo] || '')} ${esc(e.nome)}</div>
+          <div class="wf-etapa-meta">
+            ${esc(WF_TIPO_ETAPA_LABELS[e.tipo] || e.tipo)} ·
+            Resp: ${esc(WF_RESPONSAVEL_TIPO_LABELS[e.responsavel_tipo] || e.responsavel_tipo)} ·
+            SLA: ${e.sla_horas ? e.sla_horas + 'h' : 'sem prazo'}
+          </div>
+        </div>
+      </li>
+    `).join('');
+  } catch (e) {
+    console.error('[WF] Erro ao carregar etapas:', e);
+  }
+}
+
+async function wfCarregarTransicoesModelo(modeloId) {
+  try {
+    const trans = await _wfApi('GET', `wfTransicoes/${modeloId}`);
+    const el = document.getElementById('config-transicoes-lista');
+    if (!trans.length) { el.textContent = 'Nenhuma transição configurada.'; return; }
+    el.innerHTML = trans.map(t => `
+      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:10px 14px;margin-bottom:6px;font-size:13px">
+        <strong>${esc(t.etapa_origem_id)}</strong>
+        → <strong>${esc(t.etapa_destino_id)}</strong>
+        <span style="color:#6b7280"> (${esc(t.label || t.condicao)})</span>
+      </div>
+    `).join('');
+  } catch (e) {
+    console.error('[WF] Erro ao carregar transições:', e);
+  }
+}
+
+async function wfPublicarModelo() {
+  if (!_wfState.modeloAtual) return;
+  if (!confirm('Publicar este modelo? Ele ficará disponível para iniciar novos processos.')) return;
+  try {
+    await _wfApi('POST', `wfProcessoModeloItem/${_wfState.modeloAtual.id}/publicar`, {});
+    alert('Modelo publicado com sucesso!');
+    wfAbrirConfigModelo(_wfState.modeloAtual.id);
+  } catch (e) {
+    alert('Erro: ' + e.message);
+  }
+}
+
+// ---- Modal: Etapa ----
+function wfAbrirModalEtapa() {
+  document.getElementById('modal-etapa-id').value = '';
+  document.getElementById('me-nome').value = '';
+  document.getElementById('me-tipo').value = 'tarefa';
+  document.getElementById('me-resp-tipo').value = 'solicitante';
+  document.getElementById('me-resp-valor').value = '';
+  document.getElementById('me-sla').value = '0';
+  document.getElementById('me-instrucoes').value = '';
+  wfToggleResponsavelValor();
+
+  // Popula formulários disponíveis
+  const selForm = document.getElementById('me-formulario');
+  selForm.innerHTML = '<option value="">Nenhum</option>';
+  _wfState.formsDisponiveis.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f.id;
+    opt.textContent = f.titulo;
+    selForm.appendChild(opt);
+  });
+
+  wfAbrirModal('modal-etapa');
+}
+
+function wfToggleResponsavelValor() {
+  const tipo = document.getElementById('me-resp-tipo').value;
+  const grupo = document.getElementById('me-resp-valor-grupo');
+  const label = document.getElementById('me-resp-valor-label');
+  if (tipo === 'solicitante') {
+    grupo.style.display = 'none';
+  } else {
+    grupo.style.display = 'block';
+    label.textContent = tipo === 'perfil' ? 'Perfil (ep, gestor, dono…)' : 'UID do usuário';
+  }
+}
+
+async function wfSalvarEtapa() {
+  if (!_wfState.modeloAtual) return;
+  const nome = document.getElementById('me-nome').value.trim();
+  if (!nome) { alert('Informe o nome da etapa.'); return; }
+  const payload = {
+    nome,
+    tipo: document.getElementById('me-tipo').value,
+    responsavel_tipo: document.getElementById('me-resp-tipo').value,
+    responsavel_valor: document.getElementById('me-resp-valor').value.trim() || null,
+    sla_horas: parseInt(document.getElementById('me-sla').value) || 0,
+    formulario_modelo_id: document.getElementById('me-formulario').value || null,
+    instrucoes: document.getElementById('me-instrucoes').value.trim(),
+    ordem: (_wfState.etapasModelo.length + 1),
+  };
+  try {
+    await _wfApi('POST', `wfEtapas/${_wfState.modeloAtual.id}`, payload);
+    wfFecharModal('modal-etapa');
+    await wfCarregarEtapasModelo(_wfState.modeloAtual.id);
+  } catch (e) {
+    alert('Erro: ' + e.message);
+  }
+}
+
+// ---- Modal: Transição ----
+function wfAbrirModalTransicao() {
+  const origemSel = document.getElementById('mt-origem');
+  const destinoSel = document.getElementById('mt-destino');
+  origemSel.innerHTML = '';
+  destinoSel.innerHTML = '';
+  _wfState.etapasModelo.forEach(e => {
+    [origemSel, destinoSel].forEach(sel => {
+      const opt = document.createElement('option');
+      opt.value = e.id;
+      opt.textContent = `${e.nome} (${e.tipo})`;
+      sel.appendChild(opt);
+    });
+  });
+  document.getElementById('mt-condicao').value = 'sempre';
+  document.getElementById('mt-label').value = 'Avançar';
+  wfAbrirModal('modal-transicao');
+}
+
+async function wfSalvarTransicao() {
+  if (!_wfState.modeloAtual) return;
+  const payload = {
+    etapa_origem_id: document.getElementById('mt-origem').value,
+    etapa_destino_id: document.getElementById('mt-destino').value,
+    condicao: document.getElementById('mt-condicao').value,
+    label: document.getElementById('mt-label').value.trim() || 'Avançar',
+  };
+  try {
+    await _wfApi('POST', `wfTransicoes/${_wfState.modeloAtual.id}`, payload);
+    wfFecharModal('modal-transicao');
+    await wfCarregarTransicoesModelo(_wfState.modeloAtual.id);
+  } catch (e) {
+    alert('Erro: ' + e.message);
+  }
+}
+
+// ---- Modal: Vincular Arquitetura ----
+async function wfAbrirModalVincularArquitetura() {
+  try {
+    if (!_wfState.arquiteturaDisponivel.length) {
+      const lista = await _wfApi('GET', 'wfArquiteturaProcessos');
+      _wfState.arquiteturaDisponivel = lista;
+    }
+    const sel = document.getElementById('arq-processo');
+    sel.innerHTML = '<option value="">Selecione…</option>';
+    _wfState.arquiteturaDisponivel.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = `${p.codigo ? p.codigo + ' — ' : ''}${p.nome}`;
+      opt.dataset.nivel = p.nivel || '';
+      sel.appendChild(opt);
+    });
+    sel.onchange = () => {
+      const opt = sel.options[sel.selectedIndex];
+      const prev = document.getElementById('arq-preview');
+      if (!opt.value) { prev.style.display = 'none'; return; }
+      prev.style.display = 'block';
+      prev.innerHTML = `<strong>${esc(opt.textContent)}</strong><br><span style="color:#6b7280">Nível: ${esc(opt.dataset.nivel || '—')}</span>`;
+    };
+    wfAbrirModal('modal-arquitetura');
+  } catch (e) {
+    alert('Erro ao carregar arquitetura: ' + e.message);
+  }
+}
+
+async function wfVincularArquitetura() {
+  const arquiteturaId = document.getElementById('arq-processo').value;
+  if (!arquiteturaId || !_wfState.modeloAtual) return;
+  try {
+    await _wfApi('PUT', `wfProcessoModeloItem/${_wfState.modeloAtual.id}`, { arquitetura_id: arquiteturaId });
+    _wfState.modeloAtual.arquitetura_id = arquiteturaId;
+    const opt = document.querySelector(`#arq-processo option[value="${arquiteturaId}"]`);
+    document.getElementById('config-arquitetura-info').innerHTML = `<strong>${esc(opt?.textContent || arquiteturaId)}</strong>`;
+    wfFecharModal('modal-arquitetura');
+  } catch (e) {
+    alert('Erro: ' + e.message);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tela: Formulários
+// ---------------------------------------------------------------------------
+async function wfCarregarFormularios() {
+  const el = document.getElementById('lista-formularios');
+  el.innerHTML = '<div style="color:#6b7280;font-size:14px;">Carregando…</div>';
+  try {
+    const forms = await _wfApi('GET', 'wfFormularios');
+    _wfState.formsDisponiveis = forms;
+    if (!forms.length) { el.innerHTML = '<div style="color:#6b7280;font-size:14px;">Nenhum formulário cadastrado.</div>'; return; }
+    el.innerHTML = forms.map(f => `
+      <div class="wf-card">
+        <div class="wf-card-titulo">${esc(f.titulo)}</div>
+        <div class="wf-card-sub">${(f.campos || []).length} campo(s) · v${f.versao || 1}</div>
+        <div class="wf-card-footer">
+          <button class="wf-btn wf-btn-secondary wf-btn-sm" onclick="wfPreviewFormulario('${esc(f.id)}')">Preview</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    el.innerHTML = `<div style="color:#ef4444;font-size:14px;">${esc(e.message)}</div>`;
+  }
+}
+
+function wfAbrirModalNovoFormulario() {
+  _wfState.camposFormulario = [];
+  document.getElementById('mf-titulo').value = '';
+  document.getElementById('mf-campos-lista').innerHTML = '';
+  document.getElementById('mf-preview').innerHTML = '';
+  wfAbrirModal('modal-formulario');
+}
+
+function wfAdicionarCampo() {
+  const id = `campo_${Date.now()}`;
+  _wfState.camposFormulario.push({ id, tipo: 'texto', label: '', obrigatorio: false });
+  _renderizarEditorCampos();
+}
+
+function _renderizarEditorCampos() {
+  const el = document.getElementById('mf-campos-lista');
+  el.innerHTML = _wfState.camposFormulario.map((c, idx) => `
+    <div style="border:1px solid #e5e7eb;border-radius:8px;padding:12px;margin-bottom:8px;background:#fafafa">
+      <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px">
+          <label style="font-size:12px;font-weight:500">ID (snake_case)</label>
+          <input class="wf-form-input" style="margin-top:4px" value="${esc(c.id)}"
+            oninput="_wfState.camposFormulario[${idx}].id = this.value; _atualizarPreviewFormulario()">
+        </div>
+        <div style="flex:2;min-width:150px">
+          <label style="font-size:12px;font-weight:500">Label</label>
+          <input class="wf-form-input" style="margin-top:4px" value="${esc(c.label)}"
+            oninput="_wfState.camposFormulario[${idx}].label = this.value; _atualizarPreviewFormulario()">
+        </div>
+        <div style="flex:1;min-width:100px">
+          <label style="font-size:12px;font-weight:500">Tipo</label>
+          <select class="wf-form-input wf-form-select" style="margin-top:4px"
+            onchange="_wfState.camposFormulario[${idx}].tipo = this.value; _renderizarEditorCampos()">
+            ${Object.entries(WF_TIPO_CAMPO_LABELS).map(([v, l]) =>
+              `<option value="${esc(v)}" ${c.tipo === v ? 'selected' : ''}>${esc(l)}</option>`
+            ).join('')}
+          </select>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;padding-top:18px">
+          <input type="checkbox" ${c.obrigatorio ? 'checked' : ''}
+            onchange="_wfState.camposFormulario[${idx}].obrigatorio = this.checked">
+          <label style="font-size:12px">Obrig.</label>
+        </div>
+        <button class="wf-btn wf-btn-danger wf-btn-sm" style="margin-top:18px"
+          onclick="_wfState.camposFormulario.splice(${idx},1); _renderizarEditorCampos()">✕</button>
+      </div>
+      ${c.tipo === 'select' ? `
+        <div style="margin-top:8px">
+          <label style="font-size:12px;font-weight:500">Opções (uma por linha)</label>
+          <textarea class="wf-form-input" rows="3" style="margin-top:4px"
+            oninput="_wfState.camposFormulario[${idx}].opcoes = this.value.split('\\n').filter(Boolean)"
+          >${(c.opcoes || []).join('\n')}</textarea>
+        </div>
+      ` : ''}
+    </div>
+  `).join('');
+  _atualizarPreviewFormulario();
+}
+
+function _atualizarPreviewFormulario() {
+  const prev = document.getElementById('mf-preview');
+  if (!_wfState.camposFormulario.length) { prev.innerHTML = '<span style="color:#9ca3af;font-size:13px">Adicione campos para ver o preview.</span>'; return; }
+  prev.innerHTML = '';
+  const titulo = document.getElementById('mf-titulo').value || 'Preview';
+  const formEl = wfRenderizarFormulario({ titulo, campos: _wfState.camposFormulario });
+  prev.appendChild(formEl);
+}
+
+async function wfSalvarFormulario() {
+  const titulo = document.getElementById('mf-titulo').value.trim();
+  if (!titulo) { alert('Informe o título do formulário.'); return; }
+  if (!_wfState.camposFormulario.length) { alert('Adicione ao menos um campo.'); return; }
+  try {
+    await _wfApi('POST', 'wfFormularios', { titulo, campos: _wfState.camposFormulario });
+    wfFecharModal('modal-formulario');
+    wfCarregarFormularios();
+  } catch (e) {
+    alert('Erro: ' + e.message);
+  }
+}
+
+function wfPreviewFormulario(formId) {
+  const form = _wfState.formsDisponiveis.find(f => f.id === formId);
+  if (!form) return;
+  const win = window.open('', '_blank', 'width=600,height=500');
+  const el = wfRenderizarFormulario(form);
+  win.document.body.style.fontFamily = 'sans-serif';
+  win.document.body.style.padding = '20px';
+  win.document.body.appendChild(el);
+}
+
+// ---------------------------------------------------------------------------
+// Tela: Notificações
+// ---------------------------------------------------------------------------
+async function wfCarregarNotificacoes() {
+  const el = document.getElementById('lista-notificacoes');
+  el.innerHTML = '<div style="color:#6b7280;font-size:14px;">Carregando…</div>';
+  try {
+    const notifs = await _wfApi('GET', 'wfNotificacoes');
+    if (!notifs.length) { el.innerHTML = '<div style="color:#6b7280;font-size:14px;">Nenhuma notificação.</div>'; return; }
+    el.innerHTML = notifs.map(n => `
+      <div class="wf-card" style="margin-bottom:10px;${!n.lida ? 'border-left:4px solid #2563eb' : ''}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div class="wf-card-titulo" style="font-size:14px">${esc(n.titulo)}</div>
+            <div class="wf-card-sub">${esc(n.mensagem)}</div>
+          </div>
+          ${!n.lida ? `<button class="wf-btn wf-btn-secondary wf-btn-sm" onclick="wfMarcarLida('${esc(n.id)}', this)">Marcar lida</button>` : ''}
+        </div>
+      </div>
+    `).join('');
+
+    const naoLidas = notifs.filter(n => !n.lida).length;
+    document.getElementById('badge-notif').textContent = naoLidas;
+    document.getElementById('badge-notif').style.display = naoLidas ? 'inline' : 'none';
+  } catch (e) {
+    el.innerHTML = `<div style="color:#ef4444;font-size:14px;">${esc(e.message)}</div>`;
+  }
+}
+
+async function wfMarcarLida(notifId, btn) {
+  await _wfApi('POST', `wfNotificacoes/${notifId}/marcar-lida`, {});
+  btn.closest('.wf-card').style.borderLeft = '';
+  btn.remove();
+  wfAtualizarBadges();
+}
+
+async function wfMarcarTodasLidas() {
+  await _wfApi('POST', 'wfNotificacoes/marcar-todas-lidas', {});
+  wfCarregarNotificacoes();
+}
+
+async function wfAtualizarBadges() {
+  try {
+    const notifs = await _wfApi('GET', 'wfNotificacoes');
+    const naoLidas = notifs.filter(n => !n.lida).length;
+    document.getElementById('badge-notif').textContent = naoLidas;
+    document.getElementById('badge-notif').style.display = naoLidas ? 'inline' : 'none';
+  } catch (_) {}
+}
+</script>
+</body>
+</html>
