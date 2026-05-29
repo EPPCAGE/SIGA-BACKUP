@@ -832,7 +832,7 @@
     };
   }
 
-  // Importa um mapeamento → gera BPMN XML → cria wf_processo_modelos rascunho → abre designer
+  // Importa um mapeamento → reutiliza BPMN XML existente (bpmnToBe ou bpmnAsIs) → abre designer
   async function wfImportarMapeamento(processoId) {
     const proc = await _getDoc('processos', processoId);
     if (!proc) { alert('Processo não encontrado.'); return; }
@@ -841,60 +841,73 @@
     const etapasExec = todasEtapas.filter(e => !e.tipo || e.tipo === 'Atividade' || e.tipo === 'Aprovação');
     if (!etapasExec.length) { alert('Este processo não possui etapas executáveis.'); return; }
 
-    // Gera BPMN XML com layout horizontal
-    const BW = 120, BH = 60, GAP = 50, Y = 100, startX = 60;
-    const ids = etapasExec.map((_, i) => `task_${i + 1}`);
-    let processXml = '<startEvent id="start" name="Início"/>\n';
-    etapasExec.forEach((e, i) => {
-      const tipo = e.tipo === 'Aprovação' ? 'exclusiveGateway' : 'userTask';
-      processXml += `    <${tipo} id="${ids[i]}" name="${(e.nome || `Etapa ${i+1}`).replace(/"/g, '&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}"/>\n`;
-    });
-    processXml += '    <endEvent id="end" name="Fim"/>\n';
-    // sequence flows
-    processXml += `    <sequenceFlow id="f0" sourceRef="start" targetRef="${ids[0]}"/>\n`;
-    ids.forEach((id, i) => {
-      const next = ids[i + 1] || 'end';
-      processXml += `    <sequenceFlow id="f${i+1}" sourceRef="${id}" targetRef="${next}"/>\n`;
-    });
+    // Reutiliza o BPMN XML já desenhado no módulo de mapeamento
+    const bpmnXmlExistente = usaToBe ? (proc.mod?.bpmnToBe || null) : (proc.mod?.bpmnAsIs || null);
 
-    // DI (posições)
-    const allIds = ['start', ...ids, 'end'];
-    const startW = 36, startH = 36;
-    let diShapes = '';
-    allIds.forEach((id, i) => {
-      const isEvent = id === 'start' || id === 'end';
-      const w = isEvent ? startW : BW, h = isEvent ? startH : BH;
-      const x = startX + i * (BW + GAP) + (isEvent ? (BW - startW) / 2 : 0);
-      const y = Y + (isEvent ? (BH - startH) / 2 : 0);
-      diShapes += `      <bpmndi:BPMNShape bpmnElement="${id}"><omgdc:Bounds x="${x}" y="${y}" width="${w}" height="${h}"/></bpmndi:BPMNShape>\n`;
-    });
-    let diEdges = '';
-    allIds.forEach((id, i) => {
-      if (i === allIds.length - 1) return;
-      const srcId = id, tgtId = allIds[i + 1];
-      const srcIsEvent = srcId === 'start' || srcId === 'end';
-      const tgtIsEvent = tgtId === 'start' || tgtId === 'end';
-      const sw = srcIsEvent ? startW : BW, sx = startX + i * (BW + GAP) + (srcIsEvent ? (BW - startW) / 2 : 0);
-      const tx = startX + (i+1) * (BW + GAP) + (tgtIsEvent ? (BW - startW) / 2 : 0);
-      diEdges += `      <bpmndi:BPMNEdge bpmnElement="f${i}"><omgdi:waypoint x="${sx + sw}" y="${Y + BH/2}"/><omgdi:waypoint x="${tx}" y="${Y + BH/2}"/></bpmndi:BPMNEdge>\n`;
-    });
+    let bpmnXml;
+    const configNos = {};
 
-    const bpmnXml = `<?xml version="1.0" encoding="UTF-8"?>
+    if (bpmnXmlExistente) {
+      // Usa o XML do mapeamento diretamente — preserva o layout e gateways originais
+      bpmnXml = bpmnXmlExistente;
+      // Extrai IDs de tasks/gateways do XML para criar config_nos com defaults
+      const matches = [...bpmnXml.matchAll(/(?:userTask|manualTask|serviceTask|exclusiveGateway|inclusiveGateway|parallelGateway)\s+id="([^"]+)"/g)];
+      matches.forEach(([, id]) => {
+        const cfg = _configPadrao();
+        // Gateways recebem ações de aprovação por padrão
+        if (bpmnXml.includes(`exclusiveGateway id="${id}"`) || bpmnXml.includes(`inclusiveGateway id="${id}"`)) {
+          cfg.acoes = ['aprovar', 'rejeitar'];
+        }
+        configNos[id] = cfg;
+      });
+    } else {
+      // Fallback: processo sem BPMN desenhado — gera layout linear simples
+      const BW = 120, BH = 60, GAP = 50, Y = 100, startX = 60;
+      const ids = etapasExec.map((_, i) => `task_${i + 1}`);
+      let processXml = '    <startEvent id="start" name="Início"/>\n';
+      etapasExec.forEach((e, i) => {
+        const tipo = e.tipo === 'Aprovação' ? 'exclusiveGateway' : 'userTask';
+        processXml += `    <${tipo} id="${ids[i]}" name="${(e.nome || `Etapa ${i+1}`).replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}"/>\n`;
+      });
+      processXml += '    <endEvent id="end" name="Fim"/>\n';
+      processXml += `    <sequenceFlow id="f0" sourceRef="start" targetRef="${ids[0]}"/>\n`;
+      ids.forEach((id, i) => {
+        processXml += `    <sequenceFlow id="f${i+1}" sourceRef="${id}" targetRef="${ids[i+1] || 'end'}"/>\n`;
+      });
+      const allIds = ['start', ...ids, 'end'];
+      const startW = 36, startH = 36;
+      let diShapes = '';
+      allIds.forEach((id, i) => {
+        const isEvent = id === 'start' || id === 'end';
+        const w = isEvent ? startW : BW, h = isEvent ? startH : BH;
+        const x = startX + i * (BW + GAP) + (isEvent ? (BW - startW) / 2 : 0);
+        const y = Y + (isEvent ? (BH - startH) / 2 : 0);
+        diShapes += `      <bpmndi:BPMNShape bpmnElement="${id}"><omgdc:Bounds x="${x}" y="${y}" width="${w}" height="${h}"/></bpmndi:BPMNShape>\n`;
+      });
+      let diEdges = '';
+      allIds.forEach((id, i) => {
+        if (i === allIds.length - 1) return;
+        const srcIsEvent = id === 'start' || id === 'end';
+        const tgtIsEvent = allIds[i+1] === 'start' || allIds[i+1] === 'end';
+        const sw = srcIsEvent ? startW : BW;
+        const sx = startX + i * (BW + GAP) + (srcIsEvent ? (BW - startW) / 2 : 0);
+        const tx = startX + (i+1) * (BW + GAP) + (tgtIsEvent ? (BW - startW) / 2 : 0);
+        diEdges += `      <bpmndi:BPMNEdge bpmnElement="f${i}"><omgdi:waypoint x="${sx + sw}" y="${Y + BH/2}"/><omgdi:waypoint x="${tx}" y="${Y + BH/2}"/></bpmndi:BPMNEdge>\n`;
+      });
+      bpmnXml = `<?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC" xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI" targetNamespace="http://ep.cage">
   <process id="proc1" isExecutable="false">
-    ${processXml}  </process>
+${processXml}  </process>
   <bpmndi:BPMNDiagram id="d1"><bpmndi:BPMNPlane bpmnElement="proc1">
 ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 </definitions>`;
-
-    // config_nos com defaults
-    const configNos = {};
-    etapasExec.forEach((e, i) => {
-      const cfg = _configPadrao();
-      cfg.instrucoes = e.desc || '';
-      cfg.acoes = e.tipo === 'Aprovação' ? ['aprovar','rejeitar'] : ['avancar'];
-      configNos[ids[i]] = cfg;
-    });
+      ids.forEach((id, i) => {
+        const cfg = _configPadrao();
+        cfg.instrucoes = etapasExec[i]?.desc || '';
+        cfg.acoes = etapasExec[i]?.tipo === 'Aprovação' ? ['aprovar','rejeitar'] : ['avancar'];
+        configNos[id] = cfg;
+      });
+    }
 
     try {
       const id = await _addDoc('wf_processo_modelos', {
