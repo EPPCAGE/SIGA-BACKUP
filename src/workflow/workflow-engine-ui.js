@@ -43,14 +43,14 @@
   }
 
   async function _addDoc(colNome, dados) {
-    const { addDoc, serverTimestamp } = globalScope.fb();
-    const ref = await addDoc(_col(colNome), { ...dados, _criado_em: serverTimestamp() });
+    const { addDoc } = globalScope.fb();
+    const ref = await addDoc(_col(colNome), { ...dados, _criado_em: new Date() });
     return ref.id;
   }
 
   async function _updateDoc(colNome, id, dados) {
-    const { updateDoc, serverTimestamp } = globalScope.fb();
-    await updateDoc(_docRef(colNome, id), { ...dados, _atualizado_em: serverTimestamp() });
+    const { updateDoc } = globalScope.fb();
+    await updateDoc(_docRef(colNome, id), { ...dados, _atualizado_em: new Date() });
   }
 
   // ── Helpers de UI ─────────────────────────────────────────────────────────
