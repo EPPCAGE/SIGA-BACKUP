@@ -1755,17 +1755,25 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
   function wfDesignerCampoCfg(noId, campo, valor) {
     if (!_wfConfigNos[noId]) _wfConfigNos[noId] = _configPadrao();
     _wfConfigNos[noId][campo] = valor;
+    _wfMarcarDesignerSujo();
   }
   function wfDesignerPapel(noId, papel, valor) {
     if (!_wfConfigNos[noId]) _wfConfigNos[noId] = _configPadrao();
     _wfConfigNos[noId].papeis = _wfConfigNos[noId].papeis || {};
     _wfConfigNos[noId].papeis[papel] = valor || null;
+    _wfMarcarDesignerSujo();
   }
   function wfDesignerToggleAcao(noId, acao, on) {
     if (!_wfConfigNos[noId]) _wfConfigNos[noId] = _configPadrao();
     const set = new Set(_wfConfigNos[noId].acoes || []);
     if (on) set.add(acao); else set.delete(acao);
     _wfConfigNos[noId].acoes = Array.from(set);
+    _wfMarcarDesignerSujo();
+  }
+
+  function _wfMarcarDesignerSujo() {
+    const d = document.getElementById('wf-bpmn-dirty');
+    if (d) d.style.display = 'inline';
   }
 
   // ── Gateway Condicional — Editor de condições de arestas ──────────────────
@@ -1799,16 +1807,17 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     if (!_wfConfigNos[arestaId]) _wfConfigNos[arestaId] = { condicoes: [], operador_logico: 'AND', padrao: false };
     (_wfConfigNos[arestaId].condicoes = _wfConfigNos[arestaId].condicoes || []).push({ campo: '', operador: '=', valor: '' });
     _wfRenderCondicoes(arestaId);
+    _wfMarcarDesignerSujo();
   }
 
   function wfDesignerRemoveCondicao(arestaId, idx) {
     const conds = _wfConfigNos[arestaId]?.condicoes;
-    if (conds) { conds.splice(idx, 1); _wfRenderCondicoes(arestaId); }
+    if (conds) { conds.splice(idx, 1); _wfRenderCondicoes(arestaId); _wfMarcarDesignerSujo(); }
   }
 
   function wfDesignerUpdateCondicao(arestaId, idx, chave, valor) {
     const cond = _wfConfigNos[arestaId]?.condicoes?.[idx];
-    if (cond) cond[chave] = valor;
+    if (cond) { cond[chave] = valor; _wfMarcarDesignerSujo(); }
   }
 
   function wfDesignerArestaPadrao(arestaId, val) {
@@ -1816,6 +1825,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     _wfConfigNos[arestaId].padrao = val;
     const wrap = document.getElementById(`wf-aresta-conds-wrap-${arestaId}`);
     if (wrap) { wrap.style.opacity = val ? '.4' : '1'; wrap.style.pointerEvents = val ? 'none' : ''; }
+    _wfMarcarDesignerSujo();
   }
 
   // ── Campos Condicionais — Editor de visibilidade/obrigatoriedade ──────────
@@ -1918,31 +1928,34 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     (_wfConfigNos[noId].campos_condicionais = _wfConfigNos[noId].campos_condicionais || [])
       .push({ campo_id: '', acao: 'mostrar', condicoes: [], operador_logico: 'AND' });
     _wfRenderCamposCond(noId);
+    _wfMarcarDesignerSujo();
   }
 
   function wfDesignerCampoCondRemove(noId, idx) {
     _wfConfigNos[noId]?.campos_condicionais?.splice(idx, 1);
     _wfRenderCamposCond(noId);
+    _wfMarcarDesignerSujo();
   }
 
   function wfDesignerCampoCondUpdate(noId, idx, chave, valor) {
     const cc = _wfConfigNos[noId]?.campos_condicionais?.[idx];
-    if (cc) cc[chave] = valor;
+    if (cc) { cc[chave] = valor; _wfMarcarDesignerSujo(); }
   }
 
   function wfDesignerCampoCondAddCond(noId, ccIdx) {
     const cc = _wfConfigNos[noId]?.campos_condicionais?.[ccIdx];
-    if (cc) { (cc.condicoes = cc.condicoes || []).push({ campo: '', operador: '=', valor: '' }); _wfRenderCampoCondConds(noId, ccIdx); }
+    if (cc) { (cc.condicoes = cc.condicoes || []).push({ campo: '', operador: '=', valor: '' }); _wfRenderCampoCondConds(noId, ccIdx); _wfMarcarDesignerSujo(); }
   }
 
   function wfDesignerCampoCondRemoveCond(noId, ccIdx, condIdx) {
     _wfConfigNos[noId]?.campos_condicionais?.[ccIdx]?.condicoes?.splice(condIdx, 1);
     _wfRenderCampoCondConds(noId, ccIdx);
+    _wfMarcarDesignerSujo();
   }
 
   function wfDesignerCampoCondCond(noId, ccIdx, condIdx, chave, valor) {
     const c = _wfConfigNos[noId]?.campos_condicionais?.[ccIdx]?.condicoes?.[condIdx];
-    if (c) c[chave] = valor;
+    if (c) { c[chave] = valor; _wfMarcarDesignerSujo(); }
   }
 
   // ── Avaliação de campos condicionais (exposta para renderer de formulários) ─
@@ -3360,14 +3373,13 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     const ICONE = globalScope.WF_TIPO_ETAPA_ICONE || { tarefa:'📋', aprovacao:'✅', inicio:'▶', fim:'⏹' };
     const PAPEL_LABELS = globalScope.WF_PAPEL_ALVO_LABELS || {};
     el.innerHTML = etapas.map((n, i) => `
-      <div style="display:flex;align-items:center;gap:10px;border:1px solid var(--bdr);border-radius:8px;padding:10px 14px;margin-bottom:8px">
+      <div onclick="wfAbrirModalEtapa('${_esc(n.id || i)}')" style="display:flex;align-items:center;gap:10px;border:1px solid var(--bdr);border-radius:8px;padding:10px 14px;margin-bottom:8px;cursor:pointer" title="Clique para editar a etapa">
         <span style="font-size:16px">${ICONE[n.tipo || n.label] || '📋'}</span>
         <div style="flex:1">
           <div style="font-weight:600;font-size:13px">${_esc(n.nome || n.label || n.id)}</div>
           <div style="font-size:11px;color:var(--ink3)">${_esc(n.tipo || 'tarefa')}${n.responsavel_papel ? ' · ' + _esc(PAPEL_LABELS[n.responsavel_papel] || n.responsavel_papel) : ''}${n.sla_horas ? ' · SLA ' + n.sla_horas + 'h' : ''}</div>
         </div>
-        <button type="button" class="btn btn-sm" onclick="wfAbrirModalEtapa('${_esc(n.id || i)}')">Editar</button>
-        <button type="button" class="btn btn-r btn-sm" onclick="_wfRemoverEtapa('${_esc(n.id || i)}')">✕</button>
+        <button type="button" class="btn btn-r btn-sm" onclick="event.stopPropagation();_wfRemoverEtapa('${_esc(n.id || i)}')" title="Excluir etapa">✕</button>
       </div>
     `).join('');
   }
@@ -3433,6 +3445,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     if (!_wfModeloAtual) return;
     const etapas = _wfEtapas(_wfModeloAtual);
     const etapa = etapaId ? etapas.find(e => e.id === etapaId) : null;
+    const cfgEtapa = etapa?.id ? (_wfConfigNos[etapa.id] || {}) : {};
     const isNova = !etapa;
     const TIPOS = [['tarefa','Tarefa'],['aprovacao','Aprovação']];
     const PAPEIS = Object.entries(globalScope.WF_PAPEL_ALVO_LABELS || { solicitante:'Próprio solicitante', ep:'Perfil EP', gestor:'Perfil Gestor', dono:'Perfil Dono' });
@@ -3442,9 +3455,9 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       <div class="modal-bd">
         <div style="margin-bottom:14px"><label class="lbl">Nome *</label><input type="text" class="fi" id="wf-etapa-nome" value="${_esc(etapa?.nome || '')}" style="margin-top:4px;width:100%"></div>
         <div style="margin-bottom:14px"><label class="lbl">Tipo</label><select class="fi" id="wf-etapa-tipo" style="margin-top:4px;width:100%">${TIPOS.map(([v,l])=>`<option value="${v}"${etapa?.tipo===v?' selected':''}>${l}</option>`).join('')}</select></div>
-        <div style="margin-bottom:14px"><label class="lbl">Responsável</label><select class="fi" id="wf-etapa-papel" style="margin-top:4px;width:100%"><option value="">— Não definido —</option>${PAPEIS.map(([v,l])=>`<option value="${v}"${etapa?.responsavel_papel===v?' selected':''}>${_esc(l)}</option>`).join('')}</select></div>
-        <div style="margin-bottom:14px"><label class="lbl">Formulário</label><select class="fi" id="wf-etapa-form" style="margin-top:4px;width:100%"><option value="">— Sem formulário —</option>${fms.map(m=>`<option value="${_esc(m.id)}"${etapa?.formulario_id===m.id?' selected':''}>${_esc(m.titulo||m.nome)}</option>`).join('')}</select></div>
-        <div><label class="lbl">SLA (horas)</label><input type="number" class="fi" id="wf-etapa-sla" min="0" value="${etapa?.sla_horas ?? 0}" style="margin-top:4px;width:100%"></div>
+        <div style="margin-bottom:14px"><label class="lbl">Responsável</label><select class="fi" id="wf-etapa-papel" style="margin-top:4px;width:100%"><option value="">— Não definido —</option>${PAPEIS.map(([v,l])=>`<option value="${v}"${(etapa?.responsavel_papel || cfgEtapa?.papeis?.executor || '')===v?' selected':''}>${_esc(l)}</option>`).join('')}</select></div>
+        <div style="margin-bottom:14px"><label class="lbl">Formulário</label><select class="fi" id="wf-etapa-form" style="margin-top:4px;width:100%"><option value="">— Sem formulário —</option>${fms.map(m=>`<option value="${_esc(m.id)}"${(etapa?.formulario_id || cfgEtapa?.formulario_id || '')===m.id?' selected':''}>${_esc(m.titulo||m.nome)}</option>`).join('')}</select></div>
+        <div><label class="lbl">SLA (horas)</label><input type="number" class="fi" id="wf-etapa-sla" min="0" value="${etapa?.sla_horas ?? cfgEtapa?.sla_horas ?? 0}" style="margin-top:4px;width:100%"></div>
       </div>
       <div class="modal-ft">
         <button type="button" class="btn btn-p" onclick="_wfSalvarEtapa('${_esc(etapaId||'')}')">Salvar</button>
@@ -3473,10 +3486,38 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     const nova = { id: etapaId || `e_${Date.now()}`, nome, tipo, responsavel_papel: papel || null, formulario_id: formId || null, sla_horas: sla };
     if (idx >= 0) etapas[idx] = nova;
     else etapas.push(nova);
+
+    // Mantém sincronia com as configurações usadas pelo editor visual (painel lateral do nó).
+    const cfg = _wfConfigNos[nova.id] || _configPadrao();
+    cfg.formulario_id = nova.formulario_id;
+    cfg.sla_horas = nova.sla_horas;
+    cfg.papeis = cfg.papeis || {};
+    cfg.papeis.executor = nova.responsavel_papel;
+    _wfConfigNos[nova.id] = cfg;
+
+    // Se houver nó BPMN correspondente, atualiza o rótulo no canvas.
+    try {
+      if (_wfModeler) {
+        const reg = _wfModeler.get('elementRegistry');
+        const modeling = _wfModeler.get('modeling');
+        const el = reg?.get(nova.id);
+        if (el && modeling) modeling.updateLabel(el, nova.nome || '');
+      }
+    } catch (_e) { /* no-op */ }
+
     await _updateDoc('wf_processo_modelos', _wfModeloAtual.id, { etapas });
     _wfModeloAtual.etapas = etapas;
     _wfFecharModalDinamico('wf-modal-etapa');
     _wfRenderEtapasConfig(_wfModeloAtual);
+
+    // Se o nó estava selecionado no designer, atualiza imediatamente o painel lateral.
+    try {
+      if (_st.designerNoSel) {
+        const reg = _wfModeler?.get('elementRegistry');
+        const elSel = reg?.get(_st.designerNoSel);
+        if (elSel) _wfRenderConfigPanel(elSel);
+      }
+    } catch (_e) { /* no-op */ }
   }
 
   function wfAbrirModalTransicao() {
