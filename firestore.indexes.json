@@ -63,6 +63,22 @@
         { "fieldPath": "destinatario_uid", "order": "ASCENDING" },
         { "fieldPath": "lida", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "wf_notificacoes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tarefa_id", "order": "ASCENDING" },
+        { "fieldPath": "tipo", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "wf_tarefa_workflows",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "prazo", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

@@ -138,12 +138,13 @@
   function _wfIniciarBadge() {
     const uid = _uid();
     if (!uid || _unsubNotifs) return;
-    const { onSnapshot, where, query, collection } = globalScope.fb();
-    const q = query(
-      collection(_db(), 'wf_notificacoes'),
-      where('destinatario_uid', '==', uid),
-      where('lida', '==', false),
-    );
+    const { onSnapshot, where, query, collection, or } = globalScope.fb();
+    const isEP = globalScope.isEP?.();
+    // EP também recebe notificações de escalada SLA
+    const constraints = isEP && or
+      ? [or(where('destinatario_uid', '==', uid), where('destinatario_uid', '==', 'ep_escalada')), where('lida', '==', false)]
+      : [where('destinatario_uid', '==', uid), where('lida', '==', false)];
+    const q = query(collection(_db(), 'wf_notificacoes'), ...constraints);
     _unsubNotifs = onSnapshot(q, snap => {
       const count = snap.size;
       const btn = document.getElementById('nb-workflow');
@@ -273,7 +274,7 @@
       const statusCores = { pendente:'#3b82f6', em_execucao:'#f59e0b', concluida:'#10b981', vencida:'#ef4444' };
 
       const cards = tarefas.map(t => `<div data-tarefa-id="${_esc(t.id)}">${_card(`
-        <div style="font-weight:600;font-size:14px;margin-bottom:4px">${_esc(t.etapa_nome || t.etapa_modelo_id)}</div>
+        <div style="font-weight:600;font-size:14px;margin-bottom:4px">${_esc(t.etapa_nome || t.etapa_modelo_id)}${t.sla_vencido ? ' <span style="background:#ef4444;color:#fff;font-size:9px;padding:1px 5px;border-radius:4px;vertical-align:middle">SLA VENCIDO</span>' : ''}</div>
         <div style="font-size:12px;color:var(--ink3);margin-bottom:6px">${_esc(t.processo_nome || t.instancia_id)}</div>
         ${_badge(statusLabels[t.status] || t.status, statusCores[t.status] || '#6b7280')}
         ${_slaInfo(t)}

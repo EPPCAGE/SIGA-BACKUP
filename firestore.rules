@@ -148,9 +148,12 @@ service cloud.firestore {
       allow create: if isAuth();
     }
 
-    // Notificações: cada usuário lê/marca as próprias; sistema cria.
+    // Notificações: cada usuário lê/marca as próprias; EP lê escaladas de SLA; sistema cria.
     match /wf_notificacoes/{id} {
-      allow read: if isAuth() && resource.data.destinatario_uid == request.auth.uid;
+      allow read: if isAuth() && (
+        resource.data.destinatario_uid == request.auth.uid ||
+        (isEP() && resource.data.destinatario_uid == 'ep_escalada')
+      );
       allow create: if isAuth();
       allow update: if isAuth() && resource.data.destinatario_uid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lida']);
