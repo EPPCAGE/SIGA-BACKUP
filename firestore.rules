@@ -109,38 +109,58 @@ service cloud.firestore {
       allow write: if isAuth() && (isEP() || request.auth.token.get('perfil','') == 'gestor');
     }
 
-    // Instâncias: dono lê as próprias; EP/gestor leem todas; escrita só via Cloud Function.
+    // Instâncias: dono lê as próprias; EP/gestor leem todas.
+    // Qualquer autenticado pode criar; só o solicitante ou EP/gestor podem atualizar.
     match /wf_instancia_processos/{id} {
       allow read: if isAuth() && (
         isEP() ||
         request.auth.token.get('perfil','') == 'gestor' ||
         resource.data.solicitante_uid == request.auth.uid
       );
-      allow write: if false; // somente via Cloud Function
+      allow create: if isAuth();
+      allow update: if isAuth() && (
+        isEP() ||
+        request.auth.token.get('perfil','') == 'gestor' ||
+        resource.data.solicitante_uid == request.auth.uid
+      );
     }
 
-    // Tarefas: responsável lê a própria; EP/gestor leem todas; escrita somente via Cloud Function.
+    // Tarefas: responsável lê a própria; EP/gestor leem todas.
+    // Qualquer autenticado pode criar (engine cria tarefas ao avançar etapa).
+    // Só o responsável ou EP/gestor podem atualizar.
     match /wf_tarefa_workflows/{id} {
       allow read: if isAuth() && (
         isEP() ||
         request.auth.token.get('perfil','') == 'gestor' ||
+        resource.data.responsavel_uid == request.auth.uid ||
+        resource.data.responsavel_uid == null
+      );
+      allow create: if isAuth();
+      allow update: if isAuth() && (
+        isEP() ||
+        request.auth.token.get('perfil','') == 'gestor' ||
         resource.data.responsavel_uid == request.auth.uid
       );
-      allow write: if false;
     }
 
-    // Histórico: imutável — apenas leitura para autenticados com acesso à instância.
+    // Histórico: imutável — autenticados criam, ninguém deleta/atualiza.
     match /wf_historico_workflows/{id} {
       allow read: if isAuth();
-      allow write: if false;
+      allow create: if isAuth();
     }
 
-    // Notificações: cada usuário lê/marca as próprias; escrita somente via Cloud Function.
+    // Notificações: cada usuário lê/marca as próprias; sistema cria.
     match /wf_notificacoes/{id} {
       allow read: if isAuth() && resource.data.destinatario_uid == request.auth.uid;
+      allow create: if isAuth();
       allow update: if isAuth() && resource.data.destinatario_uid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lida']);
-      allow create, delete: if false;
+    }
+
+    // Config por processo: EP/gestor escrevem; autenticados leem.
+    match /wf_config_processo/{id} {
+      allow read: if isAuth();
+      allow write: if isAuth() && (isEP() || request.auth.token.get('perfil','') == 'gestor');
     }
 
     match /{document=**} {

@@ -47,6 +47,14 @@
         { "fieldPath": "processo_modelo_id", "order": "ASCENDING" },
         { "fieldPath": "ordem", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "wf_historico_workflows",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "instancia_id", "order": "ASCENDING" },
+        { "fieldPath": "_criado_em", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
