@@ -2412,3 +2412,180 @@ select.proj-fi { cursor:pointer; }
   margin-bottom: 16px;
   box-shadow: var(--sh,0 1px 3px rgba(0,0,0,.07));
 }
+
+/* ═══════════════════════════════════════════
+   WORKFLOW — Form Renderer (wfRenderizarFormulario)
+   ═══════════════════════════════════════════ */
+
+.wf-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.wf-form-titulo {
+  font-family: var(--fh);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--bdr);
+}
+
+/* Grupo de campo individual */
+.wf-campo-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+.wf-campo-grupo:last-child { margin-bottom: 0; }
+
+/* Label do campo */
+.wf-campo-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink2);
+  line-height: 1.4;
+  cursor: default;
+}
+.wf-campo-label::after {
+  /* O asterisco já vem no texto via JS; sem pseudo-elemento adicional */
+}
+
+/* Inputs de texto, número, data, select */
+.wf-campo-input {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1.5px solid var(--bdr2);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--surf);
+  font-family: var(--f);
+  transition: border-color .15s, box-shadow .15s;
+  line-height: 1.5;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.wf-campo-input:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(26, 93, 200, .1);
+}
+.wf-campo-input::placeholder { color: var(--ink4); }
+
+/* Textarea específico */
+.wf-campo-textarea {
+  resize: vertical;
+  min-height: 96px;
+  line-height: 1.6;
+}
+
+/* Select */
+.wf-campo-select {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2370709A' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+/* Checkbox */
+.wf-campo-checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1.5px solid var(--bdr2);
+  background: var(--surf2);
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.wf-campo-checkbox-wrapper:hover {
+  border-color: var(--blue-b);
+  background: var(--blue-l);
+}
+.wf-campo-checkbox {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--blue);
+  cursor: pointer;
+  flex-shrink: 0;
+  border-radius: 4px;
+}
+.wf-campo-checkbox-label {
+  font-size: 14px;
+  color: var(--ink);
+  cursor: pointer;
+  flex: 1;
+}
+
+/* Anexo */
+.wf-campo-anexo-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wf-campo-anexo-existente {
+  font-size: 12px;
+  color: var(--ink3);
+  padding: 6px 10px;
+  background: var(--surf2);
+  border-radius: 6px;
+  border: 1px solid var(--bdr);
+}
+input[type="file"].wf-campo-input {
+  padding: 7px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  border-style: dashed;
+  background: var(--surf2);
+  color: var(--ink3);
+}
+input[type="file"].wf-campo-input:hover {
+  border-color: var(--blue-b);
+  background: var(--blue-l);
+  color: var(--blue);
+}
+
+/* Mensagem de erro */
+.wf-campo-erro {
+  font-size: 12px;
+  color: var(--red);
+  font-weight: 500;
+  min-height: 16px;
+  display: block;
+}
+.wf-campo-erro:empty { display: none; }
+
+/* Campo inválido */
+.wf-campo-grupo:has(.wf-campo-erro:not(:empty)) .wf-campo-input {
+  border-color: var(--red-b);
+  background: var(--red-l);
+}
+
+/* Modo somente leitura */
+.wf-campo-leitura {
+  font-size: 14px;
+  color: var(--ink);
+  padding: 9px 12px;
+  background: var(--bg2);
+  border-radius: 8px;
+  border: 1px solid var(--bdr);
+  min-height: 40px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* Data — fix para webkit */
+input[type="date"].wf-campo-input {
+  min-height: 40px;
+}
+
+@media (max-width: 600px) {
+  .wf-campo-input { font-size: 16px; }
+  .wf-campo-textarea { min-height: 80px; }
+}
