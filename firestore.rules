@@ -148,6 +148,13 @@ service cloud.firestore {
       allow create: if isAuth();
     }
 
+    // Comentários: qualquer autenticado lê e cria; autor pode atualizar o próprio.
+    match /wf_comentarios/{id} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update: if isAuth() && resource.data.autor_uid == request.auth.uid;
+    }
+
     // Notificações: cada usuário lê/marca as próprias; EP lê escaladas de SLA; sistema cria.
     match /wf_notificacoes/{id} {
       allow read: if isAuth() && (

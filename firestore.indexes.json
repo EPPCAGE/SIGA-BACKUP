@@ -87,6 +87,23 @@
         { "fieldPath": "responsavel_uid", "order": "ASCENDING" },
         { "fieldPath": "sla_vencido", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "wf_instancia_processos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "arquivado", "order": "ASCENDING" },
+        { "fieldPath": "_criado_em", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "wf_comentarios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "instancia_id", "order": "ASCENDING" },
+        { "fieldPath": "_criado_em", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

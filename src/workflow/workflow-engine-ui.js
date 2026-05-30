@@ -1514,6 +1514,14 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     } catch (e) {
       tl.innerHTML = `<div style="color:var(--red);font-size:14px">${_esc(e.message)}</div>`;
     }
+
+    // Carrega comentários
+    await wfCarregarComentarios(instanciaId);
+    // Reseta campo de comentário
+    const areaComent = document.getElementById('wf-hist-comentario-texto');
+    if (areaComent) areaComent.value = '';
+    wfCancelarResposta();
+
     wfNavWorkflow('historico');
   }
 
@@ -1798,6 +1806,210 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     }
   }
 
+  // ── P3: Thread de comentários ─────────────────────────────────────────────
+
+  async function wfCarregarComentarios(instanciaId) {
+    const el = document.getElementById('wf-hist-comentarios');
+    if (!el) return;
+    el.innerHTML = '<div style="color:var(--ink3);font-size:13px">Carregando comentários…</div>';
+    try {
+      const { where } = globalScope.fb();
+      const comentarios = (await _getAll('wf_comentarios',
+        where('instancia_id', '==', instanciaId),
+      )).sort((a, b) => {
+        const ta = a._criado_em?.seconds ?? 0;
+        const tb = b._criado_em?.seconds ?? 0;
+        return ta - tb;
+      });
+
+      const nomeUsuario = (uid) => {
+        if (!uid) return '—';
+        const u = (globalScope.USUARIOS || []).find(x => x.uid === uid || x.id === uid);
+        return u?.nome || u?.email || uid;
+      };
+
+      // Agrupa raízes e respostas
+      const raizes = comentarios.filter(c => !c.respondendo_a);
+      const respostasPor = {};
+      comentarios.filter(c => c.respondendo_a).forEach(c => {
+        if (!respostasPor[c.respondendo_a]) respostasPor[c.respondendo_a] = [];
+        respostasPor[c.respondendo_a].push(c);
+      });
+
+      const renderComentario = (c, nivel = 0) => {
+        const ts = c._criado_em?.seconds
+          ? new Date(c._criado_em.seconds * 1000).toLocaleString('pt-BR') : '—';
+        const respostas = respostasPor[c.id] || [];
+        const indent = nivel > 0 ? 'border-left:3px solid var(--bdr);margin-left:20px;padding-left:12px;' : '';
+        return `
+          <div style="${indent}margin-bottom:10px" data-comentario-id="${_esc(c.id)}">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <span style="font-weight:600;font-size:13px">${_esc(nomeUsuario(c.autor_uid))}</span>
+              <span style="font-size:11px;color:var(--ink3)">${ts}</span>
+              ${nivel === 0 ? `<button type="button" class="btn btn-sm" style="margin-left:auto;font-size:11px;padding:2px 8px"
+                onclick="wfResponderComentario('${_esc(c.id)}','${_esc(nomeUsuario(c.autor_uid))}')">Responder</button>` : ''}
+            </div>
+            <div style="font-size:13px;color:var(--ink);white-space:pre-wrap">${_esc(c.texto)}</div>
+            ${respostas.map(r => renderComentario(r, nivel + 1)).join('')}
+          </div>`;
+      };
+
+      el.innerHTML = raizes.length
+        ? raizes.map(c => renderComentario(c)).join('')
+        : '<div style="color:var(--ink3);font-size:13px">Nenhum comentário ainda.</div>';
+    } catch (e) {
+      el.innerHTML = `<div style="color:#ef4444;font-size:13px">Erro: ${_esc(e.message)}</div>`;
+    }
+  }
+
+  function wfResponderComentario(comentarioId, nomeAutor) {
+    _st._respondendoA = comentarioId;
+    const area = document.getElementById('wf-hist-comentario-texto');
+    if (area) { area.placeholder = `Respondendo a ${nomeAutor}…`; area.focus(); }
+    const badge = document.getElementById('wf-hist-respondendo-badge');
+    if (badge) {
+      badge.style.display = 'flex';
+      const span = badge.querySelector('span');
+      if (span) span.textContent = `↩ Respondendo a ${nomeAutor}`;
+    }
+  }
+
+  function wfCancelarResposta() {
+    _st._respondendoA = null;
+    const area = document.getElementById('wf-hist-comentario-texto');
+    if (area) area.placeholder = 'Escreva um comentário…';
+    const badge = document.getElementById('wf-hist-respondendo-badge');
+    if (badge) badge.style.display = 'none';
+  }
+
+  async function wfEnviarComentario() {
+    if (!_st.instanciaAtual?.id) return;
+    const area = document.getElementById('wf-hist-comentario-texto');
+    const texto = area?.value?.trim();
+    if (!texto) return;
+    try {
+      await _addDoc('wf_comentarios', {
+        instancia_id: _st.instanciaAtual.id,
+        autor_uid: _uid(),
+        texto,
+        respondendo_a: _st._respondendoA || null,
+      });
+      area.value = '';
+      wfCancelarResposta();
+      await wfCarregarComentarios(_st.instanciaAtual.id);
+    } catch (e) {
+      alert('Erro ao enviar comentário: ' + e.message);
+    }
+  }
+
+  // ── P3: Exportação do histórico ────────────────────────────────────────────
+
+  async function wfExportarHistoricoCSV() {
+    if (!_st.instanciaAtual?.id) return;
+    try {
+      const { where } = globalScope.fb();
+      const eventos = (await _getAll('wf_historico_workflows',
+        where('instancia_id', '==', _st.instanciaAtual.id),
+      )).sort((a, b) => (a._criado_em?.seconds ?? 0) - (b._criado_em?.seconds ?? 0));
+
+      const nomeUsuario = (uid) => {
+        if (!uid) return '';
+        const u = (globalScope.USUARIOS || []).find(x => x.uid === uid || x.id === uid);
+        return u?.nome || u?.email || uid;
+      };
+
+      const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const linhas = [
+        ['Data/Hora', 'Evento', 'Usuário', 'Etapa', 'Ação', 'Parecer', 'Descrição'].map(esc).join(','),
+        ...eventos.map(h => {
+          const ts = h._criado_em?.seconds
+            ? new Date(h._criado_em.seconds * 1000).toLocaleString('pt-BR') : '';
+          const d = h.dados || {};
+          return [ts, h.tipo_evento, nomeUsuario(h.usuario_uid), h.etapa_id || '',
+            d.acao || '', d.parecer || '', h.descricao || ''].map(esc).join(',');
+        }),
+      ];
+      const bom = '﻿'; // BOM para Excel reconhecer UTF-8
+      const blob = new Blob([bom + linhas.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `historico_${_st.instanciaAtual.id}_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert('Erro ao exportar: ' + e.message);
+    }
+  }
+
+  async function wfExportarHistoricoPDF() {
+    if (!_st.instanciaAtual?.id) return;
+    try {
+      const { where } = globalScope.fb();
+      const [eventos, comentarios] = await Promise.all([
+        _getAll('wf_historico_workflows', where('instancia_id', '==', _st.instanciaAtual.id)),
+        _getAll('wf_comentarios', where('instancia_id', '==', _st.instanciaAtual.id)),
+      ]);
+      eventos.sort((a, b) => (a._criado_em?.seconds ?? 0) - (b._criado_em?.seconds ?? 0));
+      comentarios.sort((a, b) => (a._criado_em?.seconds ?? 0) - (b._criado_em?.seconds ?? 0));
+
+      const nomeUsuario = (uid) => {
+        if (!uid) return '—';
+        const u = (globalScope.USUARIOS || []).find(x => x.uid === uid || x.id === uid);
+        return u?.nome || u?.email || uid;
+      };
+      const esc = v => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const ts = s => s?.seconds ? new Date(s.seconds * 1000).toLocaleString('pt-BR') : '—';
+
+      const linhasEventos = eventos.map(h => {
+        const d = h.dados || {};
+        return `<tr>
+          <td>${esc(ts(h._criado_em))}</td>
+          <td>${esc(h.tipo_evento)}</td>
+          <td>${esc(nomeUsuario(h.usuario_uid))}</td>
+          <td>${esc(h.descricao || '')}</td>
+          <td>${esc(d.acao || '')}</td>
+          <td>${esc(d.parecer || '')}</td>
+        </tr>`;
+      }).join('');
+
+      const linhasComentarios = comentarios.map(c =>
+        `<tr><td>${esc(ts(c._criado_em))}</td><td>${esc(nomeUsuario(c.autor_uid))}</td><td>${esc(c.texto)}</td></tr>`
+      ).join('');
+
+      const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+        <title>Histórico — ${esc(_st.instanciaAtual.titulo || _st.instanciaAtual.id)}</title>
+        <style>
+          body { font-family: Arial, sans-serif; font-size: 12px; color: #111; padding: 24px; }
+          h1 { font-size: 16px; margin-bottom: 4px; }
+          .sub { color: #666; font-size: 11px; margin-bottom: 20px; }
+          table { border-collapse: collapse; width: 100%; margin-bottom: 24px; }
+          th { background: #f3f4f6; text-align: left; padding: 6px 8px; font-size: 11px; border-bottom: 2px solid #e5e7eb; }
+          td { padding: 5px 8px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+          h2 { font-size: 13px; margin: 20px 0 8px; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head><body>
+        <h1>Histórico do Processo</h1>
+        <div class="sub">${esc(_st.instanciaAtual.titulo || _st.instanciaAtual.id)} · Exportado em ${new Date().toLocaleString('pt-BR')}</div>
+        <h2>Eventos</h2>
+        <table><thead><tr><th>Data/Hora</th><th>Evento</th><th>Usuário</th><th>Descrição</th><th>Ação</th><th>Parecer</th></tr></thead>
+        <tbody>${linhasEventos}</tbody></table>
+        ${comentarios.length ? `<h2>Comentários</h2>
+        <table><thead><tr><th>Data/Hora</th><th>Autor</th><th>Comentário</th></tr></thead>
+        <tbody>${linhasComentarios}</tbody></table>` : ''}
+      </body></html>`;
+
+      const win = window.open('', '_blank');
+      if (!win) { alert('Permita pop-ups para exportar PDF.'); return; }
+      win.document.write(html);
+      win.document.close();
+      win.onload = () => { win.focus(); win.print(); };
+    } catch (e) {
+      alert('Erro ao gerar PDF: ' + e.message);
+    }
+  }
+
   // ── P3: Delegação de tarefa ───────────────────────────────────────────────
 
   function wfAbrirDelegacao(tarefaId) {
@@ -2012,6 +2224,12 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     wfAbrirHistorico,
     wfCancelarInstancia,
     wfConfirmarCancelar,
+    wfCarregarComentarios,
+    wfResponderComentario,
+    wfCancelarResposta,
+    wfEnviarComentario,
+    wfExportarHistoricoCSV,
+    wfExportarHistoricoPDF,
     wfMarcarNotifLida,
     wfMarcarTodasLidas,
     wfAbrirDelegacao,

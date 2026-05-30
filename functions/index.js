@@ -488,10 +488,20 @@ exports.wfConcluirTarefaEngine = onCall({ enforceAppCheck: false }, async (reque
     throw new HttpsError('permission-denied', 'Sem permissão para concluir esta tarefa.');
   }
 
-  // Valida ação disponível
-  const acoesDisp = tarefa.acoes_disponiveis || [];
-  if (acoesDisp.length && !acoesDisp.includes(acao)) {
-    throw new HttpsError('invalid-argument', `Ação "${acao}" não disponível nesta etapa.`);
+  // P3 — Permissões por papel server-side:
+  // Recomputa as ações permitidas a partir do papel armazenado, ignorando
+  // o campo acoes_disponiveis (que poderia ter sido manipulado pelo cliente).
+  const ACOES_POR_PAPEL = {
+    executor:  ['avancar', 'concluir', 'devolver', 'solicitar_ajuste'],
+    revisor:   ['avancar', 'concluir'],
+    aprovador: ['aprovar', 'rejeitar', 'devolver'],
+  };
+  const papel = tarefa.papel_responsavel || 'executor';
+  const acoesPermitidas = ACOES_POR_PAPEL[papel] || ACOES_POR_PAPEL.executor;
+  // EP e gestor não são restritos por papel — podem tomar qualquer ação disponível
+  if (!isEP && !isGestor && !acoesPermitidas.includes(acao)) {
+    throw new HttpsError('permission-denied',
+      `Papel "${papel}" não pode executar a ação "${acao}".`);
   }
 
   // Parecer obrigatório para rejeições
@@ -748,4 +758,42 @@ exports.wfVerificarSLAs = onSchedule({ schedule: 'every 60 minutes', timeZone: '
 
   if (processadas > 0) await batch.commit();
   console.log(`wfVerificarSLAs: ${processadas} tarefa(s) processadas (pré-alerta + vencidas).`);
+});
+
+// ---------------------------------------------------------------------------
+// P3 — Arquivamento de instâncias antigas
+// Executa mensalmente; marca como arquivado instâncias concluídas/canceladas
+// com mais de 365 dias. Não deleta — preserva para auditoria.
+// ---------------------------------------------------------------------------
+exports.wfArquivarInstanciasAntigas = onSchedule({ schedule: 'every 24 hours', timeZone: 'America/Sao_Paulo' }, async () => {
+  const limiteData = new Date();
+  limiteData.setFullYear(limiteData.getFullYear() - 1); // 1 ano atrás
+
+  const snap = await db.collection('wf_instancia_processos')
+    .where('status', 'in', ['concluido', 'cancelado'])
+    .where('arquivado', '==', false)
+    .where('_criado_em', '<', limiteData)
+    .get();
+
+  if (snap.empty) {
+    console.log('wfArquivarInstanciasAntigas: nenhuma instância para arquivar.');
+    return;
+  }
+
+  // Processa em lotes de 500 (limite do Firestore batch)
+  const LOTE = 500;
+  let arquivadas = 0;
+  const now = FieldValue.serverTimestamp();
+
+  for (let i = 0; i < snap.docs.length; i += LOTE) {
+    const batch = db.batch();
+    const lote = snap.docs.slice(i, i + LOTE);
+    lote.forEach(docSnap => {
+      batch.update(docSnap.ref, { arquivado: true, arquivado_em: now, _atualizado_em: now });
+    });
+    await batch.commit();
+    arquivadas += lote.length;
+  }
+
+  console.log(`wfArquivarInstanciasAntigas: ${arquivadas} instância(s) arquivadas.`);
 });

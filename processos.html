@@ -2203,11 +2203,15 @@ Não responda este e-mail.</pre>
   </div>
 
   <!-- Painel: Histórico da instância -->
-  <div id="wf-painel-historico" style="display:none;max-width:640px">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+  <div id="wf-painel-historico" style="display:none;max-width:680px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
       <button type="button" class="btn" onclick="wfNavWorkflow('instancias')">← Voltar</button>
       <h3 id="wf-hist-titulo" style="margin:0;font-size:17px;color:var(--ink)" aria-live="polite">Histórico</h3>
-      <button type="button" class="btn btn-r btn-sm" id="wf-hist-btn-cancelar" onclick="wfCancelarInstancia()" style="display:none;margin-left:auto">Cancelar processo</button>
+      <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+        <button type="button" class="btn btn-sm" onclick="wfExportarHistoricoCSV()">⬇ CSV</button>
+        <button type="button" class="btn btn-sm" onclick="wfExportarHistoricoPDF()">⬇ PDF</button>
+        <button type="button" class="btn btn-r btn-sm" id="wf-hist-btn-cancelar" onclick="wfCancelarInstancia()" style="display:none">Cancelar processo</button>
+      </div>
     </div>
     <div class="card" style="padding:16px;margin-bottom:16px">
       <div id="wf-hist-resumo"></div>
@@ -2215,6 +2219,22 @@ Não responda este e-mail.</pre>
     <strong style="font-size:13px">Linha do tempo</strong>
     <div id="wf-hist-timeline" style="margin-top:12px;padding-left:20px;border-left:2px solid var(--bdr)">
       <div style="color:var(--ink3);font-size:14px">Carregando…</div>
+    </div>
+
+    <!-- Thread de comentários -->
+    <div style="margin-top:24px">
+      <strong style="font-size:13px">Comentários</strong>
+      <div id="wf-hist-comentarios" style="margin-top:12px"></div>
+      <div style="margin-top:12px">
+        <div id="wf-hist-respondendo-badge" style="display:none;font-size:11px;color:var(--blue);margin-bottom:4px;align-items:center;gap:6px">
+          <span></span>
+          <button type="button" onclick="wfCancelarResposta()" style="background:none;border:none;cursor:pointer;color:var(--ink3);font-size:12px">✕</button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <textarea class="fi" id="wf-hist-comentario-texto" rows="2" placeholder="Escreva um comentário…" style="flex:1;resize:vertical" aria-label="Comentário"></textarea>
+          <button type="button" class="btn btn-p btn-sm" onclick="wfEnviarComentario()">Enviar</button>
+        </div>
+      </div>
     </div>
   </div>
 
