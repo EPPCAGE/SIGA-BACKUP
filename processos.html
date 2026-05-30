@@ -1126,7 +1126,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
     <div class="fg"><label class="fl" for="usr-perfil">Perfil<span>*</span></label>
       <select class="fi" id="usr-perfil" onchange="onUsrPerfilChg()">
         <option value="ep">EPP</option>
-        <option value="dono">Executor de Processo</option>
+        <option value="dono">Dono do Processo</option>
         <option value="gestor">Gestor / Adjunto</option>
         <option value="gerente_projeto">Projetos</option>
       </select>
@@ -1200,7 +1200,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
         </label>
         <div id="aviso-perfis-ind" style="display:flex;flex-direction:column;gap:6px;padding-left:1.2rem;opacity:.4;pointer-events:none">
           <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="aviso-perfil-ep"> EPP</label>
-          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="aviso-perfil-dono"> Executor de Processo</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="aviso-perfil-dono"> Dono do Processo</label>
         </div>
       </div>
     </div>
@@ -1334,7 +1334,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
       <select id="ep-perfil-select" onchange="simularPerfil(this.value)" style="width:100%;font-size:11px;padding:3px 6px;border:1px solid var(--bdr);border-radius:var(--r);background:var(--bg2);color:var(--ink);cursor:pointer;font-family:var(--f)">
         <option value="ep">EP CAGE (real)</option>
         <option value="gestor">Gestor</option>
-        <option value="dono">Executor de Processo</option>
+        <option value="dono">Dono do Processo</option>
         <option value="solicitante">Solicitante</option>
       </select>
     </div>
@@ -2783,7 +2783,7 @@ function simularPerfil(perfil){
     const id=pAtivo.id.replace('page-','');
     go(id,document.getElementById('nb-'+id)||null);
   }
-  const labels={ep:ORG_CONFIG.supportTeamLabel+' (real)',gestor:'Gestor',dono:'Executor de Processo',solicitante:'Solicitante'};
+  const labels={ep:ORG_CONFIG.supportTeamLabel+' (real)',gestor:'Gestor',dono:'Dono do Processo',solicitante:'Solicitante'};
   const cores={ep:'var(--teal)',gestor:'var(--blue)',dono:'var(--amber)',solicitante:'#0891b2'};
   toast('Perfil: '+labels[perfil], cores[perfil]||'var(--teal)');
 }

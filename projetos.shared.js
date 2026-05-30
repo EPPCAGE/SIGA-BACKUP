@@ -2,7 +2,7 @@
 
 const PERFIL_LABELS = globalThis.PERFIL_LABELS || {
   ep: ORG_CONFIG.epProfileLabel,
-  dono: 'Executor de Processo',
+  dono: 'Dono do Processo',
   gestor: 'Gestor / Adjunto',
   gerente_projeto: 'Projetos'
 };

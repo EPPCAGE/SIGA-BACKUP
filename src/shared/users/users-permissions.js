@@ -18,7 +18,7 @@
    */
   globalScope.PERFIL_LABELS = {
     ep: globalScope.ORG_CONFIG?.epProfileLabel || 'Equipe de Processos',
-    dono: 'Executor de Processo',
+    dono: 'Dono do Processo',
     gestor: 'Gestor / Adjunto',
     gerente_projeto: 'Projetos'
   };
@@ -67,7 +67,7 @@
   };
 
   /**
-   * Verifica se usuário é Dono (Executor de Processo)
+   * Verifica se usuário é Dono (Dono do Processo)
    * @returns {boolean}
    */
   globalScope.isDono = function isDono() {
