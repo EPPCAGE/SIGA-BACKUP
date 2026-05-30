@@ -611,7 +611,19 @@
     if (!arestas.length) return base;
 
     const dados = { ...(instancia.dados_consolidados || {}), ...(dadosParciais || {}) };
+    const noAtual = (instancia.canvas?.nos || []).find(n => n.id === tarefa.etapa_modelo_id);
+    const regrasAcoes = noAtual?.config?.acoes_condicionais || [];
+
+    const passaRegraDaAcao = (acao) => {
+      const regras = regrasAcoes.filter(r => r.acao === acao && r.campo);
+      if (!regras.length) return null;
+      return regras.some(r => _avaliarCondicaoObj({ campo: r.campo, operador: r.operador || '=', valor: r.valor }, dados));
+    };
+
     return base.filter((acao) => {
+      const passaRegra = passaRegraDaAcao(acao);
+      if (passaRegra === false) return false;
+
       if (acao === 'devolver' || acao === 'rejeitar') {
         const regrasDaAcao = arestas.filter(a => a.acao === acao);
         if (!regrasDaAcao.length) return true;
@@ -1496,6 +1508,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       titulo_notificacao: '',       // template — vazio = usa padrão
       mensagem_notificacao: '',     // template — vazio = usa padrão
       comentario_automatico: '',    // template — criado com autor_uid 'sistema' ao iniciar etapa
+      acoes_condicionais: [],       // [{ acao, campo, operador, valor }]
       campos_condicionais: [],      // [{ campo_id, condicoes, operador_logico, acao }]
       // Para arestas (SequenceFlow):
       condicoes: [],                // [{ campo, operador, valor }]
@@ -1784,6 +1797,11 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
         ${acaoChk('rejeitar','Rejeitar')}${acaoChk('devolver','Devolver')}
         ${acaoChk('solicitar_ajuste','Solicitar ajuste')}
       </div>
+      <div style="margin-top:-4px;margin-bottom:12px;border:1px solid var(--bdr);border-radius:8px;padding:8px;background:var(--surf2)">
+        <div style="font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:6px">Condições por ação</div>
+        <div id="wf-acoes-cond-${_esc(id)}" style="margin-bottom:8px"></div>
+        <button type="button" class="btn btn-sm" onclick="wfDesignerAddAcaoCond('${_esc(id)}')">+ Condição de ação</button>
+      </div>
       <label class="lbl" style="font-size:11px">Formulário dinâmico</label>
       <select class="fi" id="wf-designer-form-${_esc(id)}" style="margin-top:2px;margin-bottom:8px" onchange="wfDesignerCampoCfg('${_esc(id)}','formulario_id',this.value||null);_wfAtualizarAcoesFormularioNo('${_esc(id)}')">${formOpts}</select>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:-2px;margin-bottom:8px">
@@ -1820,6 +1838,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
           oninput="wfDesignerCampoCfg('${_esc(id)}','comentario_automatico',this.value)">${_esc(cfg.comentario_automatico || '')}</textarea>
       </div>`;
     _wfAtualizarAcoesFormularioNo(id);
+    _wfRenderAcoesCond(id);
     _wfRenderCamposCond(id);
   }
 
@@ -1839,6 +1858,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     const set = new Set(_wfConfigNos[noId].acoes || []);
     if (on) set.add(acao); else set.delete(acao);
     _wfConfigNos[noId].acoes = Array.from(set);
+    _wfRenderAcoesCond(noId);
     _wfMarcarDesignerSujo();
   }
 
@@ -1951,6 +1971,65 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     _wfConfigNos[arestaId].padrao = val;
     const wrap = document.getElementById(`wf-aresta-conds-wrap-${arestaId}`);
     if (wrap) { wrap.style.opacity = val ? '.4' : '1'; wrap.style.pointerEvents = val ? 'none' : ''; }
+    _wfMarcarDesignerSujo();
+  }
+
+  // ── Condições por ação (botões na execução) ───────────────────────────────
+
+  function _wfRenderAcoesCond(noId) {
+    const el = document.getElementById(`wf-acoes-cond-${noId}`);
+    if (!el) return;
+    const lista = _wfConfigNos[noId]?.acoes_condicionais || [];
+    const acoes = _wfConfigNos[noId]?.acoes || [];
+    if (!lista.length) {
+      el.innerHTML = '<div style="font-size:12px;color:var(--ink3)">Sem condições de ação.</div>';
+      return;
+    }
+
+    const optsCampos = (valorAtual, idx) => {
+      const opts = _wfOptsCampos(noId, valorAtual || '');
+      if (opts !== null) {
+        return `<select class="fi" style="font-size:11px"
+          onchange="wfDesignerAcaoCondUpdate('${_esc(noId)}',${idx},'campo',this.value)">${opts}</select>`;
+      }
+      return `<input type="text" class="fi" style="font-size:11px" placeholder="campo" value="${_esc(valorAtual || '')}"
+        oninput="wfDesignerAcaoCondUpdate('${_esc(noId)}',${idx},'campo',this.value)">`;
+    };
+
+    el.innerHTML = lista.map((r, i) => `
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:4px;margin-bottom:6px;align-items:center">
+        <select class="fi" style="font-size:11px" onchange="wfDesignerAcaoCondUpdate('${_esc(noId)}',${i},'acao',this.value)">
+          ${acoes.map(a => `<option value="${_esc(a)}"${r.acao === a ? ' selected' : ''}>${_esc((globalScope.WF_ACAO_LABELS||{})[a] || a)}</option>`).join('')}
+        </select>
+        ${optsCampos(r.campo || '', i)}
+        <select class="fi" style="font-size:11px" onchange="wfDesignerAcaoCondUpdate('${_esc(noId)}',${i},'operador',this.value)">
+          ${_WF_OPS_LABELS.map(op => `<option value="${_esc(op)}"${(r.operador || '=') === op ? ' selected' : ''}>${_esc(op)}</option>`).join('')}
+        </select>
+        <input type="text" class="fi" style="font-size:11px" placeholder="valor" value="${_esc(r.valor || '')}" oninput="wfDesignerAcaoCondUpdate('${_esc(noId)}',${i},'valor',this.value)">
+        <button type="button" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:14px;padding:0 4px" onclick="wfDesignerAcaoCondRemove('${_esc(noId)}',${i})">✕</button>
+      </div>
+    `).join('');
+  }
+
+  function wfDesignerAddAcaoCond(noId) {
+    if (!_wfConfigNos[noId]) _wfConfigNos[noId] = _configPadrao();
+    const acoes = _wfConfigNos[noId].acoes || ['avancar'];
+    (_wfConfigNos[noId].acoes_condicionais = _wfConfigNos[noId].acoes_condicionais || [])
+      .push({ acao: acoes[0] || 'avancar', campo: '', operador: '=', valor: '' });
+    _wfRenderAcoesCond(noId);
+    _wfMarcarDesignerSujo();
+  }
+
+  function wfDesignerAcaoCondRemove(noId, idx) {
+    _wfConfigNos[noId]?.acoes_condicionais?.splice(idx, 1);
+    _wfRenderAcoesCond(noId);
+    _wfMarcarDesignerSujo();
+  }
+
+  function wfDesignerAcaoCondUpdate(noId, idx, chave, valor) {
+    const reg = _wfConfigNos[noId]?.acoes_condicionais?.[idx];
+    if (!reg) return;
+    reg[chave] = valor;
     _wfMarcarDesignerSujo();
   }
 
@@ -3983,6 +4062,9 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     wfDesignerCampoCfg,
     wfDesignerPapel,
     wfDesignerToggleAcao,
+    wfDesignerAddAcaoCond,
+    wfDesignerAcaoCondRemove,
+    wfDesignerAcaoCondUpdate,
     wfDesignerAddCondicao,
     wfDesignerRemoveCondicao,
     wfDesignerUpdateCondicao,
