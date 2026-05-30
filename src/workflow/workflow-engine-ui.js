@@ -528,7 +528,10 @@
       const instancia = await _getDoc('wf_instancia_processos', tarefa.instancia_id);
       if (instancia) {
         const merged = { ...(instancia.dados_consolidados || {}), ...dadosForm };
-        await _updateDoc('wf_instancia_processos', tarefa.instancia_id, { dados_consolidados: merged });
+        await _updateDoc('wf_instancia_processos', tarefa.instancia_id, {
+          dados_consolidados: merged,
+          ultimo_executor_uid: _uid(),
+        });
         if (instancia.canvas) {
           await _avancarFluxoCanvas(instancia, tarefa.etapa_modelo_id, acao);
         } else {
@@ -578,6 +581,13 @@
       const u = (globalScope.USUARIOS || []).find(x => x.uid === uid || x.id === uid);
       return u?.gestor_uid || u?.gestor || null;
     }
+    // Dinâmico: gestor_executor — gestor de quem executou a etapa anterior
+    if (valorPapel === 'gestor_executor') {
+      const executorUid = instancia.ultimo_executor_uid;
+      if (!executorUid) return null;
+      const u = (globalScope.USUARIOS || []).find(x => x.uid === executorUid || x.id === executorUid);
+      return u?.gestor_uid || u?.gestor || null;
+    }
     // Dinâmico: campo:NOME_DO_CAMPO
     if (valorPapel.startsWith('campo:')) {
       const campo = valorPapel.slice(6);
@@ -603,10 +613,16 @@
     };
 
     const criados = [];
+    const prazoStr = prazo ? prazo.toLocaleDateString('pt-BR') : 'sem prazo';
     const ctxNotif = {
-      processo: { titulo: instancia.titulo, id: instancia.id },
+      processo: {
+        titulo: instancia.titulo,
+        id: instancia.id,
+        numero: instancia.numero || instancia.id.slice(-6).toUpperCase(),
+      },
       etapa: { nome: no.nome },
       solicitante: { nome: (globalScope.USUARIOS || []).find(u => u.uid === instancia.solicitante_uid)?.nome || '' },
+      prazo: prazoStr,
     };
     const tituloNotif = _interpolarTemplate(no.config?.titulo_notificacao || 'Nova etapa: {{etapa.nome}}', ctxNotif);
     const msgNotif = _interpolarTemplate(
@@ -654,6 +670,45 @@
       }
       criados.push(tarefaId);
     }
+    // Notificações para grupos: busca membros e notifica cada um
+    for (const tarefaId of criados) {
+      const tarefaDoc = await _getDoc('wf_tarefa_workflows', tarefaId);
+      const papelAlvoTarefa = tarefaDoc?.papel_alvo || '';
+      if (papelAlvoTarefa.startsWith('grupo:')) {
+        const grupoId = papelAlvoTarefa.slice(6);
+        try {
+          const grupo = await _getDoc('wf_grupos', grupoId);
+          for (const membroUid of (grupo?.membros_uid || [])) {
+            await _addDoc('wf_notificacoes', {
+              destinatario_uid: membroUid,
+              tipo: 'tarefa_criada',
+              titulo: tituloNotif,
+              mensagem: msgNotif,
+              instancia_id: instancia.id,
+              tarefa_id: tarefaId,
+              lida: false,
+            });
+          }
+        } catch (_e) { /* grupo não encontrado — ignora */ }
+      }
+    }
+
+    // Comentário automático: cria no primeiro tarefa criada (se configurado)
+    if (cfg.comentario_automatico && criados.length) {
+      const textoAuto = _interpolarTemplate(cfg.comentario_automatico, ctxNotif);
+      if (textoAuto.trim()) {
+        await _addDoc('wf_comentarios', {
+          tarefa_id: criados[0],
+          instancia_id: instancia.id,
+          etapa_id: no.id,
+          etapa_nome: no.nome,
+          autor_uid: 'sistema',
+          texto: textoAuto,
+          respondendo_a: null,
+        });
+      }
+    }
+
     // cientes
     const cientes = papeis.ciente || [];
     for (const c of cientes) {
@@ -1243,6 +1298,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       exige_parecer: false,
       titulo_notificacao: '',       // template — vazio = usa padrão
       mensagem_notificacao: '',     // template — vazio = usa padrão
+      comentario_automatico: '',    // template — criado com autor_uid 'sistema' ao iniciar etapa
       campos_condicionais: [],      // [{ campo_id, condicoes, operador_logico, acao }]
       // Para arestas (SequenceFlow):
       condicoes: [],                // [{ campo, operador, valor }]
@@ -1367,12 +1423,13 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 
     const alvoOpts = (sel) => {
       const fixos = {
-        '':                 '— Ninguém —',
-        'solicitante':      'Próprio solicitante',
+        '':                   '— Ninguém —',
+        'solicitante':        'Próprio solicitante',
         'gestor_solicitante': 'Gestor do solicitante',
-        'ep':               'Perfil EP',
-        'gestor':           'Perfil Gestor',
-        'dono':             'Perfil Dono',
+        'gestor_executor':    'Gestor do executor anterior',
+        'ep':                 'Perfil EP',
+        'gestor':             'Perfil Gestor',
+        'dono':               'Perfil Dono',
       };
       const usuarios = (globalScope.USUARIOS || []).filter(u => u.uid || u.id);
       return Object.entries(fixos).map(([v, l]) =>
@@ -1429,6 +1486,13 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
         <textarea class="fi" rows="2" style="margin-top:2px;resize:vertical"
           placeholder='Processo "{{processo.titulo}}" — etapa "{{etapa.nome}}" aguarda sua ação.'
           oninput="wfDesignerCampoCfg('${_esc(id)}','mensagem_notificacao',this.value)">${_esc(cfg.mensagem_notificacao || '')}</textarea>
+      </div>
+      <div style="margin-top:12px;border-top:1px solid var(--bdr);padding-top:12px">
+        <div style="font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:4px">Comentário automático</div>
+        <div style="font-size:11px;color:var(--ink3);margin-bottom:6px">Criado automaticamente com autor "Sistema" ao iniciar a etapa. Use variáveis: {{processo.titulo}}, {{etapa.nome}}, {{prazo}}, {{solicitante.nome}}</div>
+        <textarea class="fi" rows="2" style="margin-top:2px;resize:vertical"
+          placeholder="Ex: Etapa {{etapa.nome}} iniciada. Prazo: {{prazo}}."
+          oninput="wfDesignerCampoCfg('${_esc(id)}','comentario_automatico',this.value)">${_esc(cfg.comentario_automatico || '')}</textarea>
       </div>`;
     _wfRenderCamposCond(id);
   }
@@ -1670,15 +1734,18 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 
     const titulo = `${modelo.nome} — ${new Date().toLocaleDateString('pt-BR')}`;
     try {
+      const anoAtual = new Date().getFullYear();
       const instanciaId = await _addDoc('wf_instancia_processos', {
         processo_id: modelo.processo_origem_id || null,
         modelo_id: modelo.id,
         processo_nome: modelo.nome,
         titulo,
+        numero: `${anoAtual}-${Date.now().toString().slice(-6)}`,
         status: 'em_andamento',
         no_atual_id: primeira.id,
         etapa_atual_id: primeira.id,
         solicitante_uid: uid,
+        ultimo_executor_uid: null,
         canvas: modelo.canvas,        // snapshot do fluxo
         snapshot_etapas: nos.filter(n => n.tipo === 'tarefa' || n.tipo === 'aprovacao')
           .map(n => ({ id: n.id, nome: n.nome, tipo: n.tipo })),
@@ -2175,6 +2242,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
   function _renderThreadComentarios(comentarios, containerEl, interativo = true) {
     const nomeUsuario = (uid) => {
       if (!uid) return '—';
+      if (uid === 'sistema') return '⚙ Sistema';
       const u = (globalScope.USUARIOS || []).find(x => x.uid === uid || x.id === uid);
       return u?.nome || u?.email || uid;
     };
@@ -2328,6 +2396,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 
       const nomeUsuario = (uid) => {
         if (!uid) return '—';
+        if (uid === 'sistema') return '⚙ Sistema';
         const u = (globalScope.USUARIOS || []).find(x => x.uid === uid || x.id === uid);
         return u?.nome || u?.email || uid;
       };

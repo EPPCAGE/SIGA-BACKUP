@@ -159,6 +159,12 @@ service cloud.firestore {
       allow update: if isAuth() && resource.data.autor_uid == request.auth.uid;
     }
 
+    // Grupos de responsáveis dinâmicos
+    match /wf_grupos/{id} {
+      allow read: if isAuth();
+      allow write: if isAuth() && isEP();
+    }
+
     // Notificações: cada usuário lê/marca as próprias; EP lê escaladas de SLA; sistema cria.
     match /wf_notificacoes/{id} {
       allow read: if isAuth() && (
