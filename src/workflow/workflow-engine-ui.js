@@ -272,10 +272,13 @@
         } catch (_e) { /* índice opcional */ }
       }
 
-      // Tarefas de fila de grupo
+      // Tarefas de fila de grupo (membership por email — identificador estável em USUARIOS)
       if (!_st.meusGrupos && !acrescentar) {
         try {
-          const gs = await _getAll('wf_grupos', where('membros_uid', 'array-contains', uid));
+          const email = globalScope.usuarioLogado?.email || '';
+          const gs = email
+            ? await _getAll('wf_grupos', where('membros_email', 'array-contains', email))
+            : [];
           _st.meusGrupos = gs;
         } catch (_e) { _st.meusGrupos = []; }
       }
@@ -743,9 +746,13 @@
         const grupoId = papelAlvoTarefa.slice(6);
         try {
           const grupo = await _getDoc('wf_grupos', grupoId);
-          for (const membroUid of (grupo?.membros_uid || [])) {
+          // membros_email: notifica quem tiver uid resolvível em USUARIOS
+          for (const email of (grupo?.membros_email || [])) {
+            const u = (globalScope.USUARIOS || []).find(x => x.email === email);
+            const destUid = u?.uid || (email === globalScope.usuarioLogado?.email ? _uid() : null);
+            if (!destUid) continue;
             await _addDoc('wf_notificacoes', {
-              destinatario_uid: membroUid,
+              destinatario_uid: destUid,
               tipo: 'tarefa_criada',
               titulo: tituloNotif,
               mensagem: msgNotif,
@@ -2826,11 +2833,13 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
         el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Nenhum grupo cadastrado.</div>';
         return;
       }
+      const usuarios = globalScope.USUARIOS || [];
       el.innerHTML = grupos.map(g => {
-        const membros = (g.membros_uid || [])
-          .map(uid => {
-            const u = usersComUid.find(x => x.uid === uid);
-            return _esc(u ? (u.nome || u.email || uid) : uid);
+        const emails = g.membros_email || [];
+        const membros = emails
+          .map(email => {
+            const u = usuarios.find(x => x.email === email);
+            return _esc(u ? (u.nome || email) : email);
           }).join(', ') || '<em style="color:var(--ink3)">Sem membros</em>';
         const acoes = isEp ? `
           <div style="display:flex;gap:6px;margin-top:10px">
@@ -2840,7 +2849,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
         return `<div style="background:var(--surf2);border-radius:10px;padding:16px">
           <div style="font-weight:600;font-size:14px;margin-bottom:4px">${_esc(g.nome || '(sem nome)')}</div>
           ${g.descricao ? `<div style="font-size:12px;color:var(--ink3);margin-bottom:8px">${_esc(g.descricao)}</div>` : ''}
-          <div style="font-size:12px;color:var(--ink3)"><strong>${(g.membros_uid || []).length} membro(s):</strong> ${membros}</div>
+          <div style="font-size:12px;color:var(--ink3)"><strong>${emails.length} membro(s):</strong> ${membros}</div>
           ${acoes}
         </div>`;
       }).join('');
@@ -2858,58 +2867,37 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     document.getElementById('wf-modal-grupo-titulo').textContent = grupoId ? 'Editar grupo' : 'Novo grupo';
     document.getElementById('wf-grupo-nome').value = '';
     document.getElementById('wf-grupo-descricao').value = '';
-
-    const membrosEl = document.getElementById('wf-grupo-membros-lista');
-    membrosEl.innerHTML = '<div style="color:var(--ink3);font-size:12px">Carregando usuários…</div>';
     modal.style.display = 'flex';
 
-    // Busca usuários da coleção usuarios/{uid} para obter uid ↔ email/nome
-    let usersWithUid = [];
-    try {
-      const { collection, getDocs } = globalScope.fb();
-      const db = _db();
-      const snap = await getDocs(collection(db, 'usuarios'));
-      snap.forEach(d => {
-        // doc.id é o Firebase UID; dados têm email/nome
-        usersWithUid.push({ uid: d.id, ...d.data() });
-      });
-    } catch (_e) {
-      // Fallback: cruza USUARIOS (email) com auth.currentUser para pelo menos incluir o usuário atual
-      const curr = globalScope.fb?.()?.auth?.currentUser;
-      const uLogado = globalScope.usuarioLogado;
-      if (curr && uLogado) usersWithUid = [{ uid: curr.uid, nome: uLogado.nome, email: uLogado.email }];
+    // USUARIOS é a fonte correta — identificados por email (não uid)
+    const membrosEl = document.getElementById('wf-grupo-membros-lista');
+    const usuarios = (globalScope.USUARIOS || [])
+      .filter(u => u.email && (u.nome || u.email))
+      .sort((a, b) => (a.nome || a.email).localeCompare(b.nome || b.email));
+
+    if (!usuarios.length) {
+      membrosEl.innerHTML = '<div style="color:var(--ink3);font-size:12px">Nenhum usuário cadastrado.</div>';
+    } else {
+      membrosEl.innerHTML = usuarios.map(u => {
+        const email = _esc(u.email);
+        const nome = _esc(u.nome || u.email);
+        const perfil = u.perfil ? ` <span style="color:var(--ink3);font-size:11px">(${_esc(u.perfil)})</span>` : '';
+        return `<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:3px 0">
+          <input type="checkbox" class="wf-grupo-membro-cb" value="${email}">
+          ${nome}${perfil}
+        </label>`;
+      }).join('');
     }
-
-    // Se coleção usuarios está vazia, tenta cruzar USUARIOS por email (dados em memória)
-    if (!usersWithUid.length) {
-      const curr = globalScope.fb?.()?.auth?.currentUser;
-      const uLogado = globalScope.usuarioLogado;
-      if (curr && uLogado) usersWithUid = [{ uid: curr.uid, nome: uLogado.nome, email: uLogado.email }];
-    }
-
-    const usuariosOrdenados = usersWithUid
-      .filter(u => u.uid && (u.nome || u.email))
-      .sort((a, b) => (a.nome || a.email || '').localeCompare(b.nome || b.email || ''));
-
-    membrosEl.innerHTML = usuariosOrdenados.length
-      ? usuariosOrdenados.map(u => {
-          const uid = _esc(u.uid);
-          const nome = _esc(u.nome || u.email || u.uid);
-          const email = u.email ? ` <span style="color:var(--ink3);font-size:11px">${_esc(u.email)}</span>` : '';
-          return `<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:3px 0">
-            <input type="checkbox" class="wf-grupo-membro-cb" value="${uid}">
-            ${nome}${email}
-          </label>`;
-        }).join('')
-      : '<div style="color:var(--ink3);font-size:12px">Nenhum usuário encontrado na coleção <code>usuarios</code>.</div>';
 
     if (grupoId) {
       const g = await _getDoc('wf_grupos', grupoId);
       if (g) {
         document.getElementById('wf-grupo-nome').value = g.nome || '';
         document.getElementById('wf-grupo-descricao').value = g.descricao || '';
-        (g.membros_uid || []).forEach(uid => {
-          const cb = membrosEl.querySelector(`input[value="${CSS.escape(uid)}"]`);
+        // suporta membros_email (novo) e membros_uid legado (emails também eram guardados como uid em alguns casos)
+        const membrosAtuais = g.membros_email || g.membros_uid || [];
+        membrosAtuais.forEach(val => {
+          const cb = membrosEl.querySelector(`input[value="${CSS.escape(val)}"]`);
           if (cb) cb.checked = true;
         });
       }
@@ -2926,8 +2914,8 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     const nome = document.getElementById('wf-grupo-nome')?.value?.trim();
     if (!nome) { alert('Informe o nome do grupo.'); return; }
     const descricao = document.getElementById('wf-grupo-descricao')?.value?.trim() || '';
-    const membros_uid = [...document.querySelectorAll('.wf-grupo-membro-cb:checked')].map(cb => cb.value);
-    const payload = { nome, descricao, membros_uid };
+    const membros_email = [...document.querySelectorAll('.wf-grupo-membro-cb:checked')].map(cb => cb.value);
+    const payload = { nome, descricao, membros_email };
     try {
       const id = _st._grupoEditandoId;
       if (id) {
@@ -2965,32 +2953,28 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     if (!el) return;
     el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Carregando…</div>';
     try {
-      // Usa a coleção usuarios/{uid} como fonte autoritativa (uid = doc.id)
-      const [usersComUid, grupos] = await Promise.all([_wfCarregarUsersComUid(), _getAll('wf_grupos')]);
-      // Enriquece com perfis de USUARIOS (indexado por email)
-      const usuariosMemoria = globalScope.USUARIOS || [];
+      // USUARIOS é a fonte correta — carregado de config/usuarios via fbLoad()
+      const usuarios = (globalScope.USUARIOS || []).filter(u => u.email);
+      const grupos = await _getAll('wf_grupos');
       const LABELS = globalScope.PERFIL_LABELS || {};
 
-      const usuarios = usersComUid.filter(u => u.uid && (u.nome || u.email));
       if (!usuarios.length) {
-        el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Nenhum usuário encontrado na coleção <code>usuarios</code>.</div>';
+        el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Nenhum usuário encontrado. Verifique se o sistema está carregado.</div>';
         return;
       }
       const rows = usuarios
-        .sort((a, b) => (a.nome || a.email || '').localeCompare(b.nome || b.email || ''))
+        .sort((a, b) => (a.nome || a.email).localeCompare(b.nome || b.email))
         .map(u => {
-          // Busca perfis no registro em memória (USUARIOS) por email
-          const uMem = usuariosMemoria.find(x => x.email === u.email);
           const perfis = globalScope.getPerfisUsuario
-            ? globalScope.getPerfisUsuario(uMem || u)
-            : ((uMem || u).perfis || ((uMem || u).perfil ? [(uMem || u).perfil] : []));
+            ? globalScope.getPerfisUsuario(u)
+            : (u.perfis || (u.perfil ? [u.perfil] : []));
           const perfilStr = _esc(perfis.map(p => LABELS[p] || p).join(', ') || '—');
           const gruposNomes = grupos
-            .filter(g => (g.membros_uid || []).includes(u.uid))
+            .filter(g => (g.membros_email || g.membros_uid || []).includes(u.email))
             .map(g => _esc(g.nome)).join(', ') || '—';
           return `<tr style="border-bottom:1px solid var(--bdr)">
-            <td style="padding:8px 10px;font-size:13px">${_esc(u.nome || u.uid)}</td>
-            <td style="padding:8px 10px;font-size:12px;color:var(--ink3)">${_esc(u.email || '')}</td>
+            <td style="padding:8px 10px;font-size:13px">${_esc(u.nome || u.email)}</td>
+            <td style="padding:8px 10px;font-size:12px;color:var(--ink3)">${_esc(u.email)}</td>
             <td style="padding:8px 10px;font-size:12px">${perfilStr}</td>
             <td style="padding:8px 10px;font-size:12px">${gruposNomes}</td>
           </tr>`;
