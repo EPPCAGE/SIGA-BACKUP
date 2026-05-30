@@ -559,11 +559,14 @@
     try {
       const uid = _uid();
       if (!uid) { el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Usuário não autenticado.</div>'; return; }
-      const { where, orderBy } = globalScope.fb();
-      const instancias = await _getAll('wf_instancia_processos',
+      const { where } = globalScope.fb();
+      const instancias = (await _getAll('wf_instancia_processos',
         where('solicitante_uid', '==', uid),
-        orderBy('_criado_em', 'desc'),
-      );
+      )).sort((a, b) => {
+        const ta = a._criado_em?.seconds ?? (a._criado_em ? a._criado_em.getTime() / 1000 : 0);
+        const tb = b._criado_em?.seconds ?? (b._criado_em ? b._criado_em.getTime() / 1000 : 0);
+        return tb - ta;
+      });
       if (!instancias.length) {
         el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Nenhum processo iniciado ainda.</div>';
         return;
@@ -1197,11 +1200,14 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     const tl = document.getElementById('wf-hist-timeline');
     tl.innerHTML = '<div style="color:var(--ink3);font-size:14px">Carregando…</div>';
     try {
-      const { where, orderBy } = globalScope.fb();
-      const eventos = await _getAll('wf_historico_workflows',
+      const { where } = globalScope.fb();
+      const eventos = (await _getAll('wf_historico_workflows',
         where('instancia_id', '==', instanciaId),
-        orderBy('_criado_em', 'asc'),
-      );
+      )).sort((a, b) => {
+        const ta = a._criado_em?.seconds ?? (a._criado_em ? a._criado_em.getTime() / 1000 : 0);
+        const tb = b._criado_em?.seconds ?? (b._criado_em ? b._criado_em.getTime() / 1000 : 0);
+        return ta - tb;
+      });
       const ACAO_LABELS = globalScope.WF_ACAO_LABELS || {};
       const ACAO_COR = globalScope.WF_ACAO_COR || {};
       const PAPEL_LABELS = globalScope.WF_PAPEL_LABELS || {};
