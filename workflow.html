@@ -531,7 +531,7 @@
 <!-- Firebase modular v10 — mesmo padrão de processos.html -->
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getFirestore, doc, getDoc, setDoc, collection, getDocs, onSnapshot, writeBatch, deleteDoc, addDoc, updateDoc, query, where, orderBy, limit, startAfter, or } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+  import { getFirestore, doc, getDoc, setDoc, collection, getDocs, onSnapshot, writeBatch, deleteDoc, addDoc, updateDoc, query, where, orderBy, limit, startAfter, and, or } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
   import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
   import { getFunctions } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js';
 
@@ -557,7 +557,7 @@
         db, auth, functions,
         doc, getDoc, collection, getDocs, onSnapshot,
         setDoc, writeBatch, deleteDoc, addDoc, updateDoc, query, where, orderBy,
-        limit, startAfter, or,
+        limit, startAfter, and, or,
         onAuthStateChanged, FIREBASE_CONFIG,
       };
       globalThis._fbReady = true;

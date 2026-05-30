@@ -146,13 +146,16 @@
   function _wfIniciarBadge() {
     const uid = _uid();
     if (!uid || _unsubNotifs) return;
-    const { onSnapshot, where, query, collection, or } = globalScope.fb();
+    const { onSnapshot, where, query, collection, and, or } = globalScope.fb();
     const isEP = globalScope.isEP?.();
-    // EP também recebe notificações de escalada SLA
-    const constraints = isEP && or
-      ? [or(where('destinatario_uid', '==', uid), where('destinatario_uid', '==', 'ep_escalada')), where('lida', '==', false)]
-      : [where('destinatario_uid', '==', uid), where('lida', '==', false)];
-    const q = query(collection(_db(), 'wf_notificacoes'), ...constraints);
+    // Firestore exige um único filtro composto no topo quando há or(...)
+    const destinatarioFiltro = isEP && or
+      ? or(where('destinatario_uid', '==', uid), where('destinatario_uid', '==', 'ep_escalada'))
+      : where('destinatario_uid', '==', uid);
+    const filtro = and
+      ? and(destinatarioFiltro, where('lida', '==', false))
+      : destinatarioFiltro;
+    const q = query(collection(_db(), 'wf_notificacoes'), filtro);
     _unsubNotifs = onSnapshot(q, snap => {
       const count = snap.size;
       const btn = document.getElementById('nb-workflow');
