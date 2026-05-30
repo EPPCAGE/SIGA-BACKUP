@@ -73,6 +73,11 @@
     await setDoc(_docRef(colNome, id), { ...dados, _atualizado_em: new Date() }, { merge: true });
   }
 
+  async function _deleteDoc(colNome, id) {
+    const { deleteDoc } = globalScope.fb();
+    await deleteDoc(_docRef(colNome, id));
+  }
+
   // ── Helpers de UI ─────────────────────────────────────────────────────────
   function _esc(v) {
     return typeof globalScope.esc === 'function'
@@ -273,6 +278,8 @@
       }
       const statusLabels = { pendente:'Pendente', em_execucao:'Em execução', concluida:'Concluída', vencida:'Vencida' };
       const statusCores = { pendente:'#3b82f6', em_execucao:'#f59e0b', concluida:'#10b981', vencida:'#ef4444' };
+      const perfilAtual = globalScope.usuarioLogado?.perfil;
+      const podeGerenciar = perfilAtual === 'ep' || perfilAtual === 'gestor';
 
       // Filtro client-side
       const filtroStatus = document.getElementById('wf-filtro-tarefa-status')?.value || '';
@@ -297,6 +304,7 @@
         <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
           <button type="button" class="btn btn-p btn-sm" onclick="wfAbrirTarefa('${_esc(t.id)}')">Abrir</button>
           <button type="button" class="btn btn-sm" onclick="wfAbrirDelegacao('${_esc(t.id)}')">Delegar</button>
+          ${podeGerenciar ? `<button type="button" class="btn btn-r btn-sm" onclick="wfExcluirTarefa('${_esc(t.id)}')">Excluir</button>` : ''}
         </div>
       `)}</div>`).join('');
 
@@ -2093,6 +2101,22 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 
   // ── P3: Delegação de tarefa ───────────────────────────────────────────────
 
+  async function wfExcluirTarefa(tarefaId) {
+    if (!confirm('Excluir esta tarefa permanentemente? Esta ação não pode ser desfeita.')) return;
+    try {
+      const tarefa = await _getDoc('wf_tarefa_workflows', tarefaId);
+      await _deleteDoc('wf_tarefa_workflows', tarefaId);
+      if (tarefa?.instancia_id) {
+        await _registrarHistorico(tarefa.instancia_id, 'tarefa_excluida', _uid(),
+          tarefa.etapa_modelo_id || null, tarefaId,
+          `Tarefa "${tarefa.etapa_nome || tarefaId}" excluída manualmente.`, {});
+      }
+      wfCarregarTarefas();
+    } catch (e) {
+      alert('Erro ao excluir tarefa: ' + e.message);
+    }
+  }
+
   function wfAbrirDelegacao(tarefaId) {
     _st._delegacaoTarefaId = tarefaId;
     const modal = document.getElementById('wf-modal-delegacao');
@@ -2313,6 +2337,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     wfExportarHistoricoPDF,
     wfMarcarNotifLida,
     wfMarcarTodasLidas,
+    wfExcluirTarefa,
     wfAbrirDelegacao,
     wfFecharDelegacao,
     wfConfirmarDelegacao,
