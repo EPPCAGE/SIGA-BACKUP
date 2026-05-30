@@ -1335,6 +1335,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
         <option value="ep">EP CAGE (real)</option>
         <option value="gestor">Gestor</option>
         <option value="dono">Executor de Processo</option>
+        <option value="solicitante">Solicitante</option>
       </select>
     </div>
   </div>
@@ -2782,8 +2783,8 @@ function simularPerfil(perfil){
     const id=pAtivo.id.replace('page-','');
     go(id,document.getElementById('nb-'+id)||null);
   }
-  const labels={ep:ORG_CONFIG.supportTeamLabel+' (real)',gestor:'Gestor',dono:'Executor de Processo'};
-  const cores={ep:'var(--teal)',gestor:'var(--blue)',dono:'var(--amber)'};
+  const labels={ep:ORG_CONFIG.supportTeamLabel+' (real)',gestor:'Gestor',dono:'Executor de Processo',solicitante:'Solicitante'};
+  const cores={ep:'var(--teal)',gestor:'var(--blue)',dono:'var(--amber)',solicitante:'#0891b2'};
   toast('Perfil: '+labels[perfil], cores[perfil]||'var(--teal)');
 }
 
