@@ -1985,12 +1985,16 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       }
       sel.onchange = () => {
         const g = grupos.find(x => x.id === sel.value);
-        if (!g || !membrosDiv) return;
+        if (!membrosDiv) return;
+        if (!g) { membrosDiv.classList.remove('vis'); return; }
         const nomes = (g.membros_email || []).map(email => {
           const u = (globalScope.USUARIOS || []).find(x => x.email === email);
-          return u ? _esc(u.nome || email) : _esc(email);
+          return _esc(u?.nome || email);
         });
-        membrosDiv.textContent = nomes.length ? `Membros: ${nomes.join(', ')}` : 'Sem membros cadastrados.';
+        membrosDiv.innerHTML = nomes.length
+          ? `<strong>${nomes.length} membro${nomes.length > 1 ? 's' : ''}:</strong> ${nomes.join(', ')}`
+          : 'Nenhum membro cadastrado nesta equipe.';
+        membrosDiv.classList.add('vis');
       };
     }
 
@@ -2351,48 +2355,52 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     overlay.style.display = 'flex';
   }
 
+  const _tipoLabels = { texto:'Texto', numero:'Número', data:'Data', select:'Seleção', textarea:'Texto longo', checkbox:'Sim/Não', arquivo:'Arquivo' };
+
   function _wfRenderizarCamposEditor() {
     const el = document.getElementById('wf-modal-form-campos');
     if (!el) return;
     if (!_st.formularioCampos.length) {
-      el.innerHTML = '<div style="color:var(--ink3);font-size:13px;margin-bottom:8px">Nenhum campo adicionado ainda.</div>';
+      el.innerHTML = `<div class="wf-fields-empty"><span class="wf-fields-empty-icon">📋</span>Nenhum campo adicionado ainda.<br><span style="font-size:12px">Clique em "+ Adicionar campo" para começar.</span></div>`;
       return;
     }
-    el.innerHTML = _st.formularioCampos.map((c, i) => `
-      <div style="border:1px solid var(--bdr);border-radius:8px;padding:12px;margin-bottom:10px;background:var(--bg2)">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
-          <span style="font-size:13px;font-weight:600">${_esc(c.label || 'Campo ' + (i+1))}</span>
-          <div style="display:flex;gap:4px">
-            ${i > 0 ? `<button type="button" class="btn btn-sm" onclick="_wfMoverCampo(${i},-1)" title="Mover para cima">↑</button>` : ''}
-            ${i < _st.formularioCampos.length - 1 ? `<button type="button" class="btn btn-sm" onclick="_wfMoverCampo(${i},1)" title="Mover para baixo">↓</button>` : ''}
-            <button type="button" class="btn btn-r btn-sm" onclick="_wfRemoverCampo(${i})">✕</button>
+    el.innerHTML = _st.formularioCampos.map((c, i) => {
+      const tipoLabel = _tipoLabels[c.tipo] || c.tipo;
+      return `
+      <div class="wf-field-card">
+        <div class="wf-field-card-hd">
+          <span class="wf-field-card-drag" title="Reordenar">⠿</span>
+          <span class="wf-field-card-label">${_esc(c.label || 'Campo sem nome')}</span>
+          <span class="wf-field-type-badge">${_esc(tipoLabel)}</span>
+          <div class="wf-field-card-actions">
+            ${i > 0 ? `<button type="button" class="wf-field-action-btn" onclick="_wfMoverCampo(${i},-1)" title="Mover para cima">↑</button>` : ''}
+            ${i < _st.formularioCampos.length - 1 ? `<button type="button" class="wf-field-action-btn" onclick="_wfMoverCampo(${i},1)" title="Mover para baixo">↓</button>` : ''}
+            <button type="button" class="wf-field-action-btn del" onclick="_wfRemoverCampo(${i})" title="Remover campo">✕</button>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div>
-            <label class="lbl" style="font-size:11px">Label</label>
-            <input type="text" class="fi" value="${_esc(c.label)}" oninput="_wfAtualizarCampo(${i},'label',this.value)" style="margin-top:2px">
+        <div class="wf-field-card-body">
+          <div class="wf-field-col">
+            <label class="lbl" for="wf-campo-label-${i}">Nome do campo</label>
+            <input type="text" class="fi" id="wf-campo-label-${i}" value="${_esc(c.label)}" placeholder="Ex.: Nome completo" oninput="_wfAtualizarCampo(${i},'label',this.value)">
           </div>
-          <div>
-            <label class="lbl" style="font-size:11px">Tipo</label>
-            <select class="fi" onchange="_wfAtualizarCampo(${i},'tipo',this.value)" style="margin-top:2px">
-              ${_tiposCampo.map(t => `<option value="${t.v}"${c.tipo===t.v?' selected':''}>${_esc(t.l)}</option>`).join('')}
+          <div class="wf-field-col">
+            <label class="lbl" for="wf-campo-tipo-${i}">Tipo de resposta</label>
+            <select class="fi" id="wf-campo-tipo-${i}" onchange="_wfAtualizarCampo(${i},'tipo',this.value)">
+              ${_tiposCampo.map(t => `<option value="${_esc(t.v)}"${c.tipo===t.v?' selected':''}>${_esc(t.l)}</option>`).join('')}
             </select>
           </div>
+          ${c.tipo === 'select' ? `
+          <div class="wf-field-col wf-field-card-full">
+            <label class="lbl">Opções de seleção <span style="font-weight:400;text-transform:none;letter-spacing:0">(uma por linha)</span></label>
+            <textarea class="fi" rows="3" placeholder="Opção 1&#10;Opção 2&#10;Opção 3" oninput="_wfAtualizarCampo(${i},'_opcoesTexto',this.value)">${_esc((c.opcoes||[]).join('\n'))}</textarea>
+          </div>` : ''}
         </div>
-        ${c.tipo === 'select' ? `
-        <div style="margin-top:8px">
-          <label class="lbl" style="font-size:11px">Opções (uma por linha)</label>
-          <textarea class="fi" rows="3" oninput="_wfAtualizarCampo(${i},'_opcoesTexto',this.value)" style="margin-top:2px;resize:vertical">${_esc((c.opcoes||[]).join('\n'))}</textarea>
-        </div>` : ''}
-        <div style="margin-top:8px">
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
-            <input type="checkbox" ${c.obrigatorio?'checked':''} onchange="_wfAtualizarCampo(${i},'obrigatorio',this.checked)">
-            Campo obrigatório
-          </label>
-        </div>
-      </div>
-    `).join('');
+        <label class="wf-field-required">
+          <input type="checkbox" ${c.obrigatorio?'checked':''} onchange="_wfAtualizarCampo(${i},'obrigatorio',this.checked)">
+          Preenchimento obrigatório
+        </label>
+      </div>`;
+    }).join('');
   }
 
   function _wfAtualizarCampo(idx, campo, valor) {
@@ -3005,16 +3013,18 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       .filter(u => u.email && (u.nome || u.email))
       .sort((a, b) => (a.nome || a.email).localeCompare(b.nome || b.email));
 
+    const PERFIL_LABEL = { ep:'EP', dono:'Dono', gestor:'Gestor', solicitante:'Solicitante', gerente_projeto:'Gerente' };
     if (!usuarios.length) {
-      membrosEl.innerHTML = '<div style="color:var(--ink3);font-size:12px">Nenhum usuário cadastrado.</div>';
+      membrosEl.innerHTML = '<div style="color:var(--ink3);font-size:12px;padding:8px">Nenhum usuário cadastrado.</div>';
     } else {
       membrosEl.innerHTML = usuarios.map(u => {
         const email = _esc(u.email);
         const nome = _esc(u.nome || u.email);
-        const perfil = u.perfil ? ` <span style="color:var(--ink3);font-size:11px">(${_esc(u.perfil)})</span>` : '';
-        return `<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:3px 0">
+        const perfil = u.perfil ? `<span class="wf-member-chip-perfil">${_esc(PERFIL_LABEL[u.perfil] || u.perfil)}</span>` : '';
+        return `<label class="wf-member-chip">
           <input type="checkbox" class="wf-grupo-membro-cb" value="${email}">
-          ${nome}${perfil}
+          <span class="wf-member-chip-name">${nome}</span>
+          ${perfil}
         </label>`;
       }).join('');
     }
