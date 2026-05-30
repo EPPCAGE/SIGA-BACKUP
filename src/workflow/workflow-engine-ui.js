@@ -3144,6 +3144,46 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     }
   }
 
+  async function wfCarregarSolicitacoes() {
+    const el = document.getElementById('wf-lista-solicitacoes');
+    if (!el) return;
+    el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Carregando…</div>';
+    try {
+      const uid = _uid();
+      if (!uid) { el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Usuário não autenticado.</div>'; return; }
+      const { where } = globalScope.fb();
+      const instancias = await _getAll('wf_instancia_processos', where('solicitante_uid', '==', uid));
+      if (!instancias.length) {
+        el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Você ainda não iniciou nenhum processo.</div>';
+        return;
+      }
+      const STATUS_COR = globalScope.WF_STATUS_INSTANCIA_COR || { em_andamento:'#3b82f6', concluido:'#10b981', cancelado:'#ef4444', suspenso:'#f59e0b' };
+      const STATUS_LABELS = globalScope.WF_STATUS_INSTANCIA_LABELS || { em_andamento:'Em Andamento', concluido:'Concluído', cancelado:'Cancelado', suspenso:'Suspenso' };
+      instancias.sort((a, b) => (b._criado_em?.seconds || 0) - (a._criado_em?.seconds || 0));
+      el.innerHTML = instancias.map(inst => {
+        const cor = STATUS_COR[inst.status] || '#6b7280';
+        const label = STATUS_LABELS[inst.status] || (inst.status || '');
+        const criado = inst._criado_em?.toDate ? inst._criado_em.toDate().toLocaleDateString('pt-BR') : '—';
+        return _card(`
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <div style="font-weight:600;font-size:14px">${_esc(inst.titulo || inst.processo_nome || inst.id)}</div>
+                ${_badge(label, cor)}
+              </div>
+              ${inst.etapa_atual_nome ? `<div style="font-size:12px;color:var(--ink3)">Etapa atual: <strong>${_esc(inst.etapa_atual_nome)}</strong></div>` : ''}
+              ${inst.responsavel_atual_nome ? `<div style="font-size:12px;color:var(--ink3)">Com: ${_esc(inst.responsavel_atual_nome)}</div>` : ''}
+              <div style="font-size:11px;color:var(--ink3);margin-top:4px">Iniciado em ${criado}</div>
+            </div>
+            <button type="button" class="btn btn-sm" onclick="wfAbrirHistorico('${_esc(inst.id)}')">Histórico</button>
+          </div>
+        `);
+      }).join('');
+    } catch (e) {
+      el.innerHTML = `<div style="color:var(--red);font-size:14px">${_esc(e.message)}</div>`;
+    }
+  }
+
   // ── Modelagem: lista de modelos ───────────────────────────────────────────
   async function wfCarregarModelos() {
     const el = document.getElementById('wf-lista-modelos');
@@ -3609,6 +3649,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     wfCarregarInstancias,
     wfCarregarProcessosMapeados,
     wfCarregarIniciar,
+    wfCarregarSolicitacoes,
     wfIniciarAba,
     wfCarregarTemplatesPublicados,
     wfIniciarDeProcesso,
