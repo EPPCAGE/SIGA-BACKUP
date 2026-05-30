@@ -1325,6 +1325,27 @@
     };
   }
 
+  function _wfConfigNosDoBpmn(bpmnXml) {
+    const configNos = {};
+    const matches = [...String(bpmnXml || '').matchAll(/(userTask|manualTask|serviceTask|exclusiveGateway|inclusiveGateway|parallelGateway)\s+id="([^"]+)"/g)];
+    matches.forEach(([, tag, id]) => {
+      const cfg = _configPadrao();
+      if (tag === 'exclusiveGateway' || tag === 'inclusiveGateway') {
+        cfg.acoes = ['aprovar', 'rejeitar'];
+      }
+      configNos[id] = cfg;
+    });
+    return configNos;
+  }
+
+  function _wfModeloTemDesenho(modelo) {
+    return !!(
+      (modelo?.bpmn_xml && String(modelo.bpmn_xml).trim())
+      || (Array.isArray(modelo?.canvas?.nos) && modelo.canvas.nos.length)
+      || (Array.isArray(modelo?.etapas) && modelo.etapas.length)
+    );
+  }
+
   // Importa um mapeamento → reutiliza BPMN XML existente (bpmnToBe ou bpmnAsIs) → abre designer
   async function wfImportarMapeamento(processoId) {
     const proc = await _getDoc('processos', processoId);
@@ -1343,16 +1364,7 @@
     if (bpmnXmlExistente) {
       // Usa o XML do mapeamento diretamente — preserva o layout e gateways originais
       bpmnXml = bpmnXmlExistente;
-      // Extrai IDs de tasks/gateways do XML para criar config_nos com defaults
-      const matches = [...bpmnXml.matchAll(/(?:userTask|manualTask|serviceTask|exclusiveGateway|inclusiveGateway|parallelGateway)\s+id="([^"]+)"/g)];
-      matches.forEach(([, id]) => {
-        const cfg = _configPadrao();
-        // Gateways recebem ações de aprovação por padrão
-        if (bpmnXml.includes(`exclusiveGateway id="${id}"`) || bpmnXml.includes(`inclusiveGateway id="${id}"`)) {
-          cfg.acoes = ['aprovar', 'rejeitar'];
-        }
-        configNos[id] = cfg;
-      });
+      Object.assign(configNos, _wfConfigNosDoBpmn(bpmnXml));
     } else {
       // Fallback: processo sem BPMN desenhado — gera layout linear simples
       const BW = 120, BH = 60, GAP = 50, Y = 100, startX = 60;
@@ -3675,9 +3687,27 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     if (!id) { alert('Selecione um processo.'); return; }
     const opt = sel.options[sel.selectedIndex];
     const nome = opt?.textContent || id;
-    await _updateDoc('wf_processo_modelos', _wfModeloAtual.id, { processo_origem_id: id, processo_origem_nome: nome });
-    _wfModeloAtual.processo_origem_id = id;
-    _wfModeloAtual.processo_origem_nome = nome;
+    const updates = { processo_origem_id: id, processo_origem_nome: nome };
+
+    // Se o modelo ainda não tem desenho, importa automaticamente o BPMN do processo vinculado.
+    if (!_wfModeloTemDesenho(_wfModeloAtual)) {
+      const proc = await _getDoc('processos', id).catch(() => null);
+      const usaToBe = ((proc?.mod?.etapas_proc_tobe || []).length > 0);
+      const bpmnXmlExistente = usaToBe ? (proc?.mod?.bpmnToBe || null) : (proc?.mod?.bpmnAsIs || null);
+      if (bpmnXmlExistente) {
+        updates.bpmn_xml = bpmnXmlExistente;
+        updates.fluxo_origem = usaToBe ? 'tobe' : 'asis';
+        updates.config_nos = _wfConfigNosDoBpmn(bpmnXmlExistente);
+      }
+    }
+
+    await _updateDoc('wf_processo_modelos', _wfModeloAtual.id, updates);
+    Object.assign(_wfModeloAtual, updates);
+    if (updates.config_nos) {
+      Object.keys(_wfConfigNos).forEach(k => delete _wfConfigNos[k]);
+      Object.assign(_wfConfigNos, updates.config_nos);
+      _wfInitModeler(_wfModeloAtual);
+    }
     _wfFecharModalDinamico('wf-modal-arq');
     _wfRenderArqInfo(_wfModeloAtual);
   }
