@@ -224,14 +224,15 @@
 
   function rWorkflow() {
     _wfIniciarBadge();
-    // Solicitante: ajusta abas e label
-    const isSolicitante = globalScope.usuarioLogado?.perfil === 'solicitante';
+    // Solicitante: ajusta abas e label (suporta multi-perfil via isSolicitante())
+    const sol = globalScope.isSolicitante?.() || globalScope.usuarioLogado?.perfil === 'solicitante';
     document.querySelectorAll('.wf-tab-nao-solicitante').forEach(el => {
-      el.style.display = isSolicitante ? 'none' : '';
+      el.style.display = sol ? 'none' : '';
     });
     const labelInstancias = document.getElementById('wf-tab-instancias-label');
-    if (labelInstancias) labelInstancias.textContent = isSolicitante ? 'Minhas Solicitações' : 'Processos Ativos';
-    wfNavWorkflow(isSolicitante ? 'iniciar' : (_st.painelAtual || 'tarefas'));
+    if (labelInstancias) labelInstancias.textContent = sol ? 'Minhas Solicitações' : 'Processos Ativos';
+    // Solicitante começa em "Minhas Solicitações"; outros em "Minhas Tarefas"
+    wfNavWorkflow(sol ? 'instancias' : (_st.painelAtual || 'tarefas'));
   }
 
   const _WF_PAGE = 20; // itens por página
@@ -578,6 +579,8 @@
     // Perfis fixos
     if (valorPapel === 'solicitante') return instancia.solicitante_uid || null;
     if (['ep','gestor','dono'].includes(valorPapel)) {
+      // Atribuição específica registrada ao iniciar a instância tem prioridade
+      if (instancia.atribuicoes?.[valorPapel]) return instancia.atribuicoes[valorPapel];
       const perfil = globalScope.usuarioLogado?.perfil;
       return perfil === valorPapel ? _uid() : null;
     }
@@ -979,7 +982,11 @@
   }
 
   function wfCarregarIniciar() {
-    wfIniciarAba(_st.iniciarAba || 'mapeamento');
+    const sol = globalScope.isSolicitante?.() || globalScope.usuarioLogado?.perfil === 'solicitante';
+    // Solicitante só vê templates publicados, nunca mapeamentos brutos
+    const tabMapeamento = document.getElementById('wf-iniciar-tab-mapeamento');
+    if (tabMapeamento) tabMapeamento.style.display = sol ? 'none' : '';
+    wfIniciarAba(sol ? 'templates' : (_st.iniciarAba || 'mapeamento'));
   }
 
   // Lista de templates publicados
@@ -1725,6 +1732,71 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
   function wfDesignerCampoNo() {}
   function wfDesignerRemoverArestaSel() {}
 
+  // — Coleta perfis que precisam de atribuição explícita ao iniciar —
+  // Retorna array de strings únicas, ex: ['ep', 'gestor']
+  function _wfPerfisParaAtribuir(nos) {
+    const PERFIS_ATRIBUIVEIS = ['ep', 'dono', 'gestor'];
+    const encontrados = new Set();
+    (nos || []).forEach(n => {
+      const p = n.config?.papeis || {};
+      ['executor','revisor','aprovador'].forEach(papel => {
+        if (p[papel] && PERFIS_ATRIBUIVEIS.includes(p[papel])) encontrados.add(p[papel]);
+      });
+    });
+    return [...encontrados];
+  }
+
+  // Abre modal de atribuição; chama callback(atribuicoes) ou null se cancelado
+  function _wfAbrirModalAtribuicao(perfisNecessarios, nomeModelo, callback) {
+    const el = document.getElementById('wf-modal-atribuicao');
+    if (!el) { callback({}); return; }
+    const lista = document.getElementById('wf-modal-atrib-lista');
+    const titulo = document.getElementById('wf-modal-atrib-titulo');
+    if (titulo) titulo.textContent = `Atribuir responsáveis — ${_esc(nomeModelo)}`;
+
+    const PERFIL_LABELS_LOCAL = { ep: 'Equipe de Processos (EP)', dono: 'Dono do Processo', gestor: 'Gestor / Adjunto' };
+    const usuariosFiltrados = (globalScope.USUARIOS || []).filter(u => u.uid && u.nome);
+
+    lista.innerHTML = perfisNecessarios.map(perf => {
+      const opts = usuariosFiltrados
+        .filter(u => {
+          const p = globalScope.getPerfisUsuario ? globalScope.getPerfisUsuario(u) : (u.perfis || (u.perfil ? [u.perfil] : []));
+          return p.includes(perf);
+        })
+        .map(u => `<option value="${_esc(u.uid)}">${_esc(u.nome)}</option>`)
+        .join('');
+      return `<div style="margin-bottom:14px">
+        <label class="lbl" style="display:block;margin-bottom:4px">${_esc(PERFIL_LABELS_LOCAL[perf] || perf)}</label>
+        <select class="fi" id="wf-atrib-sel-${_esc(perf)}">${opts || '<option value="">— nenhum usuário com este perfil —</option>'}</select>
+      </div>`;
+    }).join('');
+
+    el.style.display = 'flex';
+    // armazena callback no elemento para uso no confirmar/cancelar
+    el._atribCallback = callback;
+    el._atribPerfis = perfisNecessarios;
+  }
+
+  function wfConfirmarAtribuicao() {
+    const el = document.getElementById('wf-modal-atribuicao');
+    if (!el) return;
+    const perfis = el._atribPerfis || [];
+    const atribuicoes = {};
+    for (const perf of perfis) {
+      const sel = document.getElementById(`wf-atrib-sel-${perf}`);
+      if (sel?.value) atribuicoes[perf] = sel.value;
+    }
+    el.style.display = 'none';
+    if (typeof el._atribCallback === 'function') el._atribCallback(atribuicoes);
+  }
+
+  function wfCancelarAtribuicao() {
+    const el = document.getElementById('wf-modal-atribuicao');
+    if (!el) return;
+    el.style.display = 'none';
+    if (typeof el._atribCallback === 'function') el._atribCallback(null);
+  }
+
   // — Iniciar uma instância a partir de um modelo do designer —
   async function wfIniciarDeModelo(modeloId) {
     const uid = _uid();
@@ -1732,40 +1804,53 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     const modelo = await _getDoc('wf_processo_modelos', modeloId);
     if (!modelo) { alert('Modelo não encontrado.'); return; }
     const nos = modelo.canvas?.nos || [];
-    const arestas = modelo.canvas?.arestas || [];
     const inicio = nos.find(n => n.tipo === 'inicio');
     if (!inicio) { alert('Modelo sem nó de início.'); return; }
     // primeiro nó executável após o início
     const primeira = _proximoNo(modelo.canvas, inicio.id, null);
     if (!primeira) { alert('Modelo sem etapa após o início.'); return; }
 
-    const titulo = `${modelo.nome} — ${new Date().toLocaleDateString('pt-BR')}`;
-    try {
-      const anoAtual = new Date().getFullYear();
-      const instanciaId = await _addDoc('wf_instancia_processos', {
-        processo_id: modelo.processo_origem_id || null,
-        modelo_id: modelo.id,
-        processo_nome: modelo.nome,
-        titulo,
-        numero: `${anoAtual}-${Date.now().toString().slice(-6)}`,
-        status: 'em_andamento',
-        no_atual_id: primeira.id,
-        etapa_atual_id: primeira.id,
-        solicitante_uid: uid,
-        ultimo_executor_uid: null,
-        canvas: modelo.canvas,        // snapshot do fluxo
-        snapshot_etapas: nos.filter(n => n.tipo === 'tarefa' || n.tipo === 'aprovacao')
-          .map(n => ({ id: n.id, nome: n.nome, tipo: n.tipo })),
-        dados_consolidados: {},
-        concluido_em: null,
-      });
-      await _registrarHistorico(instanciaId, 'instancia_criada', uid, null, null,
-        `Workflow "${modelo.nome}" iniciado a partir de template.`, { modelo_id: modelo.id });
-      await _criarTarefasDoNo({ id: instanciaId, titulo, processo_id: modelo.processo_origem_id, solicitante_uid: uid }, primeira);
-      alert(`Workflow iniciado! Etapa "${primeira.nome}" criada.`);
-      wfNavWorkflow('tarefas');
-    } catch (e) {
-      alert('Erro ao iniciar: ' + e.message);
+    // Verifica se há perfis que precisam de atribuição explícita
+    const perfisNecessarios = _wfPerfisParaAtribuir(nos);
+
+    const _prosseguir = async (atribuicoes) => {
+      if (atribuicoes === null) return; // cancelado
+      const titulo = `${modelo.nome} — ${new Date().toLocaleDateString('pt-BR')}`;
+      try {
+        const anoAtual = new Date().getFullYear();
+        const instanciaId = await _addDoc('wf_instancia_processos', {
+          processo_id: modelo.processo_origem_id || null,
+          modelo_id: modelo.id,
+          processo_nome: modelo.nome,
+          titulo,
+          numero: `${anoAtual}-${Date.now().toString().slice(-6)}`,
+          status: 'em_andamento',
+          no_atual_id: primeira.id,
+          etapa_atual_id: primeira.id,
+          solicitante_uid: uid,
+          ultimo_executor_uid: null,
+          atribuicoes: Object.keys(atribuicoes).length ? atribuicoes : null,
+          canvas: modelo.canvas,
+          snapshot_etapas: nos.filter(n => n.tipo === 'tarefa' || n.tipo === 'aprovacao')
+            .map(n => ({ id: n.id, nome: n.nome, tipo: n.tipo })),
+          dados_consolidados: {},
+          concluido_em: null,
+        });
+        await _registrarHistorico(instanciaId, 'instancia_criada', uid, null, null,
+          `Workflow "${modelo.nome}" iniciado a partir de template.`, { modelo_id: modelo.id });
+        const instObj = { id: instanciaId, titulo, processo_id: modelo.processo_origem_id, solicitante_uid: uid, atribuicoes };
+        await _criarTarefasDoNo(instObj, primeira);
+        alert(`Workflow iniciado! Etapa "${primeira.nome}" criada.`);
+        wfNavWorkflow(globalScope.isSolicitante?.() ? 'instancias' : 'tarefas');
+      } catch (e) {
+        alert('Erro ao iniciar: ' + e.message);
+      }
+    };
+
+    if (perfisNecessarios.length) {
+      _wfAbrirModalAtribuicao(perfisNecessarios, modelo.nome, _prosseguir);
+    } else {
+      _prosseguir({});
     }
   }
 
@@ -2688,6 +2773,8 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     wfCarregarTemplatesPublicados,
     wfIniciarDeProcesso,
     wfIniciarDeModelo,
+    wfConfirmarAtribuicao,
+    wfCancelarAtribuicao,
     // Designer
     wfImportarMapeamento,
     wfAbrirDesigner,
