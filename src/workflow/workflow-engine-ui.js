@@ -1755,7 +1755,10 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     if (titulo) titulo.textContent = `Atribuir responsáveis — ${_esc(nomeModelo)}`;
 
     const PERFIL_LABELS_LOCAL = { ep: 'Equipe de Processos (EP)', dono: 'Dono do Processo', gestor: 'Gestor / Adjunto' };
-    const usuariosFiltrados = (globalScope.USUARIOS || []).filter(u => u.uid && u.nome);
+    // Normaliza campo uid (pode ser 'uid' ou 'id') e nome (pode ser 'nome' ou 'name')
+    const _uid_u = u => u.uid || u.id || '';
+    const _nome_u = u => u.nome || u.name || '';
+    const usuariosFiltrados = (globalScope.USUARIOS || []).filter(u => _uid_u(u) && _nome_u(u));
 
     lista.innerHTML = perfisNecessarios.map(perf => {
       const todos = usuariosFiltrados;
@@ -1768,7 +1771,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       const aviso = comPerfil.length === 0 && todos.length
         ? `<div style="font-size:11px;color:var(--amber,#b45309);margin-top:4px">⚠ Nenhum usuário cadastrado com este perfil — selecione qualquer responsável.</div>`
         : '';
-      const opts = fonte.map(u => `<option value="${_esc(u.uid)}">${_esc(u.nome)}</option>`).join('');
+      const opts = fonte.map(u => `<option value="${_esc(_uid_u(u))}">${_esc(_nome_u(u))}</option>`).join('');
       return `<div style="margin-bottom:14px">
         <label class="lbl" style="display:block;margin-bottom:4px">${_esc(PERFIL_LABELS_LOCAL[perf] || perf)}</label>
         <select class="fi" id="wf-atrib-sel-${_esc(perf)}">${opts || '<option value="">— sem usuários cadastrados —</option>'}</select>
