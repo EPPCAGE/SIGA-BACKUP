@@ -110,7 +110,7 @@
   }
 
   // ── Navegação interna do módulo ───────────────────────────────────────────
-  const _paineis = ['tarefas','instancias','iniciar','executar','historico','formularios','config-processo','designer','notificacoes','dashboard'];
+  const _paineis = ['tarefas','instancias','iniciar','executar','historico','formularios','config-processo','designer','notificacoes','equipes'];
 
   function wfNavWorkflow(painel) {
     _st.painelAtual = painel;
@@ -121,7 +121,7 @@
     const alvo = document.getElementById(`wf-painel-${painel}`);
     if (alvo) alvo.style.display = '';
 
-    const tabIds = ['tarefas','instancias','iniciar','formularios','designer'];
+    const tabIds = ['tarefas','instancias','iniciar','formularios','designer','equipes'];
     tabIds.forEach(t => {
       const btn = document.getElementById(`wf-tab-${t}`);
       if (btn) btn.style.fontWeight = t === painel ? '700' : '';
@@ -133,7 +133,7 @@
       iniciar: wfCarregarIniciar,
       formularios: wfCarregarFormularios,
       notificacoes: _wfRenderNotifPanel,
-      dashboard: wfCarregarDashboard,
+      equipes: wfCarregarEquipes,
     };
     carregadores[painel]?.();
   }
@@ -2744,79 +2744,177 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 
   // ── P3: Dashboard de métricas ─────────────────────────────────────────────
 
-  async function wfCarregarDashboard() {
-    const el = document.getElementById('wf-dashboard-conteudo');
+  // ── Aba Equipes ──────────────────────────────────────────────────────────────
+
+  function wfEquipesAba(aba) {
+    ['grupos','usuarios'].forEach(s => {
+      const sec = document.getElementById(`wf-equipes-sec-${s}`);
+      if (sec) sec.style.display = s === aba ? '' : 'none';
+      const btn = document.getElementById(`wf-equipes-tab-${s}`);
+      if (btn) btn.style.fontWeight = s === aba ? '700' : '';
+    });
+    if (aba === 'grupos') wfCarregarGrupos();
+    else wfCarregarEquipesUsuarios();
+  }
+
+  async function wfCarregarEquipes() {
+    wfEquipesAba('grupos');
+  }
+
+  // ── Grupos: listagem ─────────────────────────────────────────────────────────
+
+  async function wfCarregarGrupos() {
+    const el = document.getElementById('wf-lista-grupos');
     if (!el) return;
     el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Carregando…</div>';
-    const uid = _uid();
-    if (!uid) return;
+    const isEp = globalScope.isEP?.();
     try {
-      const { where, query, collection, getDocs } = globalScope.fb();
-      const db = _db();
-
-      const [snapMinhas, snapTarefas, snapSlaVencido] = await Promise.all([
-        getDocs(query(collection(db, 'wf_instancia_processos'), where('solicitante_uid', '==', uid))),
-        getDocs(query(collection(db, 'wf_tarefa_workflows'), where('responsavel_uid', '==', uid))),
-        getDocs(query(collection(db, 'wf_tarefa_workflows'),
-          where('responsavel_uid', '==', uid),
-          where('sla_vencido', '==', true),
-        )),
-      ]);
-
-      const instancias = snapMinhas.docs.map(d => d.data());
-      const tarefas = snapTarefas.docs.map(d => d.data());
-
-      const totalInst = instancias.length;
-      const ativas = instancias.filter(i => i.status === 'em_andamento').length;
-      const concluidas = instancias.filter(i => i.status === 'concluido').length;
-      const canceladas = instancias.filter(i => i.status === 'cancelado').length;
-      const suspensas = instancias.filter(i => i.status === 'suspenso').length;
-
-      const tarefasPendentes = tarefas.filter(t => t.status === 'pendente' || t.status === 'em_execucao').length;
-      const tarefasConcluidas = tarefas.filter(t => t.status === 'concluida').length;
-      const tarefasVencidas = snapSlaVencido.size;
-
-      // Tempo médio de conclusão (instâncias concluídas com datas)
-      const temposMed = instancias
-        .filter(i => i.status === 'concluido' && i._criado_em && i.concluido_em)
-        .map(i => {
-          const inicio = i._criado_em?.seconds ? i._criado_em.seconds * 1000 : new Date(i._criado_em).getTime();
-          const fim = i.concluido_em?.seconds ? i.concluido_em.seconds * 1000 : new Date(i.concluido_em).getTime();
-          return (fim - inicio) / 3600000; // horas
-        });
-      const tempoMedH = temposMed.length
-        ? (temposMed.reduce((a, b) => a + b, 0) / temposMed.length).toFixed(1)
-        : null;
-
-      const kpi = (label, valor, cor = 'var(--ink)') =>
-        `<div style="background:var(--surf2);border-radius:10px;padding:16px 20px;text-align:center">
-          <div style="font-size:28px;font-weight:700;color:${cor}">${valor}</div>
-          <div style="font-size:12px;color:var(--ink3);margin-top:4px">${label}</div>
+      const grupos = await _getAll('wf_grupos');
+      if (!grupos.length) {
+        el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Nenhum grupo cadastrado.</div>';
+        return;
+      }
+      const usuarios = globalScope.USUARIOS || [];
+      el.innerHTML = grupos.map(g => {
+        const membros = (g.membros_uid || [])
+          .map(uid => {
+            const u = usuarios.find(x => (x.uid || x.id) === uid);
+            return _esc(u ? (u.nome || u.name || u.email || uid) : uid);
+          }).join(', ') || '<em style="color:var(--ink3)">Sem membros</em>';
+        const acoes = isEp ? `
+          <div style="display:flex;gap:6px;margin-top:10px">
+            <button type="button" class="btn btn-sm" onclick="wfAbrirModalGrupo('${_esc(g._id || g.id)}')">Editar</button>
+            <button type="button" class="btn btn-sm" style="color:var(--red,#dc2626)" onclick="wfExcluirGrupo('${_esc(g._id || g.id)}')">Excluir</button>
+          </div>` : '';
+        return `<div style="background:var(--surf2);border-radius:10px;padding:16px">
+          <div style="font-weight:600;font-size:14px;margin-bottom:4px">${_esc(g.nome || '(sem nome)')}</div>
+          ${g.descricao ? `<div style="font-size:12px;color:var(--ink3);margin-bottom:8px">${_esc(g.descricao)}</div>` : ''}
+          <div style="font-size:12px;color:var(--ink3)"><strong>${(g.membros_uid || []).length} membro(s):</strong> ${membros}</div>
+          ${acoes}
         </div>`;
-
-      el.innerHTML = `
-        <div style="margin-bottom:20px">
-          <div style="font-size:13px;font-weight:600;color:var(--ink3);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Meus Processos</div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">
-            ${kpi('Total', totalInst)}
-            ${kpi('Em andamento', ativas, '#3b82f6')}
-            ${kpi('Concluídos', concluidas, '#10b981')}
-            ${kpi('Suspensos', suspensas, '#f59e0b')}
-            ${kpi('Cancelados', canceladas, '#ef4444')}
-            ${tempoMedH ? kpi('Tempo médio (h)', tempoMedH) : ''}
-          </div>
-        </div>
-        <div>
-          <div style="font-size:13px;font-weight:600;color:var(--ink3);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Minhas Tarefas</div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">
-            ${kpi('Pendentes', tarefasPendentes, '#3b82f6')}
-            ${kpi('Concluídas', tarefasConcluidas, '#10b981')}
-            ${kpi('SLA Vencido', tarefasVencidas, '#ef4444')}
-          </div>
-        </div>
-      `;
+      }).join('');
     } catch (e) {
-      el.innerHTML = `<div style="color:#ef4444;font-size:13px">Erro ao carregar métricas: ${_esc(e.message)}</div>`;
+      el.innerHTML = `<div style="color:var(--red,#dc2626);font-size:13px">Erro: ${_esc(e.message)}</div>`;
+    }
+  }
+
+  // ── Grupos: modal criar/editar ───────────────────────────────────────────────
+
+  async function wfAbrirModalGrupo(grupoId) {
+    _st._grupoEditandoId = grupoId || null;
+    const modal = document.getElementById('wf-modal-grupo');
+    if (!modal) return;
+    document.getElementById('wf-modal-grupo-titulo').textContent = grupoId ? 'Editar grupo' : 'Novo grupo';
+    document.getElementById('wf-grupo-nome').value = '';
+    document.getElementById('wf-grupo-descricao').value = '';
+
+    const usuarios = (globalScope.USUARIOS || []).filter(u => u.uid || u.id);
+    const membrosEl = document.getElementById('wf-grupo-membros-lista');
+    membrosEl.innerHTML = usuarios.map(u => {
+      const uid = _esc(u.uid || u.id);
+      const nome = _esc(u.nome || u.name || u.email || uid);
+      return `<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:2px 0">
+        <input type="checkbox" class="wf-grupo-membro-cb" value="${uid}">
+        ${nome}
+      </label>`;
+    }).join('');
+
+    if (grupoId) {
+      const g = await _getDoc('wf_grupos', grupoId);
+      if (g) {
+        document.getElementById('wf-grupo-nome').value = g.nome || '';
+        document.getElementById('wf-grupo-descricao').value = g.descricao || '';
+        (g.membros_uid || []).forEach(uid => {
+          const cb = membrosEl.querySelector(`input[value="${CSS.escape(uid)}"]`);
+          if (cb) cb.checked = true;
+        });
+      }
+    }
+    modal.style.display = 'flex';
+  }
+
+  function wfFecharModalGrupo() {
+    const modal = document.getElementById('wf-modal-grupo');
+    if (modal) modal.style.display = 'none';
+    _st._grupoEditandoId = null;
+  }
+
+  async function wfSalvarGrupo() {
+    const nome = document.getElementById('wf-grupo-nome')?.value?.trim();
+    if (!nome) { alert('Informe o nome do grupo.'); return; }
+    const descricao = document.getElementById('wf-grupo-descricao')?.value?.trim() || '';
+    const membros_uid = [...document.querySelectorAll('.wf-grupo-membro-cb:checked')].map(cb => cb.value);
+    const payload = { nome, descricao, membros_uid };
+    try {
+      const id = _st._grupoEditandoId;
+      if (id) {
+        await _updateDoc('wf_grupos', id, payload);
+      } else {
+        await _addDoc('wf_grupos', payload);
+      }
+      wfFecharModalGrupo();
+      wfCarregarGrupos();
+      // Invalida cache de grupos para próxima carga de tarefas
+      _st.meusGrupos = null;
+      if (typeof globalScope.toast === 'function') globalScope.toast('✓ Grupo salvo');
+    } catch (e) {
+      alert('Erro ao salvar grupo: ' + e.message);
+    }
+  }
+
+  async function wfExcluirGrupo(grupoId) {
+    if (!confirm('Excluir este grupo? Esta ação não pode ser desfeita.')) return;
+    try {
+      await _deleteDoc('wf_grupos', grupoId);
+      _st.meusGrupos = null;
+      wfCarregarGrupos();
+      if (typeof globalScope.toast === 'function') globalScope.toast('Grupo excluído');
+    } catch (e) {
+      alert('Erro ao excluir grupo: ' + e.message);
+    }
+  }
+
+  // ── Usuários: listagem com grupos ────────────────────────────────────────────
+
+  async function wfCarregarEquipesUsuarios() {
+    const el = document.getElementById('wf-lista-equipes-usuarios');
+    if (!el) return;
+    el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Carregando…</div>';
+    try {
+      const usuarios = (globalScope.USUARIOS || []).filter(u => u.uid || u.id);
+      const grupos = await _getAll('wf_grupos');
+      if (!usuarios.length) {
+        el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Nenhum usuário encontrado.</div>';
+        return;
+      }
+      const LABELS = globalScope.PERFIL_LABELS || {};
+      const rows = usuarios.map(u => {
+        const uid = u.uid || u.id;
+        const perfis = globalScope.getPerfisUsuario
+          ? globalScope.getPerfisUsuario(u)
+          : (u.perfis || (u.perfil ? [u.perfil] : []));
+        const perfilStr = _esc(perfis.map(p => LABELS[p] || p).join(', ') || '—');
+        const gruposNomes = grupos
+          .filter(g => (g.membros_uid || []).includes(uid))
+          .map(g => _esc(g.nome)).join(', ') || '—';
+        return `<tr style="border-bottom:1px solid var(--bdr)">
+          <td style="padding:8px 10px;font-size:13px">${_esc(u.nome || u.name || uid)}</td>
+          <td style="padding:8px 10px;font-size:12px;color:var(--ink3)">${_esc(u.email || '')}</td>
+          <td style="padding:8px 10px;font-size:12px">${perfilStr}</td>
+          <td style="padding:8px 10px;font-size:12px">${gruposNomes}</td>
+        </tr>`;
+      }).join('');
+      el.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+        <thead><tr style="border-bottom:2px solid var(--bdr)">
+          <th style="text-align:left;padding:8px 10px;font-size:12px;color:var(--ink3);white-space:nowrap">Nome</th>
+          <th style="text-align:left;padding:8px 10px;font-size:12px;color:var(--ink3);white-space:nowrap">E-mail</th>
+          <th style="text-align:left;padding:8px 10px;font-size:12px;color:var(--ink3);white-space:nowrap">Perfil</th>
+          <th style="text-align:left;padding:8px 10px;font-size:12px;color:var(--ink3);white-space:nowrap">Grupos</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`;
+    } catch (e) {
+      el.innerHTML = `<div style="color:var(--red,#dc2626);font-size:13px">Erro: ${_esc(e.message)}</div>`;
     }
   }
 
@@ -2877,7 +2975,14 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     wfConfirmarDelegacao,
     wfSuspenderInstancia,
     wfRetomarInstancia,
-    wfCarregarDashboard,
+    wfCarregarEquipes,
+    wfEquipesAba,
+    wfCarregarGrupos,
+    wfAbrirModalGrupo,
+    wfFecharModalGrupo,
+    wfSalvarGrupo,
+    wfExcluirGrupo,
+    wfCarregarEquipesUsuarios,
     // Formulários
     wfCarregarFormularios,
     wfAbrirModalNovoFormulario,

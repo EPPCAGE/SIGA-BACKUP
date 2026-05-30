@@ -2082,7 +2082,7 @@ Não responda este e-mail.</pre>
     <button type="button" class="btn ep-only" id="wf-tab-designer" onclick="wfAbrirDesigner()" style="border-radius:6px 6px 0 0;border-bottom:none">🧩 Designer</button>
     <button type="button" class="btn ep-only" id="wf-tab-formularios" onclick="wfNavWorkflow('formularios')" style="border-radius:6px 6px 0 0;border-bottom:none">📝 Formulários</button>
     <button type="button" class="btn wf-tab-nao-solicitante" id="wf-tab-notificacoes" onclick="wfNavWorkflow('notificacoes')" style="border-radius:6px 6px 0 0;border-bottom:none">🔔 Notificações</button>
-    <button type="button" class="btn wf-tab-nao-solicitante" id="wf-tab-dashboard" onclick="wfNavWorkflow('dashboard')" style="border-radius:6px 6px 0 0;border-bottom:none">📊 Dashboard</button>
+    <button type="button" class="btn ep-only" id="wf-tab-equipes" onclick="wfNavWorkflow('equipes')" style="border-radius:6px 6px 0 0;border-bottom:none">👥 Equipes</button>
   </div>
 
   <!-- Painel: Minhas Tarefas -->
@@ -2285,12 +2285,63 @@ Não responda este e-mail.</pre>
     <div id="wf-notif-lista"></div>
   </div>
 
-  <!-- Painel: Dashboard de métricas -->
-  <div id="wf-painel-dashboard" style="display:none;max-width:720px">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
-      <h3 style="margin:0;font-size:17px;color:var(--ink)">Dashboard</h3>
+  <!-- Painel: Equipes e grupos -->
+  <div id="wf-painel-equipes" style="display:none">
+    <div style="display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap">
+      <button type="button" class="btn btn-sm" id="wf-equipes-tab-grupos" onclick="wfEquipesAba('grupos')">🗂 Grupos / Equipes</button>
+      <button type="button" class="btn btn-sm" id="wf-equipes-tab-usuarios" onclick="wfEquipesAba('usuarios')">👤 Usuários</button>
     </div>
-    <div id="wf-dashboard-conteudo"></div>
+
+    <!-- Seção: Grupos -->
+    <div id="wf-equipes-sec-grupos">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:15px;font-weight:600">Grupos / Equipes</div>
+          <div style="font-size:12px;color:var(--ink3)">Gerencie grupos e membros para atribuição de filas de trabalho</div>
+        </div>
+        <button type="button" class="btn btn-p btn-sm ep-only" onclick="wfAbrirModalGrupo()">+ Novo grupo</button>
+      </div>
+      <div id="wf-lista-grupos" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+        <div style="color:var(--ink3);font-size:14px">Carregando…</div>
+      </div>
+    </div>
+
+    <!-- Seção: Usuários -->
+    <div id="wf-equipes-sec-usuarios" style="display:none">
+      <div style="margin-bottom:16px">
+        <div style="font-size:15px;font-weight:600">Usuários do sistema</div>
+        <div style="font-size:12px;color:var(--ink3)">Perfil e grupos de cada usuário</div>
+      </div>
+      <div id="wf-lista-equipes-usuarios"></div>
+    </div>
+  </div>
+
+  <!-- Modal: Criar/Editar Grupo -->
+  <div id="wf-modal-grupo" class="modal-overlay" style="display:none;align-items:center;justify-content:center">
+    <div class="modal" style="max-width:480px;width:100%">
+      <div class="modal-hd">
+        <span id="wf-modal-grupo-titulo">Novo grupo</span>
+        <button type="button" class="modal-x" onclick="wfFecharModalGrupo()">✕</button>
+      </div>
+      <div class="modal-bd">
+        <div style="margin-bottom:12px">
+          <label class="lbl" for="wf-grupo-nome">Nome *</label>
+          <input type="text" class="fi" id="wf-grupo-nome" placeholder="Ex.: Fila Jurídica" style="margin-top:4px">
+        </div>
+        <div style="margin-bottom:12px">
+          <label class="lbl" for="wf-grupo-descricao">Descrição</label>
+          <textarea class="fi" id="wf-grupo-descricao" rows="2" placeholder="Finalidade do grupo…" style="margin-top:4px;resize:vertical"></textarea>
+        </div>
+        <div>
+          <label class="lbl">Membros</label>
+          <div id="wf-grupo-membros-lista" style="margin-top:6px;max-height:220px;overflow-y:auto;border:1px solid var(--bdr);border-radius:6px;padding:8px;display:flex;flex-direction:column;gap:4px"></div>
+        </div>
+      </div>
+      <div class="modal-ft" style="display:flex;gap:8px">
+        <button type="button" class="btn btn-p" onclick="wfSalvarGrupo()">Salvar grupo</button>
+        <button type="button" class="btn" onclick="wfFecharModalGrupo()">Cancelar</button>
+      </div>
+    </div>
   </div>
 
   <!-- Modal: Delegação de tarefa -->
