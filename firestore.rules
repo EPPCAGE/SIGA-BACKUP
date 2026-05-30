@@ -95,6 +95,9 @@ service cloud.firestore {
       allow read: if isAuth();
       allow write: if isAuth() && isEP();
     }
+    // FASE 3 — reservado para editor visual de fluxos (canvas BPMN)
+    // wf_etapa_modelos e wf_transicao_fluxos substituirão wf_config_processo
+    // na modelagem de processos. Mantidas aqui para não bloquear a transição.
     match /wf_etapa_modelos/{id} {
       allow read: if isAuth();
       allow write: if isAuth() && isEP();

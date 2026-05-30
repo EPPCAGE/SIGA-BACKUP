@@ -381,11 +381,15 @@
       }
       if (formularioId) {
         const schema = await _getDoc('wf_formulario_modelos', formularioId);
-        if (schema && typeof globalScope.wfRenderizarFormulario === 'function') {
-          const valoresIniciais = tarefa.dados_formulario || {};
-          const formEl = globalScope.wfRenderizarFormulario(schema, valoresIniciais);
-          formContainer.appendChild(formEl);
-          _st.tarefaAtual._campos = schema.campos || [];
+        if (schema) {
+          if (typeof globalScope.wfRenderizarFormulario === 'function') {
+            const valoresIniciais = tarefa.dados_formulario || {};
+            const formEl = globalScope.wfRenderizarFormulario(schema, valoresIniciais);
+            formContainer.appendChild(formEl);
+            _st.tarefaAtual._campos = schema.campos || [];
+          } else {
+            formContainer.innerHTML = '<p class="text-danger small">Módulo de formulários não carregado. Recarregue a página ou contate o suporte.</p>';
+          }
         }
       }
     } catch (_e) {
