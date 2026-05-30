@@ -1634,6 +1634,27 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 
   // ── Campos Condicionais — Editor de visibilidade/obrigatoriedade ──────────
 
+  // Retorna os campos do formulário vinculado ao nó (para usar nos selects de campos condicionais)
+  function _wfCamposDoFormulario(noId) {
+    const formularioId = _wfConfigNos[noId]?.formulario_id;
+    if (!formularioId) return [];
+    const form = (_st.formularioModelos || []).find(f => f.id === formularioId);
+    return form?.campos || [];
+  }
+
+  function _wfOptsCampos(noId, valorAtual) {
+    const campos = _wfCamposDoFormulario(noId);
+    if (!campos.length) {
+      // sem formulário vinculado: mantém input livre como fallback
+      return null;
+    }
+    const semSelecao = `<option value="">— selecione um campo —</option>`;
+    const opts = campos.map(c =>
+      `<option value="${_esc(c.id || c.label)}"${(c.id || c.label) === valorAtual ? ' selected' : ''}>${_esc(c.label || c.id)}</option>`
+    ).join('');
+    return semSelecao + opts;
+  }
+
   function _wfRenderCamposCond(noId) {
     const el = document.getElementById(`wf-campos-cond-${noId}`);
     if (!el) return;
@@ -1642,12 +1663,20 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       el.innerHTML = '<div style="font-size:12px;color:var(--ink3)">Sem condições de campo.</div>';
       return;
     }
+    const optsAfetado = (valorAtual) => {
+      const opts = _wfOptsCampos(noId, valorAtual);
+      if (opts !== null) {
+        return `<select class="fi" style="flex:1;min-width:100px;font-size:11px"
+          onchange="wfDesignerCampoCondUpdate('${_esc(noId)}',__IDX__,'campo_id',this.value)">${opts}</select>`;
+      }
+      return `<input type="text" class="fi" value="${_esc(valorAtual || '')}" placeholder="id_do_campo" style="flex:1;min-width:80px;font-size:11px"
+        oninput="wfDesignerCampoCondUpdate('${_esc(noId)}',__IDX__,'campo_id',this.value)">`;
+    };
     el.innerHTML = lista.map((cc, i) => `
       <div style="background:var(--surf2);border-radius:6px;padding:8px;margin-bottom:8px;font-size:12px">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">
-          <span style="font-weight:600">Campo:</span>
-          <input type="text" class="fi" value="${_esc(cc.campo_id || '')}" placeholder="id_do_campo" style="flex:1;min-width:80px;font-size:11px"
-            oninput="wfDesignerCampoCondUpdate('${_esc(noId)}',${i},'campo_id',this.value)">
+          <span style="font-weight:600;white-space:nowrap">Campo afetado:</span>
+          ${optsAfetado(cc.campo_id || '').replace(/__IDX__/g, String(i))}
           <select class="fi" style="width:auto;font-size:11px"
             onchange="wfDesignerCampoCondUpdate('${_esc(noId)}',${i},'acao',this.value)">
             ${['mostrar','ocultar','obrigatorio','opcional'].map(a =>
@@ -1674,19 +1703,28 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     if (!el) return;
     const conds = _wfConfigNos[noId]?.campos_condicionais?.[ccIdx]?.condicoes || [];
     if (!conds.length) { el.innerHTML = '<div style="font-size:11px;color:var(--ink3)">Sem condições.</div>'; return; }
-    el.innerHTML = conds.map((c, i) => `
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:4px;margin-bottom:4px">
-        <input type="text" class="fi" placeholder="campo" value="${_esc(c.campo || '')}" style="font-size:11px"
-          oninput="wfDesignerCampoCondCond('${_esc(noId)}',${ccIdx},${i},'campo',this.value)">
-        <select class="fi" style="font-size:11px"
-          onchange="wfDesignerCampoCondCond('${_esc(noId)}',${ccIdx},${i},'operador',this.value)">
-          ${_WF_OPS_LABELS.map(op => `<option value="${_esc(op)}"${c.operador === op ? ' selected' : ''}>${_esc(op)}</option>`).join('')}
-        </select>
-        <input type="text" class="fi" placeholder="valor" value="${_esc(c.valor || '')}" style="font-size:11px"
-          oninput="wfDesignerCampoCondCond('${_esc(noId)}',${ccIdx},${i},'valor',this.value)">
-        <button type="button" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:14px;padding:0 4px"
-          onclick="wfDesignerCampoCondRemoveCond('${_esc(noId)}',${ccIdx},${i})">✕</button>
-      </div>`).join('');
+    const temOpts = _wfOptsCampos(noId, '') !== null;
+    el.innerHTML = conds.map((c, i) => {
+      const campoInput = temOpts
+        ? `<select class="fi" style="font-size:11px"
+            onchange="wfDesignerCampoCondCond('${_esc(noId)}',${ccIdx},${i},'campo',this.value)">
+            ${_wfOptsCampos(noId, c.campo || '')}
+           </select>`
+        : `<input type="text" class="fi" placeholder="campo" value="${_esc(c.campo || '')}" style="font-size:11px"
+            oninput="wfDesignerCampoCondCond('${_esc(noId)}',${ccIdx},${i},'campo',this.value)">`;
+      return `
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:4px;margin-bottom:4px">
+          ${campoInput}
+          <select class="fi" style="font-size:11px"
+            onchange="wfDesignerCampoCondCond('${_esc(noId)}',${ccIdx},${i},'operador',this.value)">
+            ${_WF_OPS_LABELS.map(op => `<option value="${_esc(op)}"${c.operador === op ? ' selected' : ''}>${_esc(op)}</option>`).join('')}
+          </select>
+          <input type="text" class="fi" placeholder="valor" value="${_esc(c.valor || '')}" style="font-size:11px"
+            oninput="wfDesignerCampoCondCond('${_esc(noId)}',${ccIdx},${i},'valor',this.value)">
+          <button type="button" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:14px;padding:0 4px"
+            onclick="wfDesignerCampoCondRemoveCond('${_esc(noId)}',${ccIdx},${i})">✕</button>
+        </div>`;
+    }).join('');
   }
 
   function wfDesignerAddCampoCond(noId) {
