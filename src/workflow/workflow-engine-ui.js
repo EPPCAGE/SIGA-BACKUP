@@ -563,15 +563,28 @@
   }
 
   // Resolve um valor de papel para um uid (ou null)
-  function _resolverPapel(valorPapel, instancia) {
+  function _resolverPapel(valorPapel, instancia, dadosForm) {
     if (!valorPapel) return null;
+    // Perfis fixos
     if (valorPapel === 'solicitante') return instancia.solicitante_uid || null;
-    if (valorPapel === 'ep' || valorPapel === 'gestor' || valorPapel === 'dono') {
+    if (['ep','gestor','dono'].includes(valorPapel)) {
       const perfil = globalScope.usuarioLogado?.perfil;
-      // Quando configurado por perfil, atribui ao usuário logado se o perfil coincidir;
-      // caso contrário, mantém em aberto (qualquer usuário do perfil poderá assumir).
       return perfil === valorPapel ? _uid() : null;
     }
+    // Dinâmico: gestor_solicitante
+    if (valorPapel === 'gestor_solicitante') {
+      const uid = instancia.solicitante_uid;
+      if (!uid) return null;
+      const u = (globalScope.USUARIOS || []).find(x => x.uid === uid || x.id === uid);
+      return u?.gestor_uid || u?.gestor || null;
+    }
+    // Dinâmico: campo:NOME_DO_CAMPO
+    if (valorPapel.startsWith('campo:')) {
+      const campo = valorPapel.slice(6);
+      return (dadosForm || instancia.dados_consolidados || {})[campo] || null;
+    }
+    // Dinâmico: grupo:GRUPO_ID  → null (qualquer membro do grupo assume)
+    if (valorPapel.startsWith('grupo:')) return null;
     // assume UID direto
     return valorPapel;
   }
@@ -590,10 +603,21 @@
     };
 
     const criados = [];
+    const ctxNotif = {
+      processo: { titulo: instancia.titulo, id: instancia.id },
+      etapa: { nome: no.nome },
+      solicitante: { nome: (globalScope.USUARIOS || []).find(u => u.uid === instancia.solicitante_uid)?.nome || '' },
+    };
+    const tituloNotif = _interpolarTemplate(no.config?.titulo_notificacao || 'Nova etapa: {{etapa.nome}}', ctxNotif);
+    const msgNotif = _interpolarTemplate(
+      no.config?.mensagem_notificacao || 'Processo "{{processo.titulo}}" — etapa "{{etapa.nome}}" aguarda sua ação.',
+      ctxNotif,
+    );
+
     for (const papel of ['executor','revisor','aprovador']) {
       const valor = papeis[papel];
       if (!valor) continue;
-      const uidResp = _resolverPapel(valor, instancia);
+      const uidResp = _resolverPapel(valor, instancia, {});
       const acoesDisp = mapaPapelAcoes[papel];
       const tarefaId = await _addDoc('wf_tarefa_workflows', {
         instancia_id: instancia.id,
@@ -616,12 +640,13 @@
         dados_formulario: {},
         observacao: null,
       });
+      const papelAlvo = valor.startsWith('grupo:') ? valor : (uidResp ? uidResp : valor);
       if (uidResp) {
         await _addDoc('wf_notificacoes', {
           destinatario_uid: uidResp,
           tipo: 'tarefa_criada',
-          titulo: `Nova etapa: ${no.nome}`,
-          mensagem: `Processo "${instancia.titulo}" — etapa "${no.nome}" aguarda sua ação.`,
+          titulo: tituloNotif,
+          mensagem: msgNotif,
           instancia_id: instancia.id,
           tarefa_id: tarefaId,
           lida: false,
@@ -632,7 +657,7 @@
     // cientes
     const cientes = papeis.ciente || [];
     for (const c of cientes) {
-      const uidC = _resolverPapel(c, instancia);
+      const uidC = _resolverPapel(c, instancia, {});
       if (uidC) {
         await _addDoc('wf_notificacoes', {
           destinatario_uid: uidC,
@@ -647,7 +672,7 @@
     // Nenhum papel configurado: cria tarefa de executor para o solicitante via o mesmo caminho
     if (!criados.length) {
       papeis.executor = 'solicitante';
-      const uidResp = _resolverPapel('solicitante', instancia);
+      const uidResp = _resolverPapel('solicitante', instancia, {});
       const tarefaId = await _addDoc('wf_tarefa_workflows', {
         instancia_id: instancia.id,
         processo_nome: instancia.titulo,
@@ -669,8 +694,8 @@
         await _addDoc('wf_notificacoes', {
           destinatario_uid: uidResp,
           tipo: 'tarefa_criada',
-          titulo: `Nova etapa: ${no.nome}`,
-          mensagem: `Processo "${instancia.titulo}" — etapa "${no.nome}" aguarda sua ação.`,
+          titulo: tituloNotif,
+          mensagem: msgNotif,
           instancia_id: instancia.id,
           tarefa_id: tarefaId,
           lida: false,
@@ -1084,13 +1109,19 @@
       }));
     const arestas = els
       .filter(e => e.type === 'bpmn:SequenceFlow')
-      .map(e => ({
-        id: e.id,
-        origem: e.source?.id,
-        destino: e.target?.id,
-        acao: e.businessObject?.name || 'avancar',
-        label: e.businessObject?.name || 'Avançar',
-      }));
+      .map(e => {
+        const cfgAresta = _wfConfigNos[e.id] || {};
+        return {
+          id: e.id,
+          origem: e.source?.id,
+          destino: e.target?.id,
+          acao: e.businessObject?.name || 'avancar',
+          label: e.businessObject?.name || 'Avançar',
+          condicoes: cfgAresta.condicoes || [],
+          operador_logico: cfgAresta.operador_logico || 'AND',
+          padrao: cfgAresta.padrao || false,
+        };
+      });
     return { nos, arestas };
   }
 
@@ -1210,6 +1241,13 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       sla_horas: 0,
       instrucoes: '',
       exige_parecer: false,
+      titulo_notificacao: '',       // template — vazio = usa padrão
+      mensagem_notificacao: '',     // template — vazio = usa padrão
+      campos_condicionais: [],      // [{ campo_id, condicoes, operador_logico, acao }]
+      // Para arestas (SequenceFlow):
+      condicoes: [],                // [{ campo, operador, valor }]
+      operador_logico: 'AND',
+      padrao: false,
     };
   }
 
@@ -1282,10 +1320,43 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     const configuravel = el && (
       el.type === 'bpmn:Task' || el.type === 'bpmn:UserTask' ||
       el.type === 'bpmn:ManualTask' || el.type === 'bpmn:ServiceTask' ||
-      el.type === 'bpmn:ExclusiveGateway' || el.type === 'bpmn:InclusiveGateway'
+      el.type === 'bpmn:ExclusiveGateway' || el.type === 'bpmn:InclusiveGateway' ||
+      el.type === 'bpmn:SequenceFlow'
     );
 
     if (!configuravel) { painel.style.display = 'none'; return; }
+
+    // ── SequenceFlow: editor de condições de gateway ──────────────────────────
+    if (el.type === 'bpmn:SequenceFlow') {
+      painel.style.display = '';
+      const id = el.id;
+      if (!_wfConfigNos[id]) _wfConfigNos[id] = { condicoes: [], operador_logico: 'AND', padrao: false };
+      const cfg = _wfConfigNos[id];
+      painel.innerHTML = `
+        <div style="font-weight:600;font-size:13px;margin-bottom:10px;color:var(--ink)">
+          Gateway: ${_esc(el.businessObject?.name || id)}
+        </div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;margin-bottom:10px">
+          <input type="checkbox" id="wf-aresta-padrao-${_esc(id)}" ${cfg.padrao ? 'checked' : ''}
+            onchange="wfDesignerArestaPadrao('${_esc(id)}',this.checked)">
+          Saída padrão (else — usada quando nenhuma condição bater)
+        </label>
+        <div id="wf-aresta-conds-wrap-${_esc(id)}" style="${cfg.padrao ? 'opacity:.4;pointer-events:none' : ''}">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <span style="font-size:12px;font-weight:600;color:var(--ink2)">Condições</span>
+            <select class="fi" style="width:auto;padding:2px 6px;font-size:11px"
+              onchange="wfDesignerCampoCfg('${_esc(id)}','operador_logico',this.value)">
+              <option value="AND" ${cfg.operador_logico !== 'OR' ? 'selected' : ''}>Todas (AND)</option>
+              <option value="OR"  ${cfg.operador_logico === 'OR'  ? 'selected' : ''}>Qualquer (OR)</option>
+            </select>
+          </div>
+          <div id="wf-aresta-conds-${_esc(id)}" style="margin-bottom:8px"></div>
+          <button type="button" class="btn btn-sm" onclick="wfDesignerAddCondicao('${_esc(id)}')">+ Condição</button>
+        </div>`;
+      _wfRenderCondicoes(id);
+      return;
+    }
+
     painel.style.display = '';
 
     const id = el.id;
@@ -1295,9 +1366,23 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     const acoes = cfg.acoes || [];
 
     const alvoOpts = (sel) => {
-      const opts = { '': '— Ninguém —', solicitante: 'Próprio solicitante', ep: 'Perfil EP', gestor: 'Perfil Gestor', dono: 'Perfil Dono' };
-      return Object.entries(opts).map(([v, l]) =>
-        `<option value="${v}"${(sel || '') === v ? ' selected' : ''}>${_esc(l)}</option>`).join('');
+      const fixos = {
+        '':                 '— Ninguém —',
+        'solicitante':      'Próprio solicitante',
+        'gestor_solicitante': 'Gestor do solicitante',
+        'ep':               'Perfil EP',
+        'gestor':           'Perfil Gestor',
+        'dono':             'Perfil Dono',
+      };
+      const usuarios = (globalScope.USUARIOS || []).filter(u => u.uid || u.id);
+      return Object.entries(fixos).map(([v, l]) =>
+        `<option value="${v}"${(sel || '') === v ? ' selected' : ''}>${_esc(l)}</option>`
+      ).join('') + (usuarios.length ? `<optgroup label="Usuário específico">${
+        usuarios.map(u => {
+          const uid = u.uid || u.id;
+          return `<option value="${_esc(uid)}"${(sel || '') === uid ? ' selected' : ''}>${_esc(u.nome || u.email || uid)}</option>`;
+        }).join('')
+      }</optgroup>` : '');
     };
     const formOpts = '<option value="">— Sem formulário —</option>' +
       (_st.formularioModelos || []).map(m =>
@@ -1328,7 +1413,24 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       <label class="lbl" style="font-size:11px">Instruções</label>
       <textarea class="fi" rows="3" style="margin-top:2px;margin-bottom:8px;resize:vertical" oninput="wfDesignerCampoCfg('${_esc(id)}','instrucoes',this.value)">${_esc(cfg.instrucoes || '')}</textarea>
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
-        <input type="checkbox" ${cfg.exige_parecer ? 'checked' : ''} onchange="wfDesignerCampoCfg('${_esc(id)}','exige_parecer',this.checked)"> Exige parecer obrigatório</label>`;
+        <input type="checkbox" ${cfg.exige_parecer ? 'checked' : ''} onchange="wfDesignerCampoCfg('${_esc(id)}','exige_parecer',this.checked)"> Exige parecer obrigatório</label>
+      <div style="margin-top:16px;border-top:1px solid var(--bdr);padding-top:12px">
+        <div style="font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:6px">Campos condicionais</div>
+        <div id="wf-campos-cond-${_esc(id)}" style="margin-bottom:8px"></div>
+        <button type="button" class="btn btn-sm" onclick="wfDesignerAddCampoCond('${_esc(id)}')">+ Condição de campo</button>
+      </div>
+      <div style="margin-top:12px;border-top:1px solid var(--bdr);padding-top:12px">
+        <div style="font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:4px">Notificação customizada</div>
+        <label class="lbl" style="font-size:11px">Título (use {{etapa.nome}}, {{processo.titulo}})</label>
+        <input type="text" class="fi" style="margin-top:2px;margin-bottom:6px" placeholder="Nova etapa: {{etapa.nome}}"
+          value="${_esc(cfg.titulo_notificacao || '')}"
+          oninput="wfDesignerCampoCfg('${_esc(id)}','titulo_notificacao',this.value)">
+        <label class="lbl" style="font-size:11px">Mensagem</label>
+        <textarea class="fi" rows="2" style="margin-top:2px;resize:vertical"
+          placeholder='Processo "{{processo.titulo}}" — etapa "{{etapa.nome}}" aguarda sua ação.'
+          oninput="wfDesignerCampoCfg('${_esc(id)}','mensagem_notificacao',this.value)">${_esc(cfg.mensagem_notificacao || '')}</textarea>
+      </div>`;
+    _wfRenderCamposCond(id);
   }
 
   function wfDesignerCampoCfg(noId, campo, valor) {
@@ -1345,6 +1447,162 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     const set = new Set(_wfConfigNos[noId].acoes || []);
     if (on) set.add(acao); else set.delete(acao);
     _wfConfigNos[noId].acoes = Array.from(set);
+  }
+
+  // ── Gateway Condicional — Editor de condições de arestas ──────────────────
+
+  const _WF_OPS_LABELS = ['=','!=','>','<','>=','<=','contém','não contém','vazio','não vazio'];
+
+  function _wfRenderCondicoes(arestaId) {
+    const el = document.getElementById(`wf-aresta-conds-${arestaId}`);
+    if (!el) return;
+    const conds = _wfConfigNos[arestaId]?.condicoes || [];
+    if (!conds.length) {
+      el.innerHTML = '<div style="font-size:12px;color:var(--ink3)">Sem condições — saída livre.</div>';
+      return;
+    }
+    el.innerHTML = conds.map((c, i) => `
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:4px;margin-bottom:6px;align-items:center">
+        <input type="text" class="fi" placeholder="campo" value="${_esc(c.campo || '')}" style="font-size:11px"
+          oninput="wfDesignerUpdateCondicao('${_esc(arestaId)}',${i},'campo',this.value)">
+        <select class="fi" style="font-size:11px"
+          onchange="wfDesignerUpdateCondicao('${_esc(arestaId)}',${i},'operador',this.value)">
+          ${_WF_OPS_LABELS.map(op => `<option value="${_esc(op)}"${c.operador === op ? ' selected' : ''}>${_esc(op)}</option>`).join('')}
+        </select>
+        <input type="text" class="fi" placeholder="valor" value="${_esc(c.valor || '')}" style="font-size:11px"
+          oninput="wfDesignerUpdateCondicao('${_esc(arestaId)}',${i},'valor',this.value)">
+        <button type="button" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:14px;padding:0 4px"
+          onclick="wfDesignerRemoveCondicao('${_esc(arestaId)}',${i})">✕</button>
+      </div>`).join('');
+  }
+
+  function wfDesignerAddCondicao(arestaId) {
+    if (!_wfConfigNos[arestaId]) _wfConfigNos[arestaId] = { condicoes: [], operador_logico: 'AND', padrao: false };
+    (_wfConfigNos[arestaId].condicoes = _wfConfigNos[arestaId].condicoes || []).push({ campo: '', operador: '=', valor: '' });
+    _wfRenderCondicoes(arestaId);
+  }
+
+  function wfDesignerRemoveCondicao(arestaId, idx) {
+    const conds = _wfConfigNos[arestaId]?.condicoes;
+    if (conds) { conds.splice(idx, 1); _wfRenderCondicoes(arestaId); }
+  }
+
+  function wfDesignerUpdateCondicao(arestaId, idx, chave, valor) {
+    const cond = _wfConfigNos[arestaId]?.condicoes?.[idx];
+    if (cond) cond[chave] = valor;
+  }
+
+  function wfDesignerArestaPadrao(arestaId, val) {
+    if (!_wfConfigNos[arestaId]) _wfConfigNos[arestaId] = {};
+    _wfConfigNos[arestaId].padrao = val;
+    const wrap = document.getElementById(`wf-aresta-conds-wrap-${arestaId}`);
+    if (wrap) { wrap.style.opacity = val ? '.4' : '1'; wrap.style.pointerEvents = val ? 'none' : ''; }
+  }
+
+  // ── Campos Condicionais — Editor de visibilidade/obrigatoriedade ──────────
+
+  function _wfRenderCamposCond(noId) {
+    const el = document.getElementById(`wf-campos-cond-${noId}`);
+    if (!el) return;
+    const lista = _wfConfigNos[noId]?.campos_condicionais || [];
+    if (!lista.length) {
+      el.innerHTML = '<div style="font-size:12px;color:var(--ink3)">Sem condições de campo.</div>';
+      return;
+    }
+    el.innerHTML = lista.map((cc, i) => `
+      <div style="background:var(--surf2);border-radius:6px;padding:8px;margin-bottom:8px;font-size:12px">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+          <span style="font-weight:600">Campo:</span>
+          <input type="text" class="fi" value="${_esc(cc.campo_id || '')}" placeholder="id_do_campo" style="flex:1;min-width:80px;font-size:11px"
+            oninput="wfDesignerCampoCondUpdate('${_esc(noId)}',${i},'campo_id',this.value)">
+          <select class="fi" style="width:auto;font-size:11px"
+            onchange="wfDesignerCampoCondUpdate('${_esc(noId)}',${i},'acao',this.value)">
+            ${['mostrar','ocultar','obrigatorio','opcional'].map(a =>
+              `<option value="${a}"${cc.acao === a ? ' selected' : ''}>${a}</option>`).join('')}
+          </select>
+          <span>SE</span>
+          <select class="fi" style="width:auto;font-size:11px"
+            onchange="wfDesignerCampoCondUpdate('${_esc(noId)}',${i},'operador_logico',this.value)">
+            <option value="AND"${(cc.operador_logico || 'AND') === 'AND' ? ' selected' : ''}>AND</option>
+            <option value="OR"${cc.operador_logico === 'OR' ? ' selected' : ''}>OR</option>
+          </select>
+          <button type="button" style="background:none;border:none;cursor:pointer;color:#ef4444"
+            onclick="wfDesignerCampoCondRemove('${_esc(noId)}',${i})">✕</button>
+        </div>
+        <div id="wf-campo-cond-conds-${_esc(noId)}-${i}" style="margin-bottom:4px"></div>
+        <button type="button" class="btn btn-sm" style="font-size:10px"
+          onclick="wfDesignerCampoCondAddCond('${_esc(noId)}',${i})">+ condição</button>
+      </div>`).join('');
+    lista.forEach((_, i) => _wfRenderCampoCondConds(noId, i));
+  }
+
+  function _wfRenderCampoCondConds(noId, ccIdx) {
+    const el = document.getElementById(`wf-campo-cond-conds-${noId}-${ccIdx}`);
+    if (!el) return;
+    const conds = _wfConfigNos[noId]?.campos_condicionais?.[ccIdx]?.condicoes || [];
+    if (!conds.length) { el.innerHTML = '<div style="font-size:11px;color:var(--ink3)">Sem condições.</div>'; return; }
+    el.innerHTML = conds.map((c, i) => `
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:4px;margin-bottom:4px">
+        <input type="text" class="fi" placeholder="campo" value="${_esc(c.campo || '')}" style="font-size:11px"
+          oninput="wfDesignerCampoCondCond('${_esc(noId)}',${ccIdx},${i},'campo',this.value)">
+        <select class="fi" style="font-size:11px"
+          onchange="wfDesignerCampoCondCond('${_esc(noId)}',${ccIdx},${i},'operador',this.value)">
+          ${_WF_OPS_LABELS.map(op => `<option value="${_esc(op)}"${c.operador === op ? ' selected' : ''}>${_esc(op)}</option>`).join('')}
+        </select>
+        <input type="text" class="fi" placeholder="valor" value="${_esc(c.valor || '')}" style="font-size:11px"
+          oninput="wfDesignerCampoCondCond('${_esc(noId)}',${ccIdx},${i},'valor',this.value)">
+        <button type="button" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:14px;padding:0 4px"
+          onclick="wfDesignerCampoCondRemoveCond('${_esc(noId)}',${ccIdx},${i})">✕</button>
+      </div>`).join('');
+  }
+
+  function wfDesignerAddCampoCond(noId) {
+    if (!_wfConfigNos[noId]) _wfConfigNos[noId] = _configPadrao();
+    (_wfConfigNos[noId].campos_condicionais = _wfConfigNos[noId].campos_condicionais || [])
+      .push({ campo_id: '', acao: 'mostrar', condicoes: [], operador_logico: 'AND' });
+    _wfRenderCamposCond(noId);
+  }
+
+  function wfDesignerCampoCondRemove(noId, idx) {
+    _wfConfigNos[noId]?.campos_condicionais?.splice(idx, 1);
+    _wfRenderCamposCond(noId);
+  }
+
+  function wfDesignerCampoCondUpdate(noId, idx, chave, valor) {
+    const cc = _wfConfigNos[noId]?.campos_condicionais?.[idx];
+    if (cc) cc[chave] = valor;
+  }
+
+  function wfDesignerCampoCondAddCond(noId, ccIdx) {
+    const cc = _wfConfigNos[noId]?.campos_condicionais?.[ccIdx];
+    if (cc) { (cc.condicoes = cc.condicoes || []).push({ campo: '', operador: '=', valor: '' }); _wfRenderCampoCondConds(noId, ccIdx); }
+  }
+
+  function wfDesignerCampoCondRemoveCond(noId, ccIdx, condIdx) {
+    _wfConfigNos[noId]?.campos_condicionais?.[ccIdx]?.condicoes?.splice(condIdx, 1);
+    _wfRenderCampoCondConds(noId, ccIdx);
+  }
+
+  function wfDesignerCampoCondCond(noId, ccIdx, condIdx, chave, valor) {
+    const c = _wfConfigNos[noId]?.campos_condicionais?.[ccIdx]?.condicoes?.[condIdx];
+    if (c) c[chave] = valor;
+  }
+
+  // ── Avaliação de campos condicionais (exposta para renderer de formulários) ─
+
+  function _avaliarCamposCondicionais(camposCondicionais, dadosForm) {
+    const res = {};
+    (camposCondicionais || []).forEach(cc => {
+      const passa = _avaliarCondicoes(cc.condicoes, cc.operador_logico, dadosForm || {});
+      if (!res[cc.campo_id]) res[cc.campo_id] = { visivel: true, obrigatorio: false };
+      switch (cc.acao) {
+        case 'mostrar':      res[cc.campo_id].visivel     =  passa; break;
+        case 'ocultar':      res[cc.campo_id].visivel     = !passa; break;
+        case 'obrigatorio':  res[cc.campo_id].obrigatorio =  passa; break;
+        case 'opcional':     res[cc.campo_id].obrigatorio = !passa; break;
+      }
+    });
+    return res;
   }
 
   async function wfDesignerSalvar() {
@@ -1437,44 +1695,82 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     }
   }
 
-  // Resolve o nó destino a partir de um nó, seguindo arestas (pulando início)
-  // Avalia uma expressão simples de condição de gateway contra os dados coletados.
-  // Suporta: campo == valor, campo != valor, campo > valor, campo < valor
+  // ── Motor de Regras ───────────────────────────────────────────────────────
+
+  // Mapa de operadores — definido uma vez, sem recriação a cada chamada
+  const _WF_OPS = {
+    '=':           (a, b) => String(a ?? '') === String(b ?? ''),
+    '!=':          (a, b) => String(a ?? '') !== String(b ?? ''),
+    '>':           (a, b) => Number(a) > Number(b),
+    '<':           (a, b) => Number(a) < Number(b),
+    '>=':          (a, b) => Number(a) >= Number(b),
+    '<=':          (a, b) => Number(a) <= Number(b),
+    'contém':      (a, b) => String(a ?? '').toLowerCase().includes(String(b ?? '').toLowerCase()),
+    'não contém':  (a, b) => !String(a ?? '').toLowerCase().includes(String(b ?? '').toLowerCase()),
+    'vazio':       (a)    => a === null || a === undefined || String(a).trim() === '',
+    'não vazio':   (a)    => a !== null && a !== undefined && String(a).trim() !== '',
+  };
+
+  function _avaliarCondicaoObj(cond, dados) {
+    if (!cond || !cond.campo) return true;
+    const fn = _WF_OPS[cond.operador];
+    if (!fn) return true;
+    try { return fn(dados[cond.campo], cond.valor); } catch { return true; }
+  }
+
+  function _avaliarCondicoes(condicoes, operadorLogico, dados) {
+    if (!condicoes || !condicoes.length) return true;
+    const isOR = (operadorLogico || 'AND').toUpperCase() === 'OR';
+    return isOR
+      ? condicoes.some(c  => _avaliarCondicaoObj(c, dados))
+      : condicoes.every(c => _avaliarCondicaoObj(c, dados));
+  }
+
+  // Mantém compatibilidade com strings legacy ("campo op valor")
   function _avaliarCondicao(condicao, dados) {
     if (!condicao || !condicao.trim()) return true;
     try {
-      // Regex linear: sem backtracking — trimEnd separa o valor em seguida
       const m = condicao.trim().match(/^(\w+)\s*(==|!=|>=|<=|>|<)\s*(\S.*)/);
       if (!m) return true;
       const [, campo, op, valorRaw] = m;
       const valorStr = valorRaw.trimEnd().replace(/^['"]|['"]$/g, '');
-      const valDados = dados[campo];
+      // Normaliza: == vira =
+      const opNorm = op === '==' ? '=' : op;
+      const fn = _WF_OPS[opNorm];
+      if (!fn) return true;
       const valComp = isNaN(valorStr) ? valorStr : Number(valorStr);
-      switch (op) {
-        case '==': return String(valDados) === String(valComp);
-        case '!=': return String(valDados) !== String(valComp);
-        case '>':  return Number(valDados) > Number(valComp);
-        case '<':  return Number(valDados) < Number(valComp);
-        case '>=': return Number(valDados) >= Number(valComp);
-        case '<=': return Number(valDados) <= Number(valComp);
-        default: return true;
-      }
+      return fn(dados[campo], valComp);
     } catch { return true; }
   }
 
   function _proximoNo(canvas, noId, acao, dados = {}) {
     const arestas = canvas.arestas || [];
     const nos = canvas.nos || [];
-    // arestas que partem de noId; filtra por ação se informada
-    const candidatas = arestas.filter(a => a.origem === noId && (acao == null || a.acao === acao || !a.acao));
-    // para gateways com condições, usa a primeira cujas condições passem
-    const aresta = candidatas.find(a => _avaliarCondicao(a.condicao, dados))
-      || (acao != null ? arestas.find(a => a.origem === noId) : null);
+    const candidatas = arestas.filter(a =>
+      a.origem === noId && (acao == null || a.acao === acao || !a.acao)
+    );
+    const padrão = candidatas.find(a => a.padrao);
+    const condicionais = candidatas.filter(a => !a.padrao);
+    const aresta = condicionais.find(a =>
+      a.condicoes && a.condicoes.length
+        ? _avaliarCondicoes(a.condicoes, a.operador_logico, dados)
+        : _avaliarCondicao(a.condicao, dados)
+    ) || padrão || (acao != null ? arestas.find(a => a.origem === noId) : null);
     if (!aresta) return null;
     const destino = nos.find(n => n.id === aresta.destino);
     if (!destino) return null;
     if (destino.tipo === 'inicio') return _proximoNo(canvas, destino.id, null, dados);
     return destino;
+  }
+
+  // ── Template Engine ───────────────────────────────────────────────────────
+
+  function _interpolarTemplate(tmpl, ctx) {
+    if (!tmpl) return '';
+    return tmpl.replace(/\{\{([\w.]+)\}\}/g, (_, chave) => {
+      const val = chave.split('.').reduce((o, k) => (o != null ? o[k] : ''), ctx);
+      return val != null ? String(val) : '';
+    });
   }
 
   // ── Histórico ─────────────────────────────────────────────────────────────
@@ -2324,6 +2620,17 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     wfDesignerCampoCfg,
     wfDesignerPapel,
     wfDesignerToggleAcao,
+    wfDesignerAddCondicao,
+    wfDesignerRemoveCondicao,
+    wfDesignerUpdateCondicao,
+    wfDesignerArestaPadrao,
+    wfDesignerAddCampoCond,
+    wfDesignerCampoCondRemove,
+    wfDesignerCampoCondUpdate,
+    wfDesignerCampoCondAddCond,
+    wfDesignerCampoCondRemoveCond,
+    wfDesignerCampoCondCond,
+    _avaliarCamposCondicionais,
     wfDesignerSalvar,
     wfDesignerPublicar,
     wfAbrirHistorico,
