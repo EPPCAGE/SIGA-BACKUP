@@ -534,7 +534,7 @@ exports.wfConcluirTarefaEngine = onCall({ enforceAppCheck: false }, async (reque
   });
 
   // Consolida dados do formulário na instância
-  const dadosMerged = { ...(instancia.dados_consolidados || {}), ...(dadosFormulario || {}) };
+  const dadosMerged = { ...instancia.dados_consolidados, ...dadosFormulario };
   batch.update(db.collection('wf_instancia_processos').doc(instancia.id), {
     dados_consolidados: dadosMerged,
     _atualizado_em: now,
@@ -613,7 +613,8 @@ exports.wfConcluirTarefaEngine = onCall({ enforceAppCheck: false }, async (reque
     const etapas = instancia.snapshot_etapas || [];
     const idx = etapas.findIndex(e => e.id === tarefa.etapa_modelo_id);
 
-    if (ACOES_RETORNO.includes(acao) && idx > 0) {
+    const retornarParaEtapaAnterior = ACOES_RETORNO.has(acao) && idx > 0;
+    if (retornarParaEtapaAnterior) {
       const etapaAnt = etapas[idx - 1];
       batch.update(db.collection('wf_instancia_processos').doc(instancia.id), {
         etapa_atual_id: etapaAnt.id, _atualizado_em: now,
@@ -623,18 +624,18 @@ exports.wfConcluirTarefaEngine = onCall({ enforceAppCheck: false }, async (reque
       descHistorico = `Etapa devolvida para "${etapaAnt.nome}".`;
     } else {
       const proxEtapa = etapas[idx + 1];
-      if (!proxEtapa) {
-        batch.update(db.collection('wf_instancia_processos').doc(instancia.id), {
-          status: 'concluido', concluido_em: now, etapa_atual_id: null, _atualizado_em: now,
-        });
-        descHistorico = 'Processo concluído.';
-      } else {
+      if (proxEtapa) {
         batch.update(db.collection('wf_instancia_processos').doc(instancia.id), {
           etapa_atual_id: proxEtapa.id, _atualizado_em: now,
         });
         const novaRef = db.collection('wf_tarefa_workflows').doc();
         await _criarTarefaServer(batch, novaRef, instancia, proxEtapa);
         descHistorico = `Avançou para etapa "${proxEtapa.nome}".`;
+      } else {
+        batch.update(db.collection('wf_instancia_processos').doc(instancia.id), {
+          status: 'concluido', concluido_em: now, etapa_atual_id: null, _atualizado_em: now,
+        });
+        descHistorico = 'Processo concluído.';
       }
     }
   }

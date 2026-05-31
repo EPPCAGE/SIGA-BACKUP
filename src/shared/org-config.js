@@ -34,13 +34,13 @@
   });
 
   function buildOrgConfig() {
-    const incoming = globalScope.CONFIG?.ORG || {};
+    const incoming = globalScope.CONFIG?.ORG;
     return {
       ...defaultConfig,
       ...incoming,
-      allowedDomains: Array.isArray(incoming.allowedDomains) ? incoming.allowedDomains : defaultConfig.allowedDomains,
-      domainProfiles: { ...defaultConfig.domainProfiles, ...(incoming.domainProfiles || {}) },
-      logos: { ...defaultConfig.logos, ...(incoming.logos || {}) },
+      allowedDomains: Array.isArray(incoming?.allowedDomains) ? incoming.allowedDomains : defaultConfig.allowedDomains,
+      domainProfiles: { ...defaultConfig.domainProfiles, ...incoming?.domainProfiles },
+      logos: { ...defaultConfig.logos, ...incoming?.logos },
     };
   }
 

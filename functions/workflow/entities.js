@@ -23,7 +23,7 @@ function _requerido(obj, campo) {
 
 // Remove prototype pollution e valores indefinidos
 function fsClean(obj) {
-  return JSON.parse(JSON.stringify(obj));
+  return structuredClone(obj);
 }
 
 // ---------------------------------------------------------------------------

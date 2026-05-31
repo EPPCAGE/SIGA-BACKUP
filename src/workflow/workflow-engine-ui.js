@@ -41,15 +41,34 @@
     return doc(_db(), colNome, id);
   }
 
-  function _wfDevLocalAtivo() {
-    try {
-      const host = (globalScope.location?.hostname || '').toLowerCase();
-      const isLocal = host === 'localhost' || host === '127.0.0.1' || host === '::1';
-      const qp = new URLSearchParams(globalScope.location?.search || '');
-      return isLocal && qp.get('dev_nologin') === '1';
-    } catch (_e) {
-      return false;
+  function _wfEmHostLocal() {
+    const host = String(globalScope.location?.hostname || '').toLowerCase();
+    return host === 'localhost' || host === '127.0.0.1' || host === '::1';
+  }
+
+  function _wfReportarErroNaoCritico(contexto, error_) {
+    const mensagem = error_?.message || String(error_ || 'Erro desconhecido');
+    if (_wfEmHostLocal()) {
+      globalScope.console?.warn?.(`[WF] ${contexto}: ${mensagem}`);
     }
+  }
+
+  function _wfErroConsultaOpcional(error_) {
+    const mensagem = String(error_?.message || error_ || '');
+    return _wfErroPermissao(error_)
+      || error_?.code === 'failed-precondition'
+      || /index/i.test(mensagem);
+  }
+
+  function _wfErroStorageIgnoravel(error_) {
+    const mensagem = String(error_?.message || error_ || '');
+    return error_?.code === 'storage/object-not-found'
+      || /object-not-found/i.test(mensagem);
+  }
+
+  function _wfDevLocalAtivo() {
+    const qp = new URLSearchParams(typeof globalScope.location?.search === 'string' ? globalScope.location.search : '');
+    return _wfEmHostLocal() && qp.get('dev_nologin') === '1';
   }
 
   function _wfErroPermissao(error_) {
@@ -71,7 +90,8 @@
       const raw = globalScope.localStorage?.getItem(_wfCacheKey(colNome));
       const parsed = raw ? JSON.parse(raw) : [];
       return Array.isArray(parsed) ? parsed : [];
-    } catch (_e) {
+    } catch (error_) {
+      _wfReportarErroNaoCritico(`falha ao ler cache local de ${colNome}`, error_);
       return [];
     }
   }
@@ -80,8 +100,8 @@
     if (!_wfPodeUsarCacheLocal(colNome)) return;
     try {
       globalScope.localStorage?.setItem(_wfCacheKey(colNome), JSON.stringify(Array.isArray(docs) ? docs : []));
-    } catch (_e) {
-      // storage indisponivel
+    } catch (error_) {
+      _wfReportarErroNaoCritico(`falha ao salvar cache local de ${colNome}`, error_);
     }
   }
 
@@ -100,7 +120,7 @@
     function _wfEntropiaIdLocal() {
       const cryptoApi = globalScope.crypto;
       if (typeof cryptoApi?.randomUUID === 'function') {
-        return cryptoApi.randomUUID().replace(/-/g, '').slice(0, 18);
+        return cryptoApi.randomUUID().replaceAll('-', '').slice(0, 18);
       }
       if (typeof cryptoApi?.getRandomValues === 'function') {
         const bytes = new Uint8Array(9);
@@ -179,23 +199,6 @@
           _wfSalvarColecaoLocal(colNome, docs);
           return;
         }
-      }
-      throw error_;
-    }
-  }
-
-  async function _setDoc(colNome, id, dados) {
-    const { setDoc } = globalScope.fb();
-    try {
-      await setDoc(_docRef(colNome, id), { ...dados, _atualizado_em: new Date() }, { merge: true });
-    } catch (error_) {
-      if (_wfPodeUsarCacheLocal(colNome) && _wfErroPermissao(error_)) {
-        const docs = _wfLerColecaoLocal(colNome);
-        const idx = docs.findIndex((doc) => doc?.id === id);
-        if (idx >= 0) docs[idx] = { ...docs[idx], ...dados, _atualizado_em: new Date().toISOString() };
-        else docs.push({ id, ...dados, _atualizado_em: new Date().toISOString() });
-        _wfSalvarColecaoLocal(colNome, docs);
-        return;
       }
       throw error_;
     }
@@ -426,7 +429,10 @@
             where('status', 'in', ['pendente','em_execucao']),
           );
           porPerfil = abertas.filter(t => !t.responsavel_uid);
-        } catch (_e) { /* índice opcional */ }
+        } catch (error_) {
+          if (!_wfErroConsultaOpcional(error_)) throw error_;
+          _wfReportarErroNaoCritico('consulta opcional de tarefas por perfil', error_);
+        }
       }
 
       // Tarefas de fila de grupo (membership por email — identificador estável em USUARIOS)
@@ -437,7 +443,10 @@
             ? await _getAll('wf_grupos', where('membros_email', 'array-contains', email))
             : [];
           _st.meusGrupos = gs;
-        } catch (_e) { _st.meusGrupos = []; }
+        } catch (error_) {
+          _wfReportarErroNaoCritico('consulta de grupos do usuario', error_);
+          _st.meusGrupos = [];
+        }
       }
       const tarefasGrupo = [];
       if (!acrescentar) {
@@ -452,7 +461,10 @@
               t._eFila = true;
               tarefasGrupo.push(t);
             });
-          } catch (_e) { /* índice opcional */ }
+          } catch (error_) {
+            if (!_wfErroConsultaOpcional(error_)) throw error_;
+            _wfReportarErroNaoCritico(`consulta opcional de tarefas do grupo ${g.id}`, error_);
+          }
         }
       }
 
@@ -721,7 +733,12 @@
     if (!confirm(`Remover "${anexo.nome}"?`)) return;
     const { storage, storageRef: sRef, deleteObject } = globalScope.fb?.() || {};
     if (storage && anexo.path) {
-      try { await deleteObject(sRef(storage, anexo.path)); } catch (_e) { /* arquivo pode já não existir */ }
+      try {
+        await deleteObject(sRef(storage, anexo.path));
+      } catch (error_) {
+        if (!_wfErroStorageIgnoravel(error_)) throw error_;
+        _wfReportarErroNaoCritico(`remocao de anexo inexistente ${anexo.path}`, error_);
+      }
     }
     _st._anexosTarefa.splice(idx, 1);
     _wfRenderAnexos();
@@ -885,7 +902,7 @@
   }
 
   // Resolve um valor de papel para um uid (ou null)
-  function _resolverPapel(valorPapel, instancia, dadosForm) {
+  function _resolverPapel(valorPapel, instancia, dadosForm = {}) {
     if (!valorPapel) return null;
     // Perfis fixos
     if (valorPapel === 'solicitante') return instancia.solicitante_uid || null;
@@ -956,7 +973,7 @@
     for (const papel of ['executor','revisor','aprovador']) {
       const valor = papeis[papel];
       if (!valor) continue;
-      const uidResp = _resolverPapel(valor, instancia, {});
+      const uidResp = _resolverPapel(valor, instancia);
       const acoesDisp = mapaPapelAcoes[papel];
       const grupoId = valor.startsWith('grupo:') ? valor.slice(6) : null;
       const tarefaId = await _addDoc('wf_tarefa_workflows', {
@@ -1017,7 +1034,9 @@
               lida: false,
             });
           }
-        } catch (_e) { /* grupo não encontrado — ignora */ }
+        } catch (error_) {
+          _wfReportarErroNaoCritico(`grupo ${grupoId} nao encontrado para notificacao`, error_);
+        }
       }
     }
 
@@ -1040,7 +1059,7 @@
     // cientes
     const cientes = papeis.ciente || [];
     for (const c of cientes) {
-      const uidC = _resolverPapel(c, instancia, {});
+      const uidC = _resolverPapel(c, instancia);
       if (uidC) {
         await _addDoc('wf_notificacoes', {
           destinatario_uid: uidC,
@@ -1055,7 +1074,7 @@
     // Nenhum papel configurado: cria tarefa de executor para o solicitante via o mesmo caminho
     if (!criados.length) {
       papeis.executor = 'solicitante';
-      const uidResp = _resolverPapel('solicitante', instancia, {});
+      const uidResp = _resolverPapel('solicitante', instancia);
       const tarefaId = await _addDoc('wf_tarefa_workflows', {
         instancia_id: instancia.id,
         processo_nome: instancia.titulo,
@@ -1445,7 +1464,9 @@
     try {
       const configProc = await _getDoc('wf_config_processo', processoId);
       configEtapas = configProc?.etapas || {};
-    } catch (_e) { /* segue sem config */ }
+    } catch (error_) {
+      _wfReportarErroNaoCritico(`configuracao de processo ${processoId}`, error_);
+    }
 
     // Monta snapshot das etapas com os dados do mapeamento
     const snapshotEtapas = etapasExec.map((e, i) => {
@@ -1537,7 +1558,6 @@
   globalScope.addEventListener('beforeunload', (event) => {
     if (!_wfTemAlteracoesPendentes()) return;
     event.preventDefault();
-    event.returnValue = '';
   });
 
   function _bpmnTipoToWf(t) {
@@ -1643,47 +1663,49 @@
     );
   }
 
-  // Importa um mapeamento → reutiliza BPMN XML existente (bpmnToBe ou bpmnAsIs) → abre designer
-  async function wfImportarMapeamento(processoId) {
-    const proc = await _getDoc('processos', processoId);
-    if (!proc) { alert('Processo não encontrado.'); return; }
-    const usaToBe = (proc.mod?.etapas_proc_tobe || []).length > 0;
-    const todasEtapas = usaToBe ? proc.mod.etapas_proc_tobe : (proc.mod?.etapas_proc || []);
+  function _wfModeloUsaFluxoInicialPadrao(modelo) {
+    const bpmnAtual = String(modelo?.bpmn_xml || '').trim();
+    if (!bpmnAtual) return false;
+    return bpmnAtual === String(_wfBpmnInicial()).trim()
+      && !(Array.isArray(modelo?.canvas?.nos) && modelo.canvas.nos.length)
+      && !(Array.isArray(modelo?.etapas) && modelo.etapas.length);
+  }
+
+  function _wfDadosImportadosDoMapeamento(proc) {
+    const usaToBe = (proc?.mod?.etapas_proc_tobe || []).length > 0;
+    const todasEtapas = usaToBe ? proc.mod.etapas_proc_tobe : (proc?.mod?.etapas_proc || []);
     const etapasExec = todasEtapas.filter(e => !e.tipo || e.tipo === 'Atividade' || e.tipo === 'Aprovação');
-    if (!etapasExec.length) { alert('Este processo não possui etapas executáveis.'); return; }
+    if (!etapasExec.length) return null;
 
-    // Reutiliza o BPMN XML já desenhado no módulo de mapeamento
     const bpmnXmlExistente = usaToBe ? (proc.mod?.bpmnToBe || null) : (proc.mod?.bpmnAsIs || null);
-
     let bpmnXml;
     const configNos = {};
 
     if (bpmnXmlExistente) {
-      // Usa o XML do mapeamento diretamente — preserva o layout e gateways originais
       bpmnXml = bpmnXmlExistente;
       Object.assign(configNos, _wfConfigNosDoBpmn(bpmnXml));
     } else {
-      // Fallback: processo sem BPMN desenhado — gera layout linear simples
       const BW = 120, BH = 60, GAP = 50, Y = 100, startX = 60;
       const ids = etapasExec.map((_, i) => `task_${i + 1}`);
       let processXml = '    <startEvent id="start" name="Início"/>\n';
       etapasExec.forEach((e, i) => {
         const tipo = e.tipo === 'Aprovação' ? 'exclusiveGateway' : 'userTask';
         const nomeEtapa = e.nome || `Etapa ${i + 1}`;
-        const nomeSeguro = nomeEtapa.replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const nomeSeguro = nomeEtapa.replaceAll('"','&quot;').replaceAll('<','&lt;').replaceAll('>','&gt;');
         processXml += `    <${tipo} id="${ids[i]}" name="${nomeSeguro}"/>\n`;
       });
       processXml += '    <endEvent id="end" name="Fim"/>\n';
       processXml += `    <sequenceFlow id="f0" sourceRef="start" targetRef="${ids[0]}"/>\n`;
       ids.forEach((id, i) => {
-        processXml += `    <sequenceFlow id="f${i+1}" sourceRef="${id}" targetRef="${ids[i+1] || 'end'}"/>\n`;
+        processXml += `    <sequenceFlow id="f${i + 1}" sourceRef="${id}" targetRef="${ids[i + 1] || 'end'}"/>\n`;
       });
       const allIds = ['start', ...ids, 'end'];
       const startW = 36, startH = 36;
       let diShapes = '';
       allIds.forEach((id, i) => {
         const isEvent = id === 'start' || id === 'end';
-        const w = isEvent ? startW : BW, h = isEvent ? startH : BH;
+        const w = isEvent ? startW : BW;
+        const h = isEvent ? startH : BH;
         const x = startX + i * (BW + GAP) + (isEvent ? (BW - startW) / 2 : 0);
         const y = Y + (isEvent ? (BH - startH) / 2 : 0);
         diShapes += `      <bpmndi:BPMNShape bpmnElement="${id}"><omgdc:Bounds x="${x}" y="${y}" width="${w}" height="${h}"/></bpmndi:BPMNShape>\n`;
@@ -1692,11 +1714,11 @@
       allIds.forEach((id, i) => {
         if (i === allIds.length - 1) return;
         const srcIsEvent = id === 'start' || id === 'end';
-        const tgtIsEvent = allIds[i+1] === 'start' || allIds[i+1] === 'end';
+        const tgtIsEvent = allIds[i + 1] === 'start' || allIds[i + 1] === 'end';
         const sw = srcIsEvent ? startW : BW;
         const sx = startX + i * (BW + GAP) + (srcIsEvent ? (BW - startW) / 2 : 0);
-        const tx = startX + (i+1) * (BW + GAP) + (tgtIsEvent ? (BW - startW) / 2 : 0);
-        diEdges += `      <bpmndi:BPMNEdge bpmnElement="f${i}"><omgdi:waypoint x="${sx + sw}" y="${Y + BH/2}"/><omgdi:waypoint x="${tx}" y="${Y + BH/2}"/></bpmndi:BPMNEdge>\n`;
+        const tx = startX + (i + 1) * (BW + GAP) + (tgtIsEvent ? (BW - startW) / 2 : 0);
+        diEdges += `      <bpmndi:BPMNEdge bpmnElement="f${i}"><omgdi:waypoint x="${sx + sw}" y="${Y + BH / 2}"/><omgdi:waypoint x="${tx}" y="${Y + BH / 2}"/></bpmndi:BPMNEdge>\n`;
       });
       bpmnXml = `<?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC" xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI" targetNamespace="http://ep.cage">
@@ -1708,20 +1730,34 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       ids.forEach((id, i) => {
         const cfg = _configPadrao();
         cfg.instrucoes = etapasExec[i]?.desc || '';
-        cfg.acoes = etapasExec[i]?.tipo === 'Aprovação' ? ['aprovar','rejeitar'] : ['avancar'];
+        cfg.acoes = etapasExec[i]?.tipo === 'Aprovação' ? ['aprovar', 'rejeitar'] : ['avancar'];
         configNos[id] = cfg;
       });
     }
 
+    return {
+      fluxo_origem: usaToBe ? 'tobe' : 'asis',
+      bpmn_xml: bpmnXml,
+      config_nos: configNos,
+    };
+  }
+
+  // Importa um mapeamento → reutiliza BPMN XML existente (bpmnToBe ou bpmnAsIs) → abre designer
+  async function wfImportarMapeamento(processoId) {
+    const proc = await _getDoc('processos', processoId);
+    if (!proc) { alert('Processo não encontrado.'); return; }
+    const importado = _wfDadosImportadosDoMapeamento(proc);
+    if (!importado) { alert('Este processo não possui etapas executáveis.'); return; }
+
     try {
       const id = await _addDoc('wf_processo_modelos', {
         nome: `${proc.nome} (workflow)`,
-        descricao: `Importado do mapeamento ${usaToBe ? 'TO BE' : 'AS IS'} de "${proc.nome}".`,
+        descricao: `Importado do mapeamento ${importado.fluxo_origem === 'tobe' ? 'TO BE' : 'AS IS'} de "${proc.nome}".`,
         status: 'rascunho', versao: 1,
         processo_origem_id: processoId,
-        fluxo_origem: usaToBe ? 'tobe' : 'asis',
-        bpmn_xml: bpmnXml,
-        config_nos: configNos,
+        fluxo_origem: importado.fluxo_origem,
+        bpmn_xml: importado.bpmn_xml,
+        config_nos: importado.config_nos,
         canvas: { nos: [], arestas: [] }, // preenchido ao salvar
         criado_por: _uid(),
       });
@@ -1844,7 +1880,11 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     Object.assign(_wfConfigNos, modelo.config_nos || {});
 
     if (!_st.formularioModelos.length) {
-      try { _st.formularioModelos = await _getAll('wf_formulario_modelos'); } catch (_e) { /* */ }
+      try {
+        _st.formularioModelos = await _getAll('wf_formulario_modelos');
+      } catch (error_) {
+        _wfReportarErroNaoCritico('carregamento de modelos de formulario', error_);
+      }
     }
 
     _wfPrepararCamposCabecalhoDesigner(modelo);
@@ -1863,7 +1903,14 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       return;
     }
 
-    if (_wfModeler) { try { _wfModeler.destroy(); } catch (_e) {} _wfModeler = null; }
+    if (_wfModeler) {
+      try {
+        _wfModeler.destroy();
+      } catch (error_) {
+        _wfReportarErroNaoCritico('destruicao do modeler BPMN', error_);
+      }
+      _wfModeler = null;
+    }
     if (canvasEl) canvasEl.style.display = 'none';
     if (loadingEl) { loadingEl.style.display = ''; loadingEl.innerHTML = '<div class="spin"></div><span>Carregando editor…</span>'; }
 
@@ -1905,7 +1952,8 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     const eFim        = tipo === 'bpmn:EndEvent';
     const eIntermediario = tipo === 'bpmn:IntermediateCatchEvent' || tipo === 'bpmn:IntermediateThrowEvent';
 
-    if (!eTarefa && !eGatewayXOR && !eGatewayAND && !eAresta && !eInicio && !eFim && !eIntermediario) {
+    const eConfiguravel = eTarefa || eGatewayXOR || eGatewayAND || eAresta || eInicio || eFim || eIntermediario;
+    if (!eConfiguravel) {
       painel.style.display = 'none'; return;
     }
 
@@ -1979,7 +2027,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
           <div class="wf-guide-card wf-guide-card-full">
             <div class="wf-guide-card-hd"><div class="wf-guide-card-ttl">Nome da decisão</div></div>
             <input type="text" class="fi" style="margin-top:2px" value="${nome}"
-              oninput="wfDesignerCampoCfg('${_esc(id)}','_nome',this.value);try{_wfModeler.get('modeling').updateLabel(_wfModeler.get('elementRegistry').get('${_esc(id)}'),this.value)}catch(_e){}">
+              oninput="wfDesignerCampoCfg('${_esc(id)}','_nome',this.value);wfDesignerAtualizarRotulo('${_esc(id)}',this.value)">
           </div>
           <div class="wf-guide-card wf-guide-card-full">
             <div class="wf-guide-card-hd"><div class="wf-guide-card-ttl">Caminhos possíveis</div></div>
@@ -2010,7 +2058,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
         <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);margin-bottom:8px">Gateway Paralelo (AND)</div>
         <label class="lbl" style="font-size:11px">Nome / rótulo</label>
         <input type="text" class="fi" style="margin-top:2px;margin-bottom:12px" value="${nome}"
-          oninput="try{_wfModeler.get('modeling').updateLabel(_wfModeler.get('elementRegistry').get('${_esc(id)}'),this.value)}catch(_e){}">
+          oninput="wfDesignerAtualizarRotulo('${_esc(id)}',this.value)">
         <div style="font-size:12px;padding:10px;background:var(--surf2);border-radius:6px;color:var(--ink2);line-height:1.5">
           <strong>Como funciona:</strong><br>
           • <strong>Divisão (split):</strong> todas as saídas são ativadas simultaneamente.<br>
@@ -2029,7 +2077,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
         <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);margin-bottom:8px">Evento de Início</div>
         <label class="lbl" style="font-size:11px">Nome</label>
         <input type="text" class="fi" style="margin-top:2px;margin-bottom:10px" value="${nome}"
-          oninput="try{_wfModeler.get('modeling').updateLabel(_wfModeler.get('elementRegistry').get('${_esc(id)}'),this.value)}catch(_e){}">
+          oninput="wfDesignerAtualizarRotulo('${_esc(id)}',this.value)">
         <label class="lbl" style="font-size:11px">Tipo de disparo</label>
         <select class="fi" style="margin-top:2px;margin-bottom:10px"
           onchange="wfDesignerCampoCfg('${_esc(id)}','tipo_disparo',this.value)">
@@ -2054,7 +2102,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
         <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);margin-bottom:8px">Evento de Fim</div>
         <label class="lbl" style="font-size:11px">Nome</label>
         <input type="text" class="fi" style="margin-top:2px;margin-bottom:10px" value="${nome}"
-          oninput="try{_wfModeler.get('modeling').updateLabel(_wfModeler.get('elementRegistry').get('${_esc(id)}'),this.value)}catch(_e){}">
+          oninput="wfDesignerAtualizarRotulo('${_esc(id)}',this.value)">
         <label class="lbl" style="font-size:11px">Tipo</label>
         <select class="fi" style="margin-top:2px;margin-bottom:10px"
           onchange="wfDesignerCampoCfg('${_esc(id)}','tipo_fim',this.value)">
@@ -2087,7 +2135,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
         <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);margin-bottom:8px">Evento Intermediário</div>
         <label class="lbl" style="font-size:11px">Nome</label>
         <input type="text" class="fi" style="margin-top:2px;margin-bottom:10px" value="${nome}"
-          oninput="try{_wfModeler.get('modeling').updateLabel(_wfModeler.get('elementRegistry').get('${_esc(id)}'),this.value)}catch(_e){}">
+          oninput="wfDesignerAtualizarRotulo('${_esc(id)}',this.value)">
         <label class="lbl" style="font-size:11px">Tipo</label>
         <select class="fi" style="margin-top:2px;margin-bottom:10px"
           onchange="wfDesignerCampoCfg('${_esc(id)}','tipo_evento',this.value)">
@@ -2227,7 +2275,9 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
         const el = reg?.get(_st.designerArestaSel);
         if (el) _wfRenderConfigPanel(el);
       }
-    } catch (_e) { /* no-op */ }
+    } catch (error_) {
+      _wfReportarErroNaoCritico('atualizacao do painel do designer', error_);
+    }
   }
 
   function _wfAplicarModoPainel() {
@@ -2353,6 +2403,19 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       </div>`;
   }
 
+  function wfDesignerAtualizarRotulo(noId, valor) {
+    try {
+      const modeling = _wfModeler?.get('modeling');
+      const elementRegistry = _wfModeler?.get('elementRegistry');
+      const element = elementRegistry?.get(noId);
+      if (modeling && element) {
+        modeling.updateLabel(element, valor);
+      }
+    } catch (error_) {
+      _wfReportarErroNaoCritico(`atualizacao de rotulo do elemento ${noId}`, error_);
+    }
+  }
+
   function _wfRenderAssistenteAresta(arestaId, painel) {
     const cfg = _wfConfigNos[arestaId] || {};
     let frase = 'Sempre seguir por este caminho.';
@@ -2365,17 +2428,6 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     painel.insertAdjacentHTML('beforeend', `
       <div style="margin-top:10px;padding:8px;border-radius:6px;background:var(--surf2);font-size:12px;color:var(--ink2)">
         <strong>Regra em linguagem simples:</strong> ${_esc(frase)}
-      </div>`);
-  }
-
-  function _wfRenderAssistenteNo(noId, painel) {
-    painel.insertAdjacentHTML('beforeend', `
-      <div style="margin-top:10px;padding:8px;border:1px dashed var(--bdr);border-radius:8px;background:var(--surf2)">
-        <div style="font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:6px">Assistente de regras</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button type="button" class="btn btn-sm" onclick="wfDesignerAplicarPreset('${_esc(noId)}','aprovacao_binaria')">Preset: Aprovação Sim/Não</button>
-          <button type="button" class="btn btn-sm" onclick="wfDesignerAplicarPreset('${_esc(noId)}','campo_condicional')">Preset: Mostrar campo por resposta</button>
-        </div>
       </div>`);
   }
 
@@ -2403,7 +2455,9 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
           <div style="font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:6px">Mapa de decisão</div>
           ${saidas.join('')}
         </div>`);
-    } catch (_e) { /* no-op */ }
+    } catch (error_) {
+      _wfReportarErroNaoCritico(`mapa de decisao do elemento ${noId}`, error_);
+    }
   }
 
   function wfDesignerAplicarPreset(noId, presetId) {
@@ -2501,7 +2555,8 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       }
 
       return [];
-    } catch (_e) {
+    } catch (error_) {
+      _wfReportarErroNaoCritico(`campos da origem da aresta ${arestaId}`, error_);
       return [];
     }
   }
@@ -2764,7 +2819,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       <div class="wf-logic-card">
         <div class="wf-logic-sentence">${renderCampoCondAcao(cc.acao)} o campo:</div>
         <div class="wf-logic-actions">
-          ${optsAfetado(cc.campo_id || '').replace(/__IDX__/g, String(i))}
+          ${optsAfetado(cc.campo_id || '').replaceAll('__IDX__', String(i))}
           <select class="fi" style="width:auto;font-size:11px" onchange="wfDesignerCampoCondUpdate('${_esc(noId)}',${i},'acao',this.value)">${['mostrar','ocultar','obrigatorio','opcional'].map(a => `<option value="${a}"${cc.acao === a ? ' selected' : ''}>${a}</option>`).join('')}</select>
           <select class="fi" style="width:auto;font-size:11px" onchange="wfDesignerCampoCondUpdate('${_esc(noId)}',${i},'operador_logico',this.value)"><option value="AND"${(cc.operador_logico || 'AND') === 'AND' ? ' selected' : ''}>se todas as regras ocorrerem</option><option value="OR"${cc.operador_logico === 'OR' ? ' selected' : ''}>se qualquer regra ocorrer</option></select>
           <button type="button" style="background:none;border:none;cursor:pointer;color:#ef4444" onclick="wfDesignerCampoCondRemove('${_esc(noId)}',${i})">✕</button>
@@ -3159,10 +3214,10 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       return _avaliarCondicao(arestaAtual.condicao, dados);
     });
     let aresta = arestaCondicional || padrão || null;
-    if (!aresta && acao != null) {
+    if (acao != null && aresta == null) {
       aresta = arestas.find(a => a.origem === noId) || null;
     }
-    if (!aresta) return null;
+    if (aresta == null) return null;
     const destino = nos.find(n => n.id === aresta.destino);
     if (!destino) return null;
     if (destino.tipo === 'inicio') return _proximoNo(canvas, destino.id, null, dados);
@@ -3264,7 +3319,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
           const ordemGrupos = [];
           todosComentarios.forEach(c => {
             const chave = c.etapa_nome || c.etapa_id || 'Sem etapa';
-            if (!grupos[chave]) { grupos[chave] = []; ordemGrupos.push(chave); }
+            if (grupos[chave] == null) { grupos[chave] = []; ordemGrupos.push(chave); }
             grupos[chave].push(c);
           });
           elComentPorEtapa.innerHTML = ordemGrupos.map(chave => {
@@ -3393,7 +3448,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       schema = await _getDoc('wf_formulario_modelos', formularioId);
     }
     _st.formularioAtual = schema || { id: null, titulo: '', campos: [], versao: 1 };
-    _st.formularioCampos = JSON.parse(JSON.stringify(_st.formularioAtual.campos || []));
+    _st.formularioCampos = structuredClone(_st.formularioAtual.campos || []);
 
     const overlay = document.getElementById('wf-modal-formulario');
     if (!overlay) return;
@@ -3562,7 +3617,9 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 
       try {
         _st.formularioModelos = await _getAll('wf_formulario_modelos');
-      } catch (_e) { /* no-op */ }
+      } catch (error_) {
+        _wfReportarErroNaoCritico('atualizacao da lista de modelos de formulario', error_);
+      }
 
       if (_st.formularioOrigem === 'etapa') {
         _wfAtualizarSelectFormularioEtapa(formularioSalvoId || schema.id || '');
@@ -3683,7 +3740,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
         whereC('instancia_id', '==', _st.instanciaAtual.id),
       )).sort((a, b) => (a._criado_em?.seconds ?? 0) - (b._criado_em?.seconds ?? 0));
 
-      const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const esc = v => `"${String(v ?? '').replaceAll('"', '""')}"`;
       const linhas = [
         ['Data/Hora', 'Tipo', 'Usuário', 'Etapa', 'Ação', 'Parecer', 'Descrição/Comentário'].map(esc).join(','),
         ...eventos.map(h => {
@@ -3724,7 +3781,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       eventos.sort((a, b) => (a._criado_em?.seconds ?? 0) - (b._criado_em?.seconds ?? 0));
       comentarios.sort((a, b) => (a._criado_em?.seconds ?? 0) - (b._criado_em?.seconds ?? 0));
 
-      const esc = v => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const esc = v => String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
       const ts = s => s?.seconds ? new Date(s.seconds * 1000).toLocaleString('pt-BR') : '—';
 
       const linhasEventos = eventos.map(h => {
@@ -3744,7 +3801,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       const ordemGrupos = [];
       comentarios.forEach(c => {
         const chave = c.etapa_nome || c.etapa_id || 'Sem etapa';
-        if (!gruposComent[chave]) { gruposComent[chave] = []; ordemGrupos.push(chave); }
+        if (gruposComent[chave] == null) { gruposComent[chave] = []; ordemGrupos.push(chave); }
         gruposComent[chave].push(c);
       });
       const secaoComentarios = ordemGrupos.length ? `<h2>Comentários por etapa</h2>` + ordemGrupos.map(chave => {
@@ -3780,9 +3837,14 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 
       const win = window.open('', '_blank');
       if (!win) { alert('Permita pop-ups para exportar PDF.'); return; }
-      win.document.write(html);
-      win.document.close();
-      win.onload = () => { win.focus(); win.print(); };
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const pdfUrl = URL.createObjectURL(blob);
+      win.location.replace(pdfUrl);
+      win.onload = () => {
+        win.focus();
+        win.print();
+        URL.revokeObjectURL(pdfUrl);
+      };
     } catch (e) {
       alert('Erro ao gerar PDF: ' + e.message);
     }
@@ -3924,7 +3986,8 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       const snap = await getDocs(collection(_db(), 'usuarios'));
       _st._usersComUid = [];
       snap.forEach(d => _st._usersComUid.push({ uid: d.id, ...d.data() }));
-    } catch (_e) {
+    } catch (error_) {
+      _wfReportarErroNaoCritico('carregamento de usuarios com uid', error_);
       _st._usersComUid = [];
     }
     return _st._usersComUid;
@@ -4326,15 +4389,14 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     const nome = opt?.textContent || id;
     const updates = { processo_origem_id: id, processo_origem_nome: nome };
 
-    // Se o modelo ainda não tem desenho, importa automaticamente o BPMN do processo vinculado.
-    if (!_wfModeloTemDesenho(_wfModeloAtual)) {
+    // Se o modelo ainda está em branco, importa automaticamente o BPMN do processo vinculado.
+    if (!_wfModeloTemDesenho(_wfModeloAtual) || _wfModeloUsaFluxoInicialPadrao(_wfModeloAtual)) {
       const proc = await _getDoc('processos', id).catch(() => null);
-      const usaToBe = ((proc?.mod?.etapas_proc_tobe || []).length > 0);
-      const bpmnXmlExistente = usaToBe ? (proc?.mod?.bpmnToBe || null) : (proc?.mod?.bpmnAsIs || null);
-      if (bpmnXmlExistente) {
-        updates.bpmn_xml = bpmnXmlExistente;
-        updates.fluxo_origem = usaToBe ? 'tobe' : 'asis';
-        updates.config_nos = _wfConfigNosDoBpmn(bpmnXmlExistente);
+      const importado = proc ? _wfDadosImportadosDoMapeamento(proc) : null;
+      if (importado) {
+        updates.bpmn_xml = importado.bpmn_xml;
+        updates.fluxo_origem = importado.fluxo_origem;
+        updates.config_nos = importado.config_nos;
       }
     }
 

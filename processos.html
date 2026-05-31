@@ -19696,10 +19696,13 @@ function _bootBypassLoginLocal(){
     try {
       if(typeof lsSet === 'function') lsSet('siga_user', user.email || 'local@test');
       else localStorage.setItem('siga_user', user.email || 'local@test');
-    } catch(_e) { /* storage indisponível */ }
+    } catch(error_) {
+      console.warn('Falha ao persistir sessão local de bootstrap:', error_?.message || error_);
+    }
     _aplicarUsuario(user, true);
     return true;
-  }catch(_e){
+  }catch(error_){
+    console.warn('Falha ao ativar bypass local de bootstrap:', error_?.message || error_);
     return false;
   }
 }

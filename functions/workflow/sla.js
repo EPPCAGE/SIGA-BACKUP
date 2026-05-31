@@ -38,7 +38,7 @@ function adicionarHorasUteis(dataInicio, horas) {
 
   // Trabalha em minutos para precisão
   let minutosRestantes = horas * 60;
-  let atual = new Date(dataInicio.getTime());
+  let atual = new Date(dataInicio);
 
   // Avança para o próximo horário útil se fora do expediente
   atual = _proxHorarioUtil(atual);
@@ -67,7 +67,7 @@ function adicionarHorasUteis(dataInicio, horas) {
 }
 
 function _proxHorarioUtil(data) {
-  const d = new Date(data.getTime());
+  const d = new Date(data);
 
   // Avança para dia útil se necessário
   while (!_ehDiaUtil(d)) {
