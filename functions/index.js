@@ -393,6 +393,12 @@ exports.migrateAllUserClaims = onCall(async (request) => {
 // ---------------------------------------------------------------------------
 const db = admin.firestore();
 const FieldValue = admin.firestore.FieldValue;
+const ACOES_RETORNO = new Set(['rejeitar', 'devolver']);
+const ACOES_POR_PAPEL = {
+  executor: ['avancar', 'concluir', 'devolver', 'solicitar_ajuste'],
+  revisor: ['avancar', 'concluir'],
+  aprovador: ['aprovar', 'rejeitar', 'devolver'],
+};
 
 function _proximoNoServer(canvas, noId, acao, dados = {}) {
   const arestas = canvas.arestas || [];
@@ -465,63 +471,52 @@ async function _criarTarefaServer(batch, tarefaRef, instancia, etapa) {
   });
 }
 
-exports.wfConcluirTarefaEngine = onCall({ enforceAppCheck: false }, async (request) => {
-  const uid = request.auth?.uid;
-  if (!uid) throw new HttpsError('unauthenticated', 'Usuário não autenticado.');
-
-  const { tarefaId, acao, observacao, dadosFormulario, anexos } = request.data || {};
-  if (!tarefaId || !acao) throw new HttpsError('invalid-argument', 'tarefaId e acao são obrigatórios.');
-
-  // Carrega a tarefa
+async function _carregarTarefaServer(tarefaId) {
   const tarefaSnap = await db.collection('wf_tarefa_workflows').doc(tarefaId).get();
   if (!tarefaSnap.exists) throw new HttpsError('not-found', 'Tarefa não encontrada.');
-  const tarefa = { id: tarefaSnap.id, ...tarefaSnap.data() };
+  return { id: tarefaSnap.id, ...tarefaSnap.data() };
+}
 
+async function _carregarInstanciaServer(instanciaId) {
+  const instSnap = await db.collection('wf_instancia_processos').doc(instanciaId).get();
+  if (!instSnap.exists) throw new HttpsError('not-found', 'Instância não encontrada.');
+  return { id: instSnap.id, ...instSnap.data() };
+}
+
+async function _carregarPermissoesConclusaoServer(uid) {
+  const userRecord = await admin.auth().getUser(uid);
+  const perfil = userRecord.customClaims?.perfil || '';
+  return {
+    isEP: perfil === 'ep',
+    isGestor: perfil === 'gestor',
+  };
+}
+
+function _validarEstadoTarefaConclusaoServer(tarefa) {
   if (tarefa.status !== 'pendente' && tarefa.status !== 'em_execucao') {
     throw new HttpsError('failed-precondition', 'Tarefa já foi concluída.');
   }
+}
 
-  // Verifica permissão: responsável, EP ou gestor
-  const userRecord = await admin.auth().getUser(uid);
-  const perfil = userRecord.customClaims?.perfil || '';
-  const isEP = perfil === 'ep';
-  const isGestor = perfil === 'gestor';
+function _validarPermissaoConclusaoServer(uid, tarefa, acao, observacao, permissoes) {
   const isResponsavel = tarefa.responsavel_uid === uid || tarefa.responsavel_uid == null;
-  if (!isEP && !isGestor && !isResponsavel) {
+  if (!permissoes.isEP && !permissoes.isGestor && !isResponsavel) {
     throw new HttpsError('permission-denied', 'Sem permissão para concluir esta tarefa.');
   }
 
-  // P3 — Permissões por papel server-side:
-  // Recomputa as ações permitidas a partir do papel armazenado, ignorando
-  // o campo acoes_disponiveis (que poderia ter sido manipulado pelo cliente).
-  const ACOES_POR_PAPEL = {
-    executor:  ['avancar', 'concluir', 'devolver', 'solicitar_ajuste'],
-    revisor:   ['avancar', 'concluir'],
-    aprovador: ['aprovar', 'rejeitar', 'devolver'],
-  };
   const papel = tarefa.papel_responsavel || 'executor';
   const acoesPermitidas = ACOES_POR_PAPEL[papel] || ACOES_POR_PAPEL.executor;
-  // EP e gestor não são restritos por papel — podem tomar qualquer ação disponível
-  if (!isEP && !isGestor && !acoesPermitidas.includes(acao)) {
-    throw new HttpsError('permission-denied',
-      `Papel "${papel}" não pode executar a ação "${acao}".`);
+  if (!permissoes.isEP && !permissoes.isGestor && !acoesPermitidas.includes(acao)) {
+    throw new HttpsError('permission-denied', `Papel "${papel}" não pode executar a ação "${acao}".`);
   }
 
-  // Parecer obrigatório para rejeições
   const exigeParecer = tarefa.exige_parecer || acao === 'rejeitar' || acao === 'devolver';
   if (exigeParecer && !observacao) {
     throw new HttpsError('invalid-argument', 'Parecer obrigatório para esta ação.');
   }
+}
 
-  // Carrega a instância
-  const instSnap = await db.collection('wf_instancia_processos').doc(tarefa.instancia_id).get();
-  if (!instSnap.exists) throw new HttpsError('not-found', 'Instância não encontrada.');
-  const instancia = { id: instSnap.id, ...instSnap.data() };
-
-  const batch = db.batch();
-  const now = FieldValue.serverTimestamp();
-
-  // Conclui a tarefa
+function _atualizarTarefaConcluidaBatch(batch, tarefaId, observacao, acao, dadosFormulario, anexos, now) {
   batch.update(db.collection('wf_tarefa_workflows').doc(tarefaId), {
     status: 'concluida',
     observacao: observacao || null,
@@ -532,115 +527,131 @@ exports.wfConcluirTarefaEngine = onCall({ enforceAppCheck: false }, async (reque
     concluido_em: now,
     _atualizado_em: now,
   });
+}
 
-  // Consolida dados do formulário na instância
-  const dadosMerged = { ...instancia.dados_consolidados, ...dadosFormulario };
+function _atualizarDadosInstanciaBatch(batch, instancia, dadosMerged, now) {
   batch.update(db.collection('wf_instancia_processos').doc(instancia.id), {
     dados_consolidados: dadosMerged,
     _atualizado_em: now,
   });
+}
 
-  // Decide próxima etapa
-  const ACOES_RETORNO = new Set(['rejeitar', 'devolver']);
-  let descHistorico = '';
+function _atualizarInstanciaCanvasBatch(batch, instanciaId, patch, now) {
+  batch.update(db.collection('wf_instancia_processos').doc(instanciaId), {
+    ...patch,
+    _atualizado_em: now,
+  });
+}
 
-  if (instancia.canvas) {
-    const canvas = instancia.canvas;
-    const noOrigemId = tarefa.etapa_modelo_id;
+function _criarTarefaRetornoCanvasBatch(batch, instancia, noAnterior, now) {
+  const novaRef = db.collection('wf_tarefa_workflows').doc();
+  const cfg = noAnterior.config || {};
+  const prazoDev = cfg.sla_horas > 0 ? new Date(Date.now() + cfg.sla_horas * 3600000) : null;
+  batch.set(novaRef, {
+    instancia_id: instancia.id, processo_nome: instancia.titulo,
+    processo_id: instancia.processo_id || null,
+    etapa_modelo_id: noAnterior.id, etapa_nome: noAnterior.nome,
+    etapa_desc: cfg.instrucoes || null, etapa_tipo: noAnterior.tipo,
+    responsavel_uid: instancia.solicitante_uid, papel_responsavel: 'executor',
+    papel_alvo: 'solicitante', acoes_disponiveis: ['avancar'],
+    acao_tomada: null, parecer: null, exige_parecer: false,
+    formulario_id: cfg.formulario_id || null,
+    status: 'pendente', prazo: prazoDev,
+    dados_formulario: {}, observacao: null, _criado_em: now,
+  });
+}
 
-    if (ACOES_RETORNO.has(acao)) {
-      const arestas = canvas.arestas || [];
-      const nos = canvas.nos || [];
-      const arestaEntrada = arestas.find(a => a.destino === noOrigemId);
-      const noAnterior = arestaEntrada ? nos.find(n => n.id === arestaEntrada.origem) : null;
-      if (noAnterior && noAnterior.tipo !== 'inicio') {
-        batch.update(db.collection('wf_instancia_processos').doc(instancia.id), {
-          no_atual_id: noAnterior.id, etapa_atual_id: noAnterior.id, _atualizado_em: now,
-        });
-        // Cria tarefas para o nó anterior (simplificado: uma tarefa para o solicitante)
-        const novaRef = db.collection('wf_tarefa_workflows').doc();
-        const cfg = noAnterior.config || {};
-        const prazoDev = cfg.sla_horas > 0 ? new Date(Date.now() + cfg.sla_horas * 3600000) : null;
-        batch.set(novaRef, {
-          instancia_id: instancia.id, processo_nome: instancia.titulo,
-          processo_id: instancia.processo_id || null,
-          etapa_modelo_id: noAnterior.id, etapa_nome: noAnterior.nome,
-          etapa_desc: cfg.instrucoes || null, etapa_tipo: noAnterior.tipo,
-          responsavel_uid: instancia.solicitante_uid, papel_responsavel: 'executor',
-          papel_alvo: 'solicitante', acoes_disponiveis: ['avancar'],
-          acao_tomada: null, parecer: null, exige_parecer: false,
-          formulario_id: cfg.formulario_id || null,
-          status: 'pendente', prazo: prazoDev,
-          dados_formulario: {}, observacao: null, _criado_em: now,
-        });
-        descHistorico = `Etapa devolvida para "${noAnterior.nome}".`;
-      } else {
-        descHistorico = `Etapa rejeitada sem etapa anterior disponível.`;
-      }
-    } else {
-      const prox = _proximoNoServer(canvas, noOrigemId, acao, dadosMerged);
-      if (!prox || prox.tipo === 'fim') {
-        batch.update(db.collection('wf_instancia_processos').doc(instancia.id), {
-          status: 'concluido', concluido_em: now, no_atual_id: null, etapa_atual_id: null, _atualizado_em: now,
-        });
-        descHistorico = 'Processo concluído.';
-      } else {
-        batch.update(db.collection('wf_instancia_processos').doc(instancia.id), {
-          no_atual_id: prox.id, etapa_atual_id: prox.id, _atualizado_em: now,
-        });
-        const cfg = prox.config || {};
-        const prazoProx = cfg.sla_horas > 0 ? new Date(Date.now() + cfg.sla_horas * 3600000) : null;
-        const novaRef = db.collection('wf_tarefa_workflows').doc();
-        const uidResp = await _resolverPapelServer(cfg.papeis?.executor || 'solicitante', instancia);
-        batch.set(novaRef, {
-          instancia_id: instancia.id, processo_nome: instancia.titulo,
-          processo_id: instancia.processo_id || null,
-          etapa_modelo_id: prox.id, etapa_nome: prox.nome,
-          etapa_desc: cfg.instrucoes || null, etapa_tipo: prox.tipo,
-          responsavel_uid: uidResp, papel_responsavel: 'executor',
-          papel_alvo: cfg.papeis?.executor || 'solicitante',
-          acoes_disponiveis: prox.tipo === 'Aprovação' ? ['aprovar','rejeitar'] : ['avancar'],
-          acao_tomada: null, parecer: null, exige_parecer: !!cfg.exige_parecer,
-          formulario_id: cfg.formulario_id || null,
-          status: 'pendente', prazo: prazoProx,
-          dados_formulario: {}, observacao: null, _criado_em: now,
-        });
-        descHistorico = `Avançou para etapa "${prox.nome}".`;
-      }
+async function _criarTarefaProximoNoCanvasBatch(batch, instancia, prox, now) {
+  const cfg = prox.config || {};
+  const prazoProx = cfg.sla_horas > 0 ? new Date(Date.now() + cfg.sla_horas * 3600000) : null;
+  const novaRef = db.collection('wf_tarefa_workflows').doc();
+  const papelAlvo = cfg.papeis?.executor || 'solicitante';
+  const uidResp = await _resolverPapelServer(papelAlvo, instancia);
+  batch.set(novaRef, {
+    instancia_id: instancia.id, processo_nome: instancia.titulo,
+    processo_id: instancia.processo_id || null,
+    etapa_modelo_id: prox.id, etapa_nome: prox.nome,
+    etapa_desc: cfg.instrucoes || null, etapa_tipo: prox.tipo,
+    responsavel_uid: uidResp, papel_responsavel: 'executor',
+    papel_alvo: papelAlvo,
+    acoes_disponiveis: prox.tipo === 'Aprovação' ? ['aprovar','rejeitar'] : ['avancar'],
+    acao_tomada: null, parecer: null, exige_parecer: !!cfg.exige_parecer,
+    formulario_id: cfg.formulario_id || null,
+    status: 'pendente', prazo: prazoProx,
+    dados_formulario: {}, observacao: null, _criado_em: now,
+  });
+}
+
+async function _processarFluxoCanvasConclusao(batch, instancia, tarefa, acao, dadosMerged, now) {
+  const canvas = instancia.canvas;
+  const noOrigemId = tarefa.etapa_modelo_id;
+
+  if (ACOES_RETORNO.has(acao)) {
+    const arestas = canvas.arestas || [];
+    const nos = canvas.nos || [];
+    const arestaEntrada = arestas.find(a => a.destino === noOrigemId);
+    const noAnterior = arestaEntrada ? nos.find(n => n.id === arestaEntrada.origem) : null;
+    if (!(noAnterior && noAnterior.tipo !== 'inicio')) {
+      return 'Etapa rejeitada sem etapa anterior disponível.';
     }
-  } else {
-    // Fluxo sequencial (snapshot_etapas)
-    const etapas = instancia.snapshot_etapas || [];
-    const idx = etapas.findIndex(e => e.id === tarefa.etapa_modelo_id);
-
-    const retornarParaEtapaAnterior = ACOES_RETORNO.has(acao) && idx > 0;
-    if (retornarParaEtapaAnterior) {
-      const etapaAnt = etapas[idx - 1];
-      batch.update(db.collection('wf_instancia_processos').doc(instancia.id), {
-        etapa_atual_id: etapaAnt.id, _atualizado_em: now,
-      });
-      const novaRef = db.collection('wf_tarefa_workflows').doc();
-      await _criarTarefaServer(batch, novaRef, instancia, etapaAnt);
-      descHistorico = `Etapa devolvida para "${etapaAnt.nome}".`;
-    } else {
-      const proxEtapa = etapas[idx + 1];
-      if (proxEtapa) {
-        batch.update(db.collection('wf_instancia_processos').doc(instancia.id), {
-          etapa_atual_id: proxEtapa.id, _atualizado_em: now,
-        });
-        const novaRef = db.collection('wf_tarefa_workflows').doc();
-        await _criarTarefaServer(batch, novaRef, instancia, proxEtapa);
-        descHistorico = `Avançou para etapa "${proxEtapa.nome}".`;
-      } else {
-        batch.update(db.collection('wf_instancia_processos').doc(instancia.id), {
-          status: 'concluido', concluido_em: now, etapa_atual_id: null, _atualizado_em: now,
-        });
-        descHistorico = 'Processo concluído.';
-      }
-    }
+    _atualizarInstanciaCanvasBatch(batch, instancia.id, {
+      no_atual_id: noAnterior.id,
+      etapa_atual_id: noAnterior.id,
+    }, now);
+    _criarTarefaRetornoCanvasBatch(batch, instancia, noAnterior, now);
+    return `Etapa devolvida para "${noAnterior.nome}".`;
   }
 
-  // Histórico
+  const prox = _proximoNoServer(canvas, noOrigemId, acao, dadosMerged);
+  if (!prox || prox.tipo === 'fim') {
+    _atualizarInstanciaCanvasBatch(batch, instancia.id, {
+      status: 'concluido',
+      concluido_em: now,
+      no_atual_id: null,
+      etapa_atual_id: null,
+    }, now);
+    return 'Processo concluído.';
+  }
+
+  _atualizarInstanciaCanvasBatch(batch, instancia.id, {
+    no_atual_id: prox.id,
+    etapa_atual_id: prox.id,
+  }, now);
+  await _criarTarefaProximoNoCanvasBatch(batch, instancia, prox, now);
+  return `Avançou para etapa "${prox.nome}".`;
+}
+
+async function _processarFluxoSequencialConclusao(batch, instancia, tarefa, acao, now) {
+  const etapas = instancia.snapshot_etapas || [];
+  const idx = etapas.findIndex(e => e.id === tarefa.etapa_modelo_id);
+
+  if (ACOES_RETORNO.has(acao) && idx > 0) {
+    const etapaAnt = etapas[idx - 1];
+    batch.update(db.collection('wf_instancia_processos').doc(instancia.id), {
+      etapa_atual_id: etapaAnt.id,
+      _atualizado_em: now,
+    });
+    await _criarTarefaServer(batch, db.collection('wf_tarefa_workflows').doc(), instancia, etapaAnt);
+    return `Etapa devolvida para "${etapaAnt.nome}".`;
+  }
+
+  const proxEtapa = etapas[idx + 1];
+  if (!proxEtapa) {
+    batch.update(db.collection('wf_instancia_processos').doc(instancia.id), {
+      status: 'concluido', concluido_em: now, etapa_atual_id: null, _atualizado_em: now,
+    });
+    return 'Processo concluído.';
+  }
+
+  batch.update(db.collection('wf_instancia_processos').doc(instancia.id), {
+    etapa_atual_id: proxEtapa.id,
+    _atualizado_em: now,
+  });
+  await _criarTarefaServer(batch, db.collection('wf_tarefa_workflows').doc(), instancia, proxEtapa);
+  return `Avançou para etapa "${proxEtapa.nome}".`;
+}
+
+function _registrarHistoricoConclusaoBatch(batch, instancia, tarefa, tarefaId, uid, acao, observacao, descHistorico, now) {
   const histRef = db.collection('wf_historico_workflows').doc();
   batch.set(histRef, {
     instancia_id: instancia.id, tipo_evento: 'tarefa_concluida',
@@ -649,18 +660,46 @@ exports.wfConcluirTarefaEngine = onCall({ enforceAppCheck: false }, async (reque
     dados: { acao, papel: tarefa.papel_responsavel || null, parecer: observacao || null },
     _criado_em: now,
   });
+}
 
-  // Notificação ao solicitante (se outro usuário concluiu)
-  if (instancia.solicitante_uid && instancia.solicitante_uid !== uid) {
-    const notifRef = db.collection('wf_notificacoes').doc();
-    batch.set(notifRef, {
-      destinatario_uid: instancia.solicitante_uid,
-      tipo: 'etapa_concluida',
-      titulo: `Etapa concluída: ${tarefa.etapa_nome}`,
-      mensagem: `A etapa "${tarefa.etapa_nome}" do processo "${instancia.titulo}" foi ${acao}.`,
-      instancia_id: instancia.id, tarefa_id: tarefaId, lida: false, _criado_em: now,
-    });
-  }
+function _notificarSolicitanteConclusaoBatch(batch, instancia, tarefa, tarefaId, uid, acao, now) {
+  if (!(instancia.solicitante_uid && instancia.solicitante_uid !== uid)) return;
+  const notifRef = db.collection('wf_notificacoes').doc();
+  batch.set(notifRef, {
+    destinatario_uid: instancia.solicitante_uid,
+    tipo: 'etapa_concluida',
+    titulo: `Etapa concluída: ${tarefa.etapa_nome}`,
+    mensagem: `A etapa "${tarefa.etapa_nome}" do processo "${instancia.titulo}" foi ${acao}.`,
+    instancia_id: instancia.id, tarefa_id: tarefaId, lida: false, _criado_em: now,
+  });
+}
+
+exports.wfConcluirTarefaEngine = onCall({ enforceAppCheck: false }, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Usuário não autenticado.');
+
+  const { tarefaId, acao, observacao, dadosFormulario, anexos } = request.data || {};
+  if (!tarefaId || !acao) throw new HttpsError('invalid-argument', 'tarefaId e acao são obrigatórios.');
+
+  const tarefa = await _carregarTarefaServer(tarefaId);
+  _validarEstadoTarefaConclusaoServer(tarefa);
+  const permissoes = await _carregarPermissoesConclusaoServer(uid);
+  _validarPermissaoConclusaoServer(uid, tarefa, acao, observacao, permissoes);
+  const instancia = await _carregarInstanciaServer(tarefa.instancia_id);
+
+  const batch = db.batch();
+  const now = FieldValue.serverTimestamp();
+  const dadosMerged = { ...instancia.dados_consolidados, ...dadosFormulario };
+
+  _atualizarTarefaConcluidaBatch(batch, tarefaId, observacao, acao, dadosFormulario, anexos, now);
+  _atualizarDadosInstanciaBatch(batch, instancia, dadosMerged, now);
+
+  const descHistorico = instancia.canvas
+    ? await _processarFluxoCanvasConclusao(batch, instancia, tarefa, acao, dadosMerged, now)
+    : await _processarFluxoSequencialConclusao(batch, instancia, tarefa, acao, now);
+
+  _registrarHistoricoConclusaoBatch(batch, instancia, tarefa, tarefaId, uid, acao, observacao, descHistorico, now);
+  _notificarSolicitanteConclusaoBatch(batch, instancia, tarefa, tarefaId, uid, acao, now);
 
   await batch.commit();
   return { ok: true, descricao: descHistorico };

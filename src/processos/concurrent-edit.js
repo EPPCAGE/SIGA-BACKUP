@@ -41,6 +41,22 @@
     {repo: 'planoMetasRepository',  fn: '_replaceMetas'},
   ];
 
+  function _wrapSnapDoc(docEntry){
+    return {
+      data: function(){ return docEntry.data; }
+    };
+  }
+
+  function _makeFakeSnapshot(colSnap){
+    return {
+      forEach: function(cb){
+        for(const docEntry of colSnap.docs){
+          cb(_wrapSnapDoc(docEntry));
+        }
+      }
+    };
+  }
+
   async function _pollOnce(){
     if(!globalScope.fbReady?.()) return;
     if(!globalScope._fbDataReady) return;
@@ -64,7 +80,7 @@
           const colSnap = await repo.list();
           if(!colSnap.empty){
             // list() retorna d.data como objeto; adapta para o formato forEach esperado
-            const fakeSnap = { forEach: function(cb){ colSnap.docs.forEach(function(d){ cb({ data: function(){ return d.data; } }); }); } };
+            const fakeSnap = _makeFakeSnapshot(colSnap);
             replaceFn(fakeSnap);
           }
         } catch(colErr){ console.warn('_pollOnce (' + item.repo + '):', colErr.message); }
