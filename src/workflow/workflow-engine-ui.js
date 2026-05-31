@@ -95,9 +95,28 @@
     }));
   }
 
+    let _wfLocalIdSeq = 0;
+
+    function _wfEntropiaIdLocal() {
+      const cryptoApi = globalScope.crypto;
+      if (typeof cryptoApi?.randomUUID === 'function') {
+        return cryptoApi.randomUUID().replace(/-/g, '').slice(0, 18);
+      }
+      if (typeof cryptoApi?.getRandomValues === 'function') {
+        const bytes = new Uint8Array(9);
+        cryptoApi.getRandomValues(bytes);
+        return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+      }
+      _wfLocalIdSeq += 1;
+      const highRes = typeof globalScope.performance?.now === 'function'
+        ? Math.floor(globalScope.performance.now() * 1000).toString(36)
+        : '0';
+      return `${Date.now().toString(36)}${highRes}${_wfLocalIdSeq.toString(36)}`;
+    }
+
   function _wfNovoIdLocal(colNome) {
     const prefixo = String(colNome || 'wf').replace(/[^a-z0-9_]/gi, '').toLowerCase();
-    return `${prefixo}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+      return `${prefixo}_${_wfEntropiaIdLocal()}`;
   }
 
   async function _getAll(colNome, ...queryConstraints) {
