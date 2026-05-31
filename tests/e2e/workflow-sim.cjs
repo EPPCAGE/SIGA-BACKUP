@@ -73,7 +73,7 @@ const { chromium } = require('playwright');
         let entries = Array.from(col.entries());
         const constraints = refOrQuery.constraints || [];
         constraints.forEach((c) => {
-          if (c && c.type === 'where' && c.op === '==') {
+          if (c?.type === 'where' && c.op === '==') {
             entries = entries.filter(([, d]) => d?.[c.field] === c.value);
           }
         });

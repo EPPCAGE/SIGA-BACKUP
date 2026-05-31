@@ -750,9 +750,12 @@
 
   function _wfAcoesVisiveisExecucao(instancia, tarefa, dadosParciais) {
     const acoesDisponiveis = tarefa.acoes_disponiveis;
-    const base = acoesDisponiveis?.length
-      ? acoesDisponiveis
-      : (proxEtapaLegado(instancia, tarefa) ? ['avancar'] : ['concluir']);
+    let base = ['concluir'];
+    if (acoesDisponiveis?.length) {
+      base = acoesDisponiveis;
+    } else if (proxEtapaLegado(instancia, tarefa)) {
+      base = ['avancar'];
+    }
     if (!instancia?.canvas) return base;
 
     const arestas = (instancia.canvas.arestas || []).filter(a => a.origem === tarefa.etapa_modelo_id);
@@ -776,11 +779,12 @@
         const regrasDaAcao = arestas.filter(a => a.acao === acao);
         if (!regrasDaAcao.length) return true;
         const padrao = regrasDaAcao.find(a => a.padrao);
-        const passou = regrasDaAcao.find(a =>
-          a.condicoes && a.condicoes.length
-            ? _avaliarCondicoes(a.condicoes, a.operador_logico, dados)
-            : _avaliarCondicao(a.condicao, dados)
-        );
+        const passou = regrasDaAcao.find((aresta) => {
+          if (aresta.condicoes?.length) {
+            return _avaliarCondicoes(aresta.condicoes, aresta.operador_logico, dados);
+          }
+          return _avaliarCondicao(aresta.condicao, dados);
+        });
         return !!(passou || padrao);
       }
       return !!_proximoNoExecutavel(instancia.canvas, tarefa.etapa_modelo_id, acao, dados);
@@ -908,7 +912,8 @@
     // Dinâmico: campo:NOME_DO_CAMPO
     if (valorPapel.startsWith('campo:')) {
       const campo = valorPapel.slice(6);
-      return (dadosForm || instancia.dados_consolidados || {})[campo] || null;
+      const dadosBase = dadosForm ?? instancia.dados_consolidados ?? {};
+      return dadosBase[campo] ?? null;
     }
     // Dinâmico: grupo:GRUPO_ID  → null (qualquer membro do grupo assume)
     if (valorPapel.startsWith('grupo:')) return null;
@@ -1248,23 +1253,34 @@
         : instanciasFiltradas.map(i => {
         const etapas = i.snapshot_etapas || [];
         const idxAtual = etapas.findIndex(e => e.id === i.etapa_atual_id);
-        const pct = etapas.length > 1 && idxAtual >= 0
-          ? Math.round((idxAtual / (etapas.length - 1)) * 100)
-          : (i.status === 'concluido' ? 100 : 0);
-        return _card(`
-          <div style="font-weight:600;font-size:14px;margin-bottom:4px">${_esc(i.titulo)}</div>
-          ${i.etapa_atual_id && i.status === 'em_andamento' ? `<div style="font-size:12px;color:var(--ink3);margin-bottom:6px">Etapa atual: <strong>${_esc(etapas.find(e => e.id === i.etapa_atual_id)?.nome || i.etapa_atual_id)}</strong></div>` : ''}
-          ${_badge(statusLabels[i.status] || i.status, statusCores[i.status] || '#6b7280')}
-          ${etapas.length > 1 && i.status === 'em_andamento' ? `
+        let pct = 0;
+        if (etapas.length > 1 && idxAtual >= 0) {
+          pct = Math.round((idxAtual / (etapas.length - 1)) * 100);
+        } else if (i.status === 'concluido') {
+          pct = 100;
+        }
+        const etapaAtualHtml = i.etapa_atual_id && i.status === 'em_andamento'
+          ? `<div style="font-size:12px;color:var(--ink3);margin-bottom:6px">Etapa atual: <strong>${_esc(etapas.find(e => e.id === i.etapa_atual_id)?.nome || i.etapa_atual_id)}</strong></div>`
+          : '';
+        const progressoHtml = etapas.length > 1 && i.status === 'em_andamento'
+          ? `
           <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:10px;align-items:center">
             ${etapas.map((e, idx) => {
               const concluida = idx < idxAtual;
               const ativa = idx === idxAtual;
-              const bg = concluida ? '#10b981' : ativa ? '#3b82f6' : 'var(--bdr)';
+              let bg = 'var(--bdr)';
+              if (concluida) bg = '#10b981';
+              else if (ativa) bg = '#3b82f6';
               return `<div style="height:4px;flex:1;border-radius:2px;background:${bg}" title="${_esc(e.nome)}"></div>`;
             }).join('')}
           </div>
-          <div style="font-size:11px;color:var(--ink3);margin-top:4px">${pct}% concluído</div>` : ''}
+          <div style="font-size:11px;color:var(--ink3);margin-top:4px">${pct}% concluído</div>`
+          : '';
+        return _card(`
+          <div style="font-weight:600;font-size:14px;margin-bottom:4px">${_esc(i.titulo)}</div>
+          ${etapaAtualHtml}
+          ${_badge(statusLabels[i.status] || i.status, statusCores[i.status] || '#6b7280')}
+          ${progressoHtml}
           <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
             <button type="button" class="btn btn-sm" onclick="wfAbrirHistorico('${_esc(i.id)}','${_esc(i.titulo)}','${_esc(i.status)}')">Ver histórico</button>
             ${i.status === 'em_andamento' && podeGerenciar ? `<button type="button" class="btn btn-sm" onclick="wfSuspenderInstancia('${_esc(i.id)}')">Suspender</button>` : ''}
@@ -2319,7 +2335,12 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     const campos = _wfCamposDaOrigemDaAresta(arestaId);
     if (!campos.length) return '<div class="wf-mini-help">Nenhum campo de resposta foi encontrado na etapa anterior.</div>';
     return campos.map((c) => {
-      const opcoes = c.tipo === 'select' && c.opcoes?.length ? ` Opções: ${c.opcoes.join(', ')}.` : (c.tipo === 'checkbox' ? ' Opções: sim, não.' : '');
+      let opcoes = '';
+      if (c.tipo === 'select' && c.opcoes?.length) {
+        opcoes = ` Opções: ${c.opcoes.join(', ')}.`;
+      } else if (c.tipo === 'checkbox') {
+        opcoes = ' Opções: sim, não.';
+      }
       return `<div class="wf-mini-help">${_esc(c.label || c.id)}${_esc(opcoes)}</div>`;
     }).join('');
   }
@@ -2637,13 +2658,21 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       return `<select class="fi" style="font-size:11px"
           onchange="wfDesignerAcaoCondUpdate('${_esc(noId)}',${idx},'campo',this.value)">${semSelecao}${legado}${opts}</select>`;
     };
+    const labelsAcao = globalScope.WF_ACAO_LABELS || {};
+    const renderAcaoLabel = (acao) => labelsAcao[acao] || acao || 'ação';
+    const renderOperadores = (operadorAtual) => _WF_OPS_LABELS.map(op =>
+      `<option value="${_esc(op)}"${(operadorAtual || '=') === op ? ' selected' : ''}>${_esc(op)}</option>`
+    ).join('');
+    const renderAcoes = (acaoAtual) => acoes.map(a =>
+      `<option value="${_esc(a)}"${acaoAtual === a ? ' selected' : ''}>${_esc(renderAcaoLabel(a))}</option>`
+    ).join('');
 
     el.innerHTML = `<div class="wf-logic-list">${lista.map((r, i) => `
       <div class="wf-logic-card">
-        <div class="wf-logic-sentence">Mostrar o botão <strong>${_esc((globalScope.WF_ACAO_LABELS||{})[r.acao] || r.acao || 'ação')}</strong> quando:</div>
+        <div class="wf-logic-sentence">Mostrar o botão <strong>${_esc(renderAcaoLabel(r.acao))}</strong> quando:</div>
         <div class="wf-logic-actions" style="display:grid;grid-template-columns:1fr 1fr 1fr auto;align-items:center">
           ${optsCampos(r.campo || '', i)}
-          <select class="fi" style="font-size:11px" onchange="wfDesignerAcaoCondUpdate('${_esc(noId)}',${i},'operador',this.value)">${_WF_OPS_LABELS.map(op => `<option value="${_esc(op)}"${(r.operador || '=') === op ? ' selected' : ''}>${_esc(op)}</option>`).join('')}</select>
+          <select class="fi" style="font-size:11px" onchange="wfDesignerAcaoCondUpdate('${_esc(noId)}',${i},'operador',this.value)">${renderOperadores(r.operador)}</select>
           ${_wfEditorValorSugestoesHtml({
             valorAtual: r.valor || '',
             opcoes: _wfOpcoesValorMeta(_wfCampoMetaNo(noId, r.campo || '')),
@@ -2653,7 +2682,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
           })}
           <button type="button" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:14px;padding:0 4px" onclick="wfDesignerAcaoCondRemove('${_esc(noId)}',${i})">✕</button>
         </div>
-        <div class="wf-logic-actions"><select class="fi" style="font-size:11px;max-width:220px" onchange="wfDesignerAcaoCondUpdate('${_esc(noId)}',${i},'acao',this.value)">${acoes.map(a => `<option value="${_esc(a)}"${r.acao === a ? ' selected' : ''}>${_esc((globalScope.WF_ACAO_LABELS||{})[a] || a)}</option>`).join('')}</select></div>
+        <div class="wf-logic-actions"><select class="fi" style="font-size:11px;max-width:220px" onchange="wfDesignerAcaoCondUpdate('${_esc(noId)}',${i},'acao',this.value)">${renderAcoes(r.acao)}</select></div>
       </div>
     `).join('')}</div>`;
   }
@@ -2725,14 +2754,15 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       return `<input type="text" class="fi" value="${_esc(valorAtual || '')}" placeholder="id_do_campo" style="flex:1;min-width:80px;font-size:11px"
         oninput="wfDesignerCampoCondUpdate('${_esc(noId)}',__IDX__,'campo_id',this.value)">`;
     };
+    const renderCampoCondAcao = (acao) => {
+      if (acao === 'mostrar') return 'Mostrar';
+      if (acao === 'ocultar') return 'Ocultar';
+      if (acao === 'obrigatorio') return 'Tornar obrigatório';
+      return 'Tornar opcional';
+    };
     el.innerHTML = `<div class="wf-logic-list">${lista.map((cc, i) => `
       <div class="wf-logic-card">
-        <div class="wf-logic-sentence">${(() => {
-          if (cc.acao === 'mostrar') return 'Mostrar';
-          if (cc.acao === 'ocultar') return 'Ocultar';
-          if (cc.acao === 'obrigatorio') return 'Tornar obrigatório';
-          return 'Tornar opcional';
-        })()} o campo:</div>
+        <div class="wf-logic-sentence">${renderCampoCondAcao(cc.acao)} o campo:</div>
         <div class="wf-logic-actions">
           ${optsAfetado(cc.campo_id || '').replace(/__IDX__/g, String(i))}
           <select class="fi" style="width:auto;font-size:11px" onchange="wfDesignerCampoCondUpdate('${_esc(noId)}',${i},'acao',this.value)">${['mostrar','ocultar','obrigatorio','opcional'].map(a => `<option value="${a}"${cc.acao === a ? ' selected' : ''}>${a}</option>`).join('')}</select>
@@ -2913,7 +2943,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 
     nos.filter(n => n.tipo === 'tarefa').forEach((n) => {
       const cfg = cfgNos[n.id] || _configPadrao();
-      (cfg.acoes || []).forEach((acao) => {
+      (cfg.acoes ?? []).forEach((acao) => {
         const prox = _proximoNoExecutavel(canvas, n.id, acao, {});
         if (!prox) erros.push(`A ação "${acao}" da etapa "${n.nome || n.id}" não possui destino válido.`);
       });
@@ -3122,11 +3152,16 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     );
     const padrão = candidatas.find(a => a.padrao);
     const condicionais = candidatas.filter(a => !a.padrao);
-    const aresta = condicionais.find(a =>
-      a.condicoes && a.condicoes.length
-        ? _avaliarCondicoes(a.condicoes, a.operador_logico, dados)
-        : _avaliarCondicao(a.condicao, dados)
-    ) || padrão || (acao != null ? arestas.find(a => a.origem === noId) : null);
+    const arestaCondicional = condicionais.find((arestaAtual) => {
+      if (arestaAtual.condicoes?.length) {
+        return _avaliarCondicoes(arestaAtual.condicoes, arestaAtual.operador_logico, dados);
+      }
+      return _avaliarCondicao(arestaAtual.condicao, dados);
+    });
+    let aresta = arestaCondicional || padrão || null;
+    if (!aresta && acao != null) {
+      aresta = arestas.find(a => a.origem === noId) || null;
+    }
     if (!aresta) return null;
     const destino = nos.find(n => n.id === aresta.destino);
     if (!destino) return null;
@@ -4287,7 +4322,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     const sel = document.getElementById('wf-arq-sel');
     const id = sel?.value;
     if (!id) { alert('Selecione um processo.'); return; }
-    const opt = sel.options[sel.selectedIndex];
+    const opt = sel?.options?.[sel.selectedIndex];
     const nome = opt?.textContent || id;
     const updates = { processo_origem_id: id, processo_origem_nome: nome };
 
@@ -4377,7 +4412,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 
   function _wfCamposModeloParaSimulacao(modelo) {
     const out = {};
-    const cfgNos = (modelo?.id === _wfModeloAtual?.id) ? _wfConfigNos : (modelo?.config_nos || {});
+    const cfgNos = modelo?.id === _wfModeloAtual?.id ? _wfConfigNos : (modelo?.config_nos || {});
     Object.keys(cfgNos).forEach((id) => {
       const cfg = cfgNos[id] || {};
       [
@@ -4426,9 +4461,10 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       }) : ['<div style="color:var(--ink3);font-size:13px">Nenhum campo condicional identificado no modelo.</div>']),
       ...nosExecutaveis.map(n => {
         const cfg = _wfConfigNos[n.id] || {};
-        const acoes = cfg.acoes && cfg.acoes.length ? cfg.acoes : ['avancar'];
+        const acoes = cfg.acoes?.length ? cfg.acoes : ['avancar'];
+        const opcoesAcao = acoes.map(a => `<option value="${_esc(a)}">${_esc((globalScope.WF_ACAO_LABELS||{})[a] || a)}</option>`).join('');
         return `<div style="margin-bottom:12px"><label class="lbl" style="font-size:12px">Ação escolhida na etapa ${_esc(n.nome || n.id)}</label>
-          <select class="fi" data-sim-acao="${_esc(n.id)}" style="margin-top:4px;width:100%">${acoes.map(a => `<option value="${_esc(a)}">${_esc((globalScope.WF_ACAO_LABELS||{})[a] || a)}</option>`).join('')}</select></div>`;
+          <select class="fi" data-sim-acao="${_esc(n.id)}" style="margin-top:4px;width:100%">${opcoesAcao}</select></div>`;
       }),
     ].join('');
 
