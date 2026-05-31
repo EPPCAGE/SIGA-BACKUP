@@ -2065,7 +2065,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
               <div class="wf-guide-row" style="margin-bottom:8px">
                 <span class="wf-mini-help">As regras abaixo devem ocorrer</span>
                 <select class="fi" style="width:auto;padding:2px 6px;font-size:11px" onchange="wfDesignerCampoCfg('${_esc(id)}','operador_logico',this.value)">
-                  <option value="AND" ${cfg.operador_logico !== 'OR' ? 'selected' : ''}>todas juntas</option>
+                  <option value="AND" ${cfg.operador_logico === 'OR' ? '' : 'selected'}>todas juntas</option>
                   <option value="OR" ${cfg.operador_logico === 'OR' ? 'selected' : ''}>qualquer uma</option>
                 </select>
               </div>
@@ -2349,7 +2349,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
   }
 
   function _wfCondicaoLegivel(c) {
-    if (!c || !c.campo) return 'sempre';
+    if (!c?.campo) return 'sempre';
     const valor = c.valor === '__ANY__' ? 'qualquer valor' : (c.valor || '(vazio)');
     return `${c.campo} ${c.operador || '='} ${valor}`;
   }
@@ -2364,8 +2364,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       gestor: 'Perfil Gestor',
       dono: 'Perfil Dono',
     };
-    const user = (globalScope.USUARIOS || []).find(u => u.email === valor);
-    return user?.nome || labels[valor] || valor;
+    return (globalScope.USUARIOS || []).find(u => u.email === valor)?.nome || labels[valor] || valor;
   }
 
   function _wfNoPorId(noId) {
@@ -3282,9 +3281,9 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
   };
 
   function _avaliarCondicaoObj(cond, dados) {
-    if (!cond || !cond.campo) return true;
+    if (!cond?.campo) return true;
     if (cond.valor === '__ANY__') return true;
-    const fn = _WF_OPS[cond.operador];
+    const fn = _WF_OPS[cond?.operador];
     if (!fn) return true;
     try { return fn(dados[cond.campo], cond.valor); } catch { return true; }
   }
@@ -3367,10 +3366,10 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
   // ── Template Engine ───────────────────────────────────────────────────────
 
   function _interpolarTemplate(tmpl, ctx) {
-    if (!tmpl) return '';
-    return tmpl.replace(/\{\{([\w.]+)\}\}/g, (_, chave) => {
+    const template = tmpl ?? '';
+    return template.replace(/\{\{([\w.]+)\}\}/g, (_, chave) => {
       const val = chave.split('.').reduce((o, k) => (o != null ? o[k] : ''), ctx);
-      return val != null ? String(val) : '';
+      return val == null ? '' : String(val);
     });
   }
 

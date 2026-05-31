@@ -1,5 +1,9 @@
 const { chromium } = require('playwright');
 
+function whereConstraintMatches(entry, constraint) {
+  return entry?.[constraint.field] === constraint.value;
+}
+
 function runWorkflowSimulation() {
   let seq = 0;
   const store = {
@@ -30,10 +34,6 @@ function runWorkflowSimulation() {
   function ensureCollection(col) {
     if (!store[col]) store[col] = new Map();
     return store[col];
-  }
-
-  function whereConstraintMatches(entry, constraint) {
-    return entry?.[constraint.field] === constraint.value;
   }
 
   store.processos.set(processId, {
