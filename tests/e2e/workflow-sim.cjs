@@ -11,7 +11,6 @@ const { chromium } = require('playwright');
   await page.waitForTimeout(3000);
 
   const result = await page.evaluate(async () => {
-    const mkDate = () => new Date();
     let seq = 0;
     const store = {
       processos: new Map(),
@@ -133,9 +132,9 @@ const { chromium } = require('playwright');
 
     return {
       importedModelCreated: !!modeloImportado,
-      importedHasBpmn: !!(modeloImportado && modeloImportado.bpmn_xml && String(modeloImportado.bpmn_xml).includes('<process')),
-      linkedModelHasOrigin: !!(modeloVinculado && modeloVinculado.processo_origem_id === processId),
-      linkedModelImportedBpmn: !!(modeloVinculado && modeloVinculado.bpmn_xml && String(modeloVinculado.bpmn_xml).includes('<process')),
+      importedHasBpmn: String(modeloImportado?.bpmn_xml || '').includes('<process'),
+      linkedModelHasOrigin: modeloVinculado?.processo_origem_id === processId,
+      linkedModelImportedBpmn: String(modeloVinculado?.bpmn_xml || '').includes('<process'),
       totalModels: modelos.length + (modeloVinculado ? 1 : 0),
     };
   });

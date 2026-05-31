@@ -408,7 +408,7 @@ function _proximoNoServer(canvas, noId, acao, dados = {}) {
 }
 
 function _avaliarCondicaoServer(condicao, dados) {
-  if (!condicao || !condicao.trim()) return true;
+  if (!condicao?.trim()) return true;
   try {
     // Regex linear: sem backtracking — trimEnd separa o valor em seguida
     const m = condicao.trim().match(/^(\w+)\s*(==|!=|>=|<=|>|<)\s*(\S.*)/);
@@ -416,7 +416,8 @@ function _avaliarCondicaoServer(condicao, dados) {
     const [, campo, op, valorRaw] = m;
     const valorStr = valorRaw.trimEnd().replace(/^['"]|['"]$/g, '');
     const valDados = dados[campo];
-    const valComp = isNaN(valorStr) ? valorStr : Number(valorStr);
+    const valorNumero = Number(valorStr);
+    const valComp = Number.isNaN(valorNumero) ? valorStr : valorNumero;
     switch (op) {
       case '==': return String(valDados) === String(valComp);
       case '!=': return String(valDados) !== String(valComp);
@@ -540,14 +541,14 @@ exports.wfConcluirTarefaEngine = onCall({ enforceAppCheck: false }, async (reque
   });
 
   // Decide próxima etapa
-  const ACOES_RETORNO = ['rejeitar', 'devolver'];
+  const ACOES_RETORNO = new Set(['rejeitar', 'devolver']);
   let descHistorico = '';
 
   if (instancia.canvas) {
     const canvas = instancia.canvas;
     const noOrigemId = tarefa.etapa_modelo_id;
 
-    if (ACOES_RETORNO.includes(acao)) {
+    if (ACOES_RETORNO.has(acao)) {
       const arestas = canvas.arestas || [];
       const nos = canvas.nos || [];
       const arestaEntrada = arestas.find(a => a.destino === noOrigemId);

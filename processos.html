@@ -2228,14 +2228,14 @@ Não responda este e-mail.</pre>
     </div>
     <div class="card" style="padding:20px">
       <div style="margin-bottom:14px">
-        <label class="lbl">Processo</label>
+        <label class="lbl" for="wf-np-modelo">Processo</label>
         <select id="wf-np-modelo" class="fi" onchange="wfExibirDetalhesModelo()" style="width:100%;margin-top:4px">
           <option value="">Selecione o processo a iniciar…</option>
         </select>
       </div>
       <div id="wf-np-detalhes" style="display:none;background:var(--blue-l);border:1px solid var(--blue-b);border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px;color:var(--ink)"></div>
       <div style="margin-bottom:14px">
-        <label class="lbl">Título (opcional)</label>
+        <label class="lbl" for="wf-np-titulo">Título (opcional)</label>
         <input type="text" id="wf-np-titulo" class="fi" placeholder="Deixe em branco para gerar automaticamente" style="width:100%;margin-top:4px">
       </div>
       <button type="button" class="btn btn-p" onclick="wfIniciarProcesso()">Iniciar Processo</button>
@@ -2253,7 +2253,7 @@ Não responda este e-mail.</pre>
   <div id="wf-painel-config-modelo" style="display:none">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
       <button type="button" class="btn" onclick="wfNavWorkflow('modelagem')">← Voltar</button>
-      <h3 id="wf-config-titulo" style="margin:0;font-size:17px;color:var(--ink)"></h3>
+      <h3 id="wf-config-titulo" style="margin:0;font-size:17px;color:var(--ink)">Configuração do modelo</h3>
       <span id="wf-config-status-badge" style="padding:2px 10px;border-radius:999px;font-size:11px;font-weight:600"></span>
       <span id="wf-designer-mode-badge" style="padding:2px 10px;border-radius:999px;font-size:11px;font-weight:600;background:#e0f2fe;color:#0369a1">Modo simples</span>
       <div style="margin-left:auto;display:flex;gap:6px">
@@ -2275,11 +2275,11 @@ Não responda este e-mail.</pre>
       <div class="card" style="padding:14px;margin-bottom:12px">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div>
-            <label class="lbl" style="font-size:11px">Nome do fluxo</label>
+            <label class="lbl" style="font-size:11px" for="wf-designer-nome">Nome do fluxo</label>
             <input type="text" class="fi" id="wf-designer-nome" style="margin-top:4px">
           </div>
           <div>
-            <label class="lbl" style="font-size:11px">Descrição</label>
+            <label class="lbl" style="font-size:11px" for="wf-designer-desc">Descrição</label>
             <input type="text" class="fi" id="wf-designer-desc" style="margin-top:4px">
           </div>
         </div>
@@ -2326,7 +2326,7 @@ Não responda este e-mail.</pre>
   <div id="wf-painel-config-processo" style="display:none;max-width:720px">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
       <button type="button" class="btn" onclick="wfNavWorkflow('iniciar')">← Voltar</button>
-      <h3 id="wf-config-proc-titulo" style="margin:0;font-size:17px;color:var(--ink)"></h3>
+      <h3 id="wf-config-proc-titulo" style="margin:0;font-size:17px;color:var(--ink)">Configuração do processo</h3>
     </div>
     <div id="wf-config-proc-etapas"></div>
   </div>
@@ -2445,7 +2445,7 @@ Não responda este e-mail.</pre>
   <div id="wf-painel-historico" style="display:none;max-width:640px">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
       <button type="button" class="btn" onclick="wfNavWorkflow('instancias')">← Voltar</button>
-      <h3 id="wf-hist-titulo" style="margin:0;font-size:17px;color:var(--ink)"></h3>
+      <h3 id="wf-hist-titulo" style="margin:0;font-size:17px;color:var(--ink)">Histórico do processo</h3>
       <button type="button" class="btn btn-r btn-sm" id="wf-hist-btn-cancelar" onclick="wfCancelarInstancia()" style="display:none;margin-left:auto">Cancelar processo</button>
     </div>
     <div class="card" style="padding:16px;margin-bottom:16px">

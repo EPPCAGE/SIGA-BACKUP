@@ -38,6 +38,24 @@ function lancarErro(tipo, mensagem) {
   throw Object.assign(new Error(mensagem || tipo.code), tipo);
 }
 
+async function buscarDoc(colRef, id, erro) {
+  const snap = await colRef.doc(id).get();
+  if (!snap.exists) lancarErro(erro, `Documento ${id} não encontrado`);
+  return { id: snap.id, ...snap.data() };
+}
+
+async function resolverResponsavel(etapa, instancia) {
+  if (etapa.responsavel_tipo === 'solicitante') {
+    return instancia.solicitante_uid;
+  }
+  if (etapa.responsavel_tipo === 'usuario_especifico') {
+    return etapa.responsavel_valor;
+  }
+  // 'perfil' — retorna o valor do perfil; o frontend resolve o usuário real
+  // Em Fase 1, aceita o perfil como responsavel_uid e o frontend filtra
+  return etapa.responsavel_valor || instancia.solicitante_uid;
+}
+
 /**
  * @param {import('firebase-admin/firestore').Firestore} db
  */
@@ -59,38 +77,14 @@ function makeEngine(db) {
   // Helpers internos
   // -------------------------------------------------------------------------
 
-  async function _buscarDoc(colRef, id, erro) {
-    const snap = await colRef.doc(id).get();
-    if (!snap.exists) lancarErro(erro, `Documento ${id} não encontrado`);
-    return { id: snap.id, ...snap.data() };
-  }
-
   async function _registrarHistorico(instancia_id, tipo_evento, usuario_uid, etapa_id, tarefa_id, descricao, dados) {
     const entry = criarHistoricoWorkflow({ instancia_id, tipo_evento, usuario_uid, etapa_id, tarefa_id, descricao, dados });
     const ref = await col.historico.add(entry);
     return ref.id;
   }
 
-  /**
-   * Resolve o UID do responsável por uma etapa.
-   * - 'solicitante': usa o UID do solicitante da instância
-   * - 'perfil': em Fase 1, usa o primeiro usuário com aquele perfil (ou o EP)
-   * - 'usuario_especifico': usa o UID configurado diretamente
-   */
-  async function _resolverResponsavel(etapa, instancia) {
-    if (etapa.responsavel_tipo === 'solicitante') {
-      return instancia.solicitante_uid;
-    }
-    if (etapa.responsavel_tipo === 'usuario_especifico') {
-      return etapa.responsavel_valor;
-    }
-    // 'perfil' — retorna o valor do perfil; o frontend resolve o usuário real
-    // Em Fase 1, aceita o perfil como responsavel_uid e o frontend filtra
-    return etapa.responsavel_valor || instancia.solicitante_uid;
-  }
-
   async function _criarTarefa(instancia, etapa) {
-    const responsavelUid = await _resolverResponsavel(etapa, instancia);
+    const responsavelUid = await resolverResponsavel(etapa, instancia);
     const prazo = calcularPrazo(agora(), etapa.sla_horas);
 
     const tarefaData = criarTarefaWorkflow({
@@ -126,7 +120,7 @@ function makeEngine(db) {
    * e salva junto à instância para preservar o contexto histórico.
    */
   async function iniciarInstancia({ processo_modelo_id, titulo, solicitante_uid }) {
-    const modelo = await _buscarDoc(col.modelos, processo_modelo_id, ERRO.MODELO_NAO_ENCONTRADO);
+    const modelo = await buscarDoc(col.modelos, processo_modelo_id, ERRO.MODELO_NAO_ENCONTRADO);
     if (modelo.status !== 'publicado') lancarErro(ERRO.MODELO_NAO_PUBLICADO, 'O modelo precisa estar publicado para iniciar instâncias.');
 
     // Carrega snapshot do processo da arquitetura (se vinculado)
@@ -164,7 +158,7 @@ function makeEngine(db) {
     );
 
     // Busca etapa inicial e cria a primeira tarefa
-    const etapaInicial = await _buscarDoc(col.etapas, modelo.etapa_inicial, ERRO.ETAPA_NAO_ENCONTRADA);
+    const etapaInicial = await buscarDoc(col.etapas, modelo.etapa_inicial, ERRO.ETAPA_NAO_ENCONTRADA);
     await col.instancias.doc(instancia.id).update({ etapa_atual_id: etapaInicial.id });
     instancia.etapa_atual_id = etapaInicial.id;
 
@@ -177,13 +171,11 @@ function makeEngine(db) {
    * Marca tarefa como em execução (usuário abriu a tela).
    */
   async function iniciarTarefa({ tarefa_id, usuario_uid }) {
-    const tarefa = await _buscarDoc(col.tarefas, tarefa_id, ERRO.TAREFA_NAO_ENCONTRADA);
+    const tarefa = await buscarDoc(col.tarefas, tarefa_id, ERRO.TAREFA_NAO_ENCONTRADA);
     if (tarefa.responsavel_uid !== usuario_uid) lancarErro(ERRO.SEM_PERMISSAO, 'Tarefa pertence a outro usuário.');
     if (!['pendente'].includes(tarefa.status)) return tarefa; // idempotente
 
     await col.tarefas.doc(tarefa_id).update({ status: 'em_execucao', iniciado_em: agora() });
-    const instancia = await _buscarDoc(col.instancias, tarefa.instancia_id, ERRO.INSTANCIA_NAO_ENCONTRADA);
-
     await _registrarHistorico(
       tarefa.instancia_id, 'tarefa_iniciada', usuario_uid,
       tarefa.etapa_modelo_id, tarefa_id,
@@ -197,19 +189,19 @@ function makeEngine(db) {
    * Conclui uma tarefa, valida o formulário e avança o fluxo.
    */
   async function concluirTarefa({ tarefa_id, usuario_uid, acao, observacao = '', dados_formulario = {} }) {
-    const tarefa = await _buscarDoc(col.tarefas, tarefa_id, ERRO.TAREFA_NAO_ENCONTRADA);
+    const tarefa = await buscarDoc(col.tarefas, tarefa_id, ERRO.TAREFA_NAO_ENCONTRADA);
 
     if (tarefa.responsavel_uid !== usuario_uid) lancarErro(ERRO.SEM_PERMISSAO, 'Tarefa pertence a outro usuário.');
     if (['concluida', 'cancelada'].includes(tarefa.status)) lancarErro(ERRO.TAREFA_JA_CONCLUIDA, 'Tarefa já foi concluída.');
 
-    const instancia = await _buscarDoc(col.instancias, tarefa.instancia_id, ERRO.INSTANCIA_NAO_ENCONTRADA);
+    const instancia = await buscarDoc(col.instancias, tarefa.instancia_id, ERRO.INSTANCIA_NAO_ENCONTRADA);
     if (instancia.status !== 'em_andamento') lancarErro(ERRO.INSTANCIA_NAO_ATIVA, 'Instância não está ativa.');
 
-    const etapa = await _buscarDoc(col.etapas, tarefa.etapa_modelo_id, ERRO.ETAPA_NAO_ENCONTRADA);
+    const etapa = await buscarDoc(col.etapas, tarefa.etapa_modelo_id, ERRO.ETAPA_NAO_ENCONTRADA);
 
     // Valida campos obrigatórios do formulário
     if (etapa.formulario_modelo_id) {
-      const form = await _buscarDoc(col.formularios, etapa.formulario_modelo_id, { code: 'FORMULARIO_NAO_ENCONTRADO', status: 404 });
+      const form = await buscarDoc(col.formularios, etapa.formulario_modelo_id, { code: 'FORMULARIO_NAO_ENCONTRADO', status: 404 });
       const camposObrigatorios = (form.campos || []).filter(c => c.obrigatorio);
       const faltando = camposObrigatorios.filter(c => {
         const v = dados_formulario[c.id];

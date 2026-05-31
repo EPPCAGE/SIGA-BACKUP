@@ -706,7 +706,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
 .proj-rocket-mgr {
   font-family: var(--fb);
   font-size: 10px;
-  color: rgba(255,255,255,.35);
+  color: rgba(235,243,255,.72);
   line-height: 1.3;
   white-space: nowrap;
   overflow: hidden;

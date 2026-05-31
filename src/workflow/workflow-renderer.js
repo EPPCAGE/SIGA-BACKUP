@@ -62,9 +62,12 @@
     return instanciasFiltradas.map(i => {
       const etapas = i.snapshot_etapas || [];
       const idxAtual = etapas.findIndex(e => e.id === i.etapa_atual_id);
-      const pct = etapas.length > 1 && idxAtual >= 0
-        ? Math.round((idxAtual / (etapas.length - 1)) * 100)
-        : (i.status === 'concluido' ? 100 : 0);
+      let pct = 0;
+      if (etapas.length > 1 && idxAtual >= 0) {
+        pct = Math.round((idxAtual / (etapas.length - 1)) * 100);
+      } else if (i.status === 'concluido') {
+        pct = 100;
+      }
       const id = _escWith(esc, i.id);
       const titulo = _escWith(esc, i.titulo);
       const status = _escWith(esc, i.status);
@@ -78,7 +81,9 @@
           ${etapas.map((e, idx) => {
             const concluida = idx < idxAtual;
             const ativa = idx === idxAtual;
-            const bg = concluida ? '#10b981' : ativa ? '#3b82f6' : 'var(--bdr)';
+            let bg = 'var(--bdr)';
+            if (concluida) bg = '#10b981';
+            else if (ativa) bg = '#3b82f6';
             return `<div style="height:4px;flex:1;border-radius:2px;background:${bg}" title="${_escWith(esc, e.nome)}"></div>`;
           }).join('')}
         </div>

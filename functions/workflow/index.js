@@ -24,7 +24,7 @@ const {
   fsClean,
 } = require('./entities');
 
-const CORS_ORIGINS = ['https://eppcage.com.br', 'https://sigaepp.web.app', 'https://sigaepp.firebaseapp.com'];
+const CORS_ORIGINS = new Set(['https://eppcage.com.br', 'https://sigaepp.web.app', 'https://sigaepp.firebaseapp.com']);
 
 // Reutiliza verificação de token do sistema existente
 async function verificarToken(req) {
@@ -37,7 +37,7 @@ async function verificarToken(req) {
 
 function setCors(res, req) {
   const origin = req.headers.origin;
-  if (CORS_ORIGINS.includes(origin)) res.setHeader('Access-Control-Allow-Origin', origin);
+  if (CORS_ORIGINS.has(origin)) res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
 }
@@ -194,8 +194,7 @@ exports.wfProcessoModeloItem = onRequest({ region: 'us-central1', cors: false },
 exports.wfEtapas = onRequest({ region: 'us-central1', cors: false }, async (req, res) => {
   await handler(req, res, async (req, res, user) => {
     const perfil = user.perfil || 'dono';
-    const segments = req.path.split('/').filter(Boolean);
-    const modeloId = segments[0];
+    const modeloId = req.path.split('/').find(Boolean);
 
     if (req.method === 'GET') {
       const snap = await col.etapas.where('processo_modelo_id', '==', modeloId).orderBy('ordem').get();
@@ -222,8 +221,7 @@ exports.wfEtapas = onRequest({ region: 'us-central1', cors: false }, async (req,
 exports.wfTransicoes = onRequest({ region: 'us-central1', cors: false }, async (req, res) => {
   await handler(req, res, async (req, res, user) => {
     const perfil = user.perfil || 'dono';
-    const segments = req.path.split('/').filter(Boolean);
-    const modeloId = segments[0];
+    const modeloId = req.path.split('/').find(Boolean);
 
     if (req.method === 'GET') {
       const snap = await col.transicoes.where('processo_modelo_id', '==', modeloId).get();

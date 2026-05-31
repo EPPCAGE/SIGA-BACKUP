@@ -62,7 +62,7 @@
   }
 
   function _wfPodeUsarCacheLocal(colNome) {
-    return _wfDevLocalAtivo() && /^wf_/.test(String(colNome || ''));
+    return _wfDevLocalAtivo() && String(colNome || '').startsWith('wf_');
   }
 
   function _wfLerColecaoLocal(colNome) {
@@ -509,17 +509,27 @@
           ? `<button type="button" class="btn btn-p btn-sm" onclick="wfAssumirTarefa('${_esc(t.id)}')">Assumir</button>`
           : `<button type="button" class="btn btn-p btn-sm" onclick="wfAbrirTarefa('${_esc(t.id)}')">Abrir</button>
           <button type="button" class="btn btn-sm" onclick="wfAbrirDelegacao('${_esc(t.id)}')">Delegar</button>`;
-        return `<div data-tarefa-id="${_esc(t.id)}">${_card(`
-        <div style="font-weight:600;font-size:14px;margin-bottom:4px">${_esc(t.etapa_nome || t.etapa_modelo_id)}${t.sla_vencido ? ' <span style="background:#ef4444;color:#fff;font-size:9px;padding:1px 5px;border-radius:4px;vertical-align:middle">SLA VENCIDO</span>' : ''}</div>
+        const slaBadge = t.sla_vencido
+          ? ' <span style="background:#ef4444;color:#fff;font-size:9px;padding:1px 5px;border-radius:4px;vertical-align:middle">SLA VENCIDO</span>'
+          : '';
+        const etapaDescHtml = t.etapa_desc
+          ? `<div style="font-size:12px;color:var(--ink2);margin-top:6px">${_esc(t.etapa_desc)}</div>`
+          : '';
+        const excluirHtml = podeGerenciar
+          ? `<button type="button" class="btn btn-r btn-sm" onclick="wfExcluirTarefa('${_esc(t.id)}')">Excluir</button>`
+          : '';
+        const conteudoCard = `
+        <div style="font-weight:600;font-size:14px;margin-bottom:4px">${_esc(t.etapa_nome || t.etapa_modelo_id)}${slaBadge}</div>
         <div style="font-size:12px;color:var(--ink3);margin-bottom:6px">${_esc(t.processo_nome || t.instancia_id)}</div>
         ${_badge(statusLabels[t.status] || t.status, statusCores[t.status] || '#6b7280')} ${badgeFila}
         ${_slaInfo(t)}
-        ${t.etapa_desc ? `<div style="font-size:12px;color:var(--ink2);margin-top:6px">${_esc(t.etapa_desc)}</div>` : ''}
+        ${etapaDescHtml}
         <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
           ${botoesAcao}
-          ${podeGerenciar ? `<button type="button" class="btn btn-r btn-sm" onclick="wfExcluirTarefa('${_esc(t.id)}')">Excluir</button>` : ''}
+          ${excluirHtml}
         </div>
-      `)}</div>`;
+      `;
+        return `<div data-tarefa-id="${_esc(t.id)}">${_card(conteudoCard)}</div>`;
       }).join('');
 
       const temMais = snap.docs.length === _WF_PAGE;
@@ -579,7 +589,9 @@
          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:16px">${etapas.map((e, i) => {
            const ativa = i === idxAtual;
            const concluida = i < idxAtual;
-           const bg = concluida ? '#10b981' : ativa ? '#3b82f6' : 'var(--bdr)';
+           let bg = 'var(--bdr)';
+           if (concluida) bg = '#10b981';
+           else if (ativa) bg = '#3b82f6';
            return `<div style="height:4px;flex:1;border-radius:2px;background:${bg}" title="${_esc(e.nome)}"></div>`;
          }).join('')}</div>`
       : '';
@@ -737,8 +749,9 @@
   }
 
   function _wfAcoesVisiveisExecucao(instancia, tarefa, dadosParciais) {
-    const base = (tarefa.acoes_disponiveis && tarefa.acoes_disponiveis.length)
-      ? tarefa.acoes_disponiveis
+    const acoesDisponiveis = tarefa.acoes_disponiveis;
+    const base = acoesDisponiveis?.length
+      ? acoesDisponiveis
       : (proxEtapaLegado(instancia, tarefa) ? ['avancar'] : ['concluir']);
     if (!instancia?.canvas) return base;
 
@@ -780,8 +793,11 @@
     const acoes = _wfAcoesVisiveisExecucao(instancia, tarefa, dadosParciais);
     const ACAO_LABELS = globalScope.WF_ACAO_LABELS || {};
     const ACAO_COR = globalScope.WF_ACAO_COR || {};
-    const btnClasse = (a) => a === 'rejeitar' ? 'btn btn-r'
-      : a === 'aprovar' || a === 'avancar' || a === 'concluir' ? 'btn btn-p' : 'btn';
+    const btnClasse = (a) => {
+      if (a === 'rejeitar') return 'btn btn-r';
+      if (a === 'aprovar' || a === 'avancar' || a === 'concluir') return 'btn btn-p';
+      return 'btn';
+    };
 
     acoesEl.innerHTML = acoes.map(a => {
       const cor = ACAO_COR[a];
@@ -794,7 +810,7 @@
   async function wfConcluirTarefa(acao) {
     if (!_st.tarefaAtual) return;
     const tarefa = _st.tarefaAtual;
-    acao = acao || (tarefa.acoes_disponiveis && tarefa.acoes_disponiveis[0]) || 'avancar';
+    acao = acao || tarefa.acoes_disponiveis?.[0] || 'avancar';
     const obs = (document.getElementById('wf-exec-obs')?.value || '').trim();
     const dadosForm = {};
 
@@ -904,13 +920,14 @@
   async function _criarTarefasDoNo(instancia, no) {
     const cfg = no.config || {};
     const papeis = cfg.papeis || {};
-    const acoesNo = cfg.acoes && cfg.acoes.length ? cfg.acoes : ['avancar'];
+    const acoesNo = cfg.acoes?.length ? cfg.acoes : ['avancar'];
     const prazo = cfg.sla_horas > 0 ? new Date(Date.now() + cfg.sla_horas * 3600000) : null;
+    const acoesAprovador = acoesNo.filter(a => a !== 'avancar');
 
     const mapaPapelAcoes = {
       executor: acoesNo,
       revisor: ['avancar'],
-      aprovador: acoesNo.filter(a => a !== 'avancar').length ? acoesNo.filter(a => a !== 'avancar') : ['aprovar','rejeitar'],
+      aprovador: acoesAprovador.length ? acoesAprovador : ['aprovar','rejeitar'],
     };
 
     const criados = [];
@@ -959,7 +976,6 @@
         dados_formulario: {},
         observacao: null,
       });
-      const papelAlvo = valor.startsWith('grupo:') ? valor : (uidResp ? uidResp : valor);
       if (uidResp) {
         await _addDoc('wf_notificacoes', {
           destinatario_uid: uidResp,
@@ -1637,7 +1653,9 @@
       let processXml = '    <startEvent id="start" name="Início"/>\n';
       etapasExec.forEach((e, i) => {
         const tipo = e.tipo === 'Aprovação' ? 'exclusiveGateway' : 'userTask';
-        processXml += `    <${tipo} id="${ids[i]}" name="${(e.nome || `Etapa ${i+1}`).replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}"/>\n`;
+        const nomeEtapa = e.nome || `Etapa ${i + 1}`;
+        const nomeSeguro = nomeEtapa.replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        processXml += `    <${tipo} id="${ids[i]}" name="${nomeSeguro}"/>\n`;
       });
       processXml += '    <endEvent id="end" name="Fim"/>\n';
       processXml += `    <sequenceFlow id="f0" sourceRef="start" targetRef="${ids[0]}"/>\n`;
@@ -1932,18 +1950,6 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     // ── Gateway XOR / OR: só nome e resumo das saídas ─────────────────────────
     if (eGatewayXOR) {
       if (!_wfConfigNos[id]) _wfConfigNos[id] = {};
-      const cfg = _wfConfigNos[id];
-      // Lista saídas do gateway para orientação
-      const saidas = (el.outgoing || []).map(s => {
-        const cfgS = _wfConfigNos[s.id] || {};
-        const rotulo = s.businessObject?.name || s.id;
-        const status = cfgS.padrao ? '⬜ padrão (else)' : cfgS.condicoes?.length ? `✅ ${cfgS.condicoes.length} condição(ões)` : '⚠️ sem condição';
-        return `<div style="font-size:11px;padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;gap:8px">
-          <span style="color:var(--ink2)">${_esc(rotulo)}</span>
-          <span style="color:var(--ink3)">${status}</span>
-        </div>`;
-      }).join('') || '<div style="font-size:11px;color:var(--ink3)">Sem saídas configuradas.</div>';
-
       painel.innerHTML = `
         <div class="wf-guide-panel">
           <div class="wf-guide-head">
@@ -1964,7 +1970,13 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
             <div class="wf-route-list">${(el.outgoing || []).map((s) => {
               const cfgS = _wfConfigNos[s.id] || {};
               const destino = s.target?.businessObject?.name || s.target?.id || '?';
-              const regra = cfgS.padrao ? 'quando nenhuma outra regra bater' : (cfgS.condicoes?.length ? cfgS.condicoes.map(_wfCondicaoLegivel).join((cfgS.operador_logico || 'AND') === 'OR' ? ' ou ' : ' e ') : 'sem regra definida');
+              let regra = 'sem regra definida';
+              if (cfgS.padrao) {
+                regra = 'quando nenhuma outra regra bater';
+              } else if (cfgS.condicoes?.length) {
+                const separador = (cfgS.operador_logico || 'AND') === 'OR' ? ' ou ' : ' e ';
+                regra = cfgS.condicoes.map(_wfCondicaoLegivel).join(separador);
+              }
               return `<div class="wf-route-card"><div class="wf-route-title">Vai para ${_esc(destino)}</div><div class="wf-route-sub">Seguir por este caminho ${_esc(regra)}. Clique na seta correspondente no gráfico para editar a regra.</div></div>`;
             }).join('') || '<div class="wf-guide-note">Este gateway ainda não tem saídas configuradas.</div>'}</div>
           </div>
@@ -2101,9 +2113,6 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     const formOpts = '<option value="">— Sem formulário —</option>' +
       (_st.formularioModelos || []).map(m =>
         `<option value="${_esc(m.id)}"${cfg.formulario_id === m.id ? ' selected' : ''}>${_esc(m.titulo)}</option>`).join('');
-    const acaoChk = (a, l) =>
-      `<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
-        <input type="checkbox" ${acoes.includes(a) ? 'checked' : ''} onchange="wfDesignerToggleAcao('${_esc(id)}','${a}',this.checked)"> ${_esc(l)}</label>`;
 
     painel.innerHTML = `
       <div class="wf-guide-panel">
@@ -2295,11 +2304,13 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     return `${avisoEspecial}<div class="wf-route-list">${arestas.map((a) => {
       const cfgAresta = _wfConfigNos[a.id] || {};
       const destino = _wfNoPorId(a.destino);
-      const regra = cfgAresta.padrao
-        ? 'quando nenhuma outra condição for atendida'
-        : (cfgAresta.condicoes || []).length
-          ? cfgAresta.condicoes.map(_wfCondicaoLegivel).join((cfgAresta.operador_logico || 'AND') === 'OR' ? ' ou ' : ' e ')
-          : 'sem condição específica';
+      let regra = 'sem condição específica';
+      if (cfgAresta.padrao) {
+        regra = 'quando nenhuma outra condição for atendida';
+      } else if (cfgAresta.condicoes?.length) {
+        const separador = (cfgAresta.operador_logico || 'AND') === 'OR' ? ' ou ' : ' e ';
+        regra = cfgAresta.condicoes.map(_wfCondicaoLegivel).join(separador);
+      }
       return `<div class="wf-route-card"><div class="wf-route-title">${_esc((globalScope.WF_ACAO_LABELS || {})[a.acao] || a.acao)} -> ${_esc(destino?.nome || a.destino || 'Destino')}</div><div class="wf-route-sub">Vai para <strong>${_esc(destino?.nome || a.destino || 'sem destino')}</strong> e depois fica com <strong>${_esc(_wfResumoResponsavelNo(destino?.id || ''))}</strong>. Regra: ${_esc(regra)}.</div></div>`;
     }).join('')}</div>`;
   }
@@ -2323,11 +2334,13 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 
   function _wfRenderAssistenteAresta(arestaId, painel) {
     const cfg = _wfConfigNos[arestaId] || {};
-    const frase = cfg.padrao
-      ? 'Se nenhuma condição for atendida, seguir por este caminho.'
-      : (cfg.condicoes || []).length
-        ? `Se ${cfg.condicoes.map(_wfCondicaoLegivel).join((cfg.operador_logico || 'AND') === 'OR' ? ' OU ' : ' E ')}, seguir por este caminho.`
-        : 'Sempre seguir por este caminho.';
+    let frase = 'Sempre seguir por este caminho.';
+    if (cfg.padrao) {
+      frase = 'Se nenhuma condição for atendida, seguir por este caminho.';
+    } else if (cfg.condicoes?.length) {
+      const separador = (cfg.operador_logico || 'AND') === 'OR' ? ' OU ' : ' E ';
+      frase = `Se ${cfg.condicoes.map(_wfCondicaoLegivel).join(separador)}, seguir por este caminho.`;
+    }
     painel.insertAdjacentHTML('beforeend', `
       <div style="margin-top:10px;padding:8px;border-radius:6px;background:var(--surf2);font-size:12px;color:var(--ink2)">
         <strong>Regra em linguagem simples:</strong> ${_esc(frase)}
@@ -2354,11 +2367,13 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       const saidas = (el.outgoing || []).map((s) => {
         const cfg = _wfConfigNos[s.id] || {};
         const alvo = s.target?.businessObject?.name || s.target?.id || '?';
-        const regra = cfg.padrao
-          ? 'se nenhuma regra anterior'
-          : (cfg.condicoes || []).length
-            ? cfg.condicoes.map(_wfCondicaoLegivel).join((cfg.operador_logico || 'AND') === 'OR' ? ' OU ' : ' E ')
-            : 'sempre';
+        let regra = 'sempre';
+        if (cfg.padrao) {
+          regra = 'se nenhuma regra anterior';
+        } else if (cfg.condicoes?.length) {
+          const separador = (cfg.operador_logico || 'AND') === 'OR' ? ' OU ' : ' E ';
+          regra = cfg.condicoes.map(_wfCondicaoLegivel).join(separador);
+        }
         return `<div style="font-size:12px;color:var(--ink2);margin-bottom:4px">Se <strong>${_esc(regra)}</strong> então ir para <strong>${_esc(alvo)}</strong>.</div>`;
       });
       if (!saidas.length) return;
@@ -2561,7 +2576,9 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 
   function wfDesignerAddCondicao(arestaId) {
     if (!_wfConfigNos[arestaId]) _wfConfigNos[arestaId] = { condicoes: [], operador_logico: 'AND', padrao: false };
-    (_wfConfigNos[arestaId].condicoes = _wfConfigNos[arestaId].condicoes || []).push({ campo: '', operador: '=', valor: '' });
+    const condicoes = _wfConfigNos[arestaId].condicoes || [];
+    _wfConfigNos[arestaId].condicoes = condicoes;
+    condicoes.push({ campo: '', operador: '=', valor: '' });
     _wfRenderCondicoes(arestaId);
     _wfMarcarDesignerSujo();
   }
@@ -2644,8 +2661,9 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
   function wfDesignerAddAcaoCond(noId) {
     if (!_wfConfigNos[noId]) _wfConfigNos[noId] = _configPadrao();
     const acoes = _wfConfigNos[noId].acoes || ['avancar'];
-    (_wfConfigNos[noId].acoes_condicionais = _wfConfigNos[noId].acoes_condicionais || [])
-      .push({ acao: acoes[0] || 'avancar', campo: '', operador: '=', valor: '' });
+    const regras = _wfConfigNos[noId].acoes_condicionais || [];
+    _wfConfigNos[noId].acoes_condicionais = regras;
+    regras.push({ acao: acoes[0] || 'avancar', campo: '', operador: '=', valor: '' });
     _wfRenderAcoesCond(noId);
     _wfMarcarDesignerSujo();
   }
@@ -2709,7 +2727,12 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     };
     el.innerHTML = `<div class="wf-logic-list">${lista.map((cc, i) => `
       <div class="wf-logic-card">
-        <div class="wf-logic-sentence">${cc.acao === 'mostrar' ? 'Mostrar' : cc.acao === 'ocultar' ? 'Ocultar' : cc.acao === 'obrigatorio' ? 'Tornar obrigatório' : 'Tornar opcional'} o campo:</div>
+        <div class="wf-logic-sentence">${(() => {
+          if (cc.acao === 'mostrar') return 'Mostrar';
+          if (cc.acao === 'ocultar') return 'Ocultar';
+          if (cc.acao === 'obrigatorio') return 'Tornar obrigatório';
+          return 'Tornar opcional';
+        })()} o campo:</div>
         <div class="wf-logic-actions">
           ${optsAfetado(cc.campo_id || '').replace(/__IDX__/g, String(i))}
           <select class="fi" style="width:auto;font-size:11px" onchange="wfDesignerCampoCondUpdate('${_esc(noId)}',${i},'acao',this.value)">${['mostrar','ocultar','obrigatorio','opcional'].map(a => `<option value="${a}"${cc.acao === a ? ' selected' : ''}>${a}</option>`).join('')}</select>
@@ -2758,8 +2781,9 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 
   function wfDesignerAddCampoCond(noId) {
     if (!_wfConfigNos[noId]) _wfConfigNos[noId] = _configPadrao();
-    (_wfConfigNos[noId].campos_condicionais = _wfConfigNos[noId].campos_condicionais || [])
-      .push({ campo_id: '', acao: 'mostrar', condicoes: [], operador_logico: 'AND' });
+    const camposCondicionais = _wfConfigNos[noId].campos_condicionais || [];
+    _wfConfigNos[noId].campos_condicionais = camposCondicionais;
+    camposCondicionais.push({ campo_id: '', acao: 'mostrar', condicoes: [], operador_logico: 'AND' });
     _wfRenderCamposCond(noId);
     _wfMarcarDesignerSujo();
   }
@@ -2777,7 +2801,12 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 
   function wfDesignerCampoCondAddCond(noId, ccIdx) {
     const cc = _wfConfigNos[noId]?.campos_condicionais?.[ccIdx];
-    if (cc) { (cc.condicoes = cc.condicoes || []).push({ campo: '', operador: '=', valor: '' }); _wfRenderCampoCondConds(noId, ccIdx); _wfMarcarDesignerSujo(); }
+    if (!cc) return;
+    const condicoes = cc.condicoes || [];
+    cc.condicoes = condicoes;
+    condicoes.push({ campo: '', operador: '=', valor: '' });
+    _wfRenderCampoCondConds(noId, ccIdx);
+    _wfMarcarDesignerSujo();
   }
 
   function wfDesignerCampoCondRemoveCond(noId, ccIdx, condIdx) {
@@ -3062,7 +3091,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 
   // Mantém compatibilidade com strings legacy ("campo op valor")
   function _avaliarCondicao(condicao, dados) {
-    if (!condicao || !condicao.trim()) return true;
+    if (!condicao?.trim()) return true;
     try {
       const m = condicao.trim().match(/^(\w+)\s*(==|!=|>=|<=|>|<)\s*(\S.*)/);
       if (!m) return true;
@@ -3072,9 +3101,17 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       const opNorm = op === '==' ? '=' : op;
       const fn = _WF_OPS[opNorm];
       if (!fn) return true;
-      const valComp = isNaN(valorStr) ? valorStr : Number(valorStr);
+      const valorNumero = Number(valorStr);
+      const valComp = Number.isNaN(valorNumero) ? valorStr : valorNumero;
       return fn(dados[campo], valComp);
     } catch { return true; }
+  }
+
+  function _wfNomeUsuario(uid, vazio = '—') {
+    if (!uid) return vazio;
+    if (uid === 'sistema') return '⚙ Sistema';
+    const u = (globalScope.USUARIOS || []).find(x => x.uid === uid || x.id === uid);
+    return u?.nome || u?.email || uid;
   }
 
   function _proximoNo(canvas, noId, acao, dados = {}) {
@@ -3155,17 +3192,12 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       const ACAO_LABELS = globalScope.WF_ACAO_LABELS || {};
       const ACAO_COR = globalScope.WF_ACAO_COR || {};
       const PAPEL_LABELS = globalScope.WF_PAPEL_LABELS || {};
-      const nomeUsuario = (uid) => {
-        if (!uid) return null;
-        const u = (globalScope.USUARIOS || []).find(x => x.uid === uid || x.id === uid);
-        return u?.nome || u?.email || uid;
-      };
       tl.innerHTML = eventos.length ? eventos.map(h => {
         const ts = h._criado_em?.toDate
           ? h._criado_em.toDate().toLocaleString('pt-BR')
           : (h._criado_em?.seconds ? new Date(h._criado_em.seconds * 1000).toLocaleString('pt-BR') : '—');
         const d = h.dados || {};
-        const usuario = nomeUsuario(h.usuario_uid);
+        const usuario = _wfNomeUsuario(h.usuario_uid, null);
         const acaoBadge = d.acao ? _badge(ACAO_LABELS[d.acao] || d.acao, ACAO_COR[d.acao] || '#6b7280') : '';
         const papelTxt = d.papel ? `<span style="font-size:11px;color:var(--ink3)"> · ${_esc(PAPEL_LABELS[d.papel] || d.papel)}</span>` : '';
         const parecer = d.parecer ? `<div style="font-size:12px;color:var(--ink2);margin-top:4px;font-style:italic">"${_esc(d.parecer)}"</div>` : '';
@@ -3499,7 +3531,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 
       if (_st.formularioOrigem === 'etapa') {
         _wfAtualizarSelectFormularioEtapa(formularioSalvoId || schema.id || '');
-      } else if ((_st.formularioOrigem || '').startsWith('designer:')) {
+      } else if (_st.formularioOrigem?.startsWith('designer:')) {
         const noId = _st.formularioOrigem.slice('designer:'.length);
         _wfAtualizarSelectFormularioNo(noId, formularioSalvoId || schema.id || '');
       }
@@ -3515,12 +3547,6 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 
   // Renderiza thread de comentários em um elemento — reutilizado no painel de execução
   function _renderThreadComentarios(comentarios, containerEl, interativo = true) {
-    const nomeUsuario = (uid) => {
-      if (!uid) return '—';
-      if (uid === 'sistema') return '⚙ Sistema';
-      const u = (globalScope.USUARIOS || []).find(x => x.uid === uid || x.id === uid);
-      return u?.nome || u?.email || uid;
-    };
     const raizes = comentarios.filter(c => !c.respondendo_a);
     const respostasPor = {};
     comentarios.filter(c => c.respondendo_a).forEach(c => {
@@ -3535,10 +3561,10 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       return `
         <div style="${indent}margin-bottom:10px" data-comentario-id="${_esc(c.id)}">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-            <span style="font-weight:600;font-size:13px">${_esc(nomeUsuario(c.autor_uid))}</span>
+            <span style="font-weight:600;font-size:13px">${_esc(_wfNomeUsuario(c.autor_uid))}</span>
             <span style="font-size:11px;color:var(--ink3)">${ts}</span>
             ${interativo && nivel === 0 ? `<button type="button" class="btn btn-sm" style="margin-left:auto;font-size:11px;padding:2px 8px"
-              onclick="wfResponderComentario('${_esc(c.id)}','${_esc(nomeUsuario(c.autor_uid))}')">Responder</button>` : ''}
+              onclick="wfResponderComentario('${_esc(c.id)}','${_esc(_wfNomeUsuario(c.autor_uid))}')">Responder</button>` : ''}
           </div>
           <div style="font-size:13px;color:var(--ink);white-space:pre-wrap">${_esc(c.texto)}</div>
           ${respostas.map(r => renderComentario(r, nivel + 1)).join('')}
@@ -3617,12 +3643,6 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
         where('instancia_id', '==', _st.instanciaAtual.id),
       )).sort((a, b) => (a._criado_em?.seconds ?? 0) - (b._criado_em?.seconds ?? 0));
 
-      const nomeUsuario = (uid) => {
-        if (!uid) return '';
-        const u = (globalScope.USUARIOS || []).find(x => x.uid === uid || x.id === uid);
-        return u?.nome || u?.email || uid;
-      };
-
       const { where: whereC } = globalScope.fb();
       const comentariosCSV = (await _getAll('wf_comentarios',
         whereC('instancia_id', '==', _st.instanciaAtual.id),
@@ -3635,13 +3655,13 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
           const ts = h._criado_em?.seconds
             ? new Date(h._criado_em.seconds * 1000).toLocaleString('pt-BR') : '';
           const d = h.dados || {};
-          return [ts, h.tipo_evento, nomeUsuario(h.usuario_uid), h.etapa_id || '',
+          return [ts, h.tipo_evento, _wfNomeUsuario(h.usuario_uid, ''), h.etapa_id || '',
             d.acao || '', d.parecer || '', h.descricao || ''].map(esc).join(',');
         }),
         ...comentariosCSV.map(c => {
           const ts = c._criado_em?.seconds
             ? new Date(c._criado_em.seconds * 1000).toLocaleString('pt-BR') : '';
-          return [ts, 'comentario', nomeUsuario(c.autor_uid), c.etapa_nome || c.etapa_id || '',
+          return [ts, 'comentario', _wfNomeUsuario(c.autor_uid, ''), c.etapa_nome || c.etapa_id || '',
             '', '', c.texto || ''].map(esc).join(',');
         }),
       ];
@@ -3669,12 +3689,6 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       eventos.sort((a, b) => (a._criado_em?.seconds ?? 0) - (b._criado_em?.seconds ?? 0));
       comentarios.sort((a, b) => (a._criado_em?.seconds ?? 0) - (b._criado_em?.seconds ?? 0));
 
-      const nomeUsuario = (uid) => {
-        if (!uid) return '—';
-        if (uid === 'sistema') return '⚙ Sistema';
-        const u = (globalScope.USUARIOS || []).find(x => x.uid === uid || x.id === uid);
-        return u?.nome || u?.email || uid;
-      };
       const esc = v => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
       const ts = s => s?.seconds ? new Date(s.seconds * 1000).toLocaleString('pt-BR') : '—';
 
@@ -3683,7 +3697,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
         return `<tr>
           <td>${esc(ts(h._criado_em))}</td>
           <td>${esc(h.tipo_evento)}</td>
-          <td>${esc(nomeUsuario(h.usuario_uid))}</td>
+          <td>${esc(_wfNomeUsuario(h.usuario_uid))}</td>
           <td>${esc(h.descricao || '')}</td>
           <td>${esc(d.acao || '')}</td>
           <td>${esc(d.parecer || '')}</td>
@@ -3701,7 +3715,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       const secaoComentarios = ordemGrupos.length ? `<h2>Comentários por etapa</h2>` + ordemGrupos.map(chave => {
         const linhas = gruposComent[chave].map(c => {
           const indent = c.respondendo_a ? 'padding-left:20px;color:#555' : '';
-          return `<tr><td style="${indent}">${esc(ts(c._criado_em))}</td><td style="${indent}">${esc(nomeUsuario(c.autor_uid))}</td><td style="${indent}">${esc(c.texto)}</td></tr>`;
+          return `<tr><td style="${indent}">${esc(ts(c._criado_em))}</td><td style="${indent}">${esc(_wfNomeUsuario(c.autor_uid))}</td><td style="${indent}">${esc(c.texto)}</td></tr>`;
         }).join('');
         return `<h3 style="font-size:11px;color:#3b82f6;text-transform:uppercase;margin:12px 0 4px">${esc(chave)}</h3>
         <table><thead><tr><th>Data/Hora</th><th>Autor</th><th>Comentário</th></tr></thead><tbody>${linhas}</tbody></table>`;
@@ -3794,18 +3808,19 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       // Notifica o novo responsável
       const tarefa = await _getDoc('wf_tarefa_workflows', tarefaId);
       if (tarefa) {
+        const motivoTexto = motivo ? ` Motivo: ${motivo}` : '';
         await _addDoc('wf_notificacoes', {
           destinatario_uid: novoUid,
           tipo: 'tarefa_delegada',
           titulo: `Tarefa delegada: ${tarefa.etapa_nome}`,
-          mensagem: `A tarefa "${tarefa.etapa_nome}" do processo "${tarefa.processo_nome}" foi delegada a você.${motivo ? ` Motivo: ${motivo}` : ''}`,
+          mensagem: `A tarefa "${tarefa.etapa_nome}" do processo "${tarefa.processo_nome}" foi delegada a você.${motivoTexto}`,
           instancia_id: tarefa.instancia_id,
           tarefa_id: tarefaId,
           lida: false,
         });
         await _registrarHistorico(tarefa.instancia_id, 'tarefa_delegada', _uid(),
           tarefa.etapa_modelo_id, tarefaId,
-          `Tarefa delegada para usuário ${novoUid}.${motivo ? ` Motivo: ${motivo}` : ''}`,
+          `Tarefa delegada para usuário ${novoUid}.${motivoTexto}`,
           { novoResponsavel: novoUid, motivo });
       }
       wfFecharDelegacao();
@@ -3903,7 +3918,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Carregando…</div>';
     const isEp = globalScope.isEP?.();
     try {
-      const [grupos, usersComUid] = await Promise.all([_getAll('wf_grupos'), _wfCarregarUsersComUid()]);
+      const [grupos] = await Promise.all([_getAll('wf_grupos'), _wfCarregarUsersComUid()]);
       if (!grupos.length) {
         el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Nenhum grupo cadastrado.</div>';
         return;
@@ -4042,9 +4057,10 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       const rows = usuarios
         .sort((a, b) => (a.nome || a.email).localeCompare(b.nome || b.email))
         .map(u => {
+          const perfisFallback = u.perfis || (u.perfil ? [u.perfil] : []);
           const perfis = globalScope.getPerfisUsuario
             ? globalScope.getPerfisUsuario(u)
-            : (u.perfis || (u.perfil ? [u.perfil] : []));
+            : perfisFallback;
           const perfilStr = _esc(perfis.map(p => LABELS[p] || p).join(', ') || '—');
           const gruposNomes = grupos
             .filter(g => (g.membros_email || g.membros_uid || []).includes(u.email))
@@ -4494,7 +4510,10 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       const m = await _getDoc('wf_processo_modelos', id);
       if (!m) { det.style.display = 'none'; return; }
       const etapas = m.canvas?.nos?.filter(n => n.tipo !== 'inicio' && n.tipo !== 'fim') || [];
-      det.innerHTML = `<strong>${_esc(m.nome)}</strong>${m.descricao ? `<p style="margin:6px 0 0;font-size:12px;color:var(--ink3)">${_esc(m.descricao)}</p>` : ''}<p style="margin:6px 0 0;font-size:11px;color:var(--ink3)">${etapas.length} etapa(s)</p>`;
+      const descricaoHtml = m.descricao
+        ? `<p style="margin:6px 0 0;font-size:12px;color:var(--ink3)">${_esc(m.descricao)}</p>`
+        : '';
+      det.innerHTML = `<strong>${_esc(m.nome)}</strong>${descricaoHtml}<p style="margin:6px 0 0;font-size:11px;color:var(--ink3)">${etapas.length} etapa(s)</p>`;
       det.style.display = '';
     } catch { det.style.display = 'none'; }
   }
