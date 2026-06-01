@@ -2965,12 +2965,38 @@ function projDetalheTab(faseId, tabEl) {
 
   switch(faseId) {
     case 'aprovacao':    projSetHtml(content, projTabAprovacao(proj)); setTimeout(projPopulateVinculacoes,50); break;
-    case 'ideacao':      projSetHtml(content, projTabIdeacao(proj)); break;
+    case 'ideacao':      projSetHtml(content, projTabIdeacao(proj)); projScheduleCanvasLayout(); break;
     case 'planejamento': projSetHtml(content, projTabPlanejamento(proj)); break;
     case 'execucao':     projSetHtml(content, projTabExecucao(proj)); break;
     case 'conclusao':    projSetHtml(content, projTabConclusao(proj)); break;
   }
   projApplyProjectReadonly(faseId);
+}
+
+let _projCanvasLayoutBound = false;
+let _projCanvasLayoutTimer = null;
+
+function projScheduleCanvasLayout() {
+  if(!_projCanvasLayoutBound) {
+    _projCanvasLayoutBound = true;
+    window.addEventListener('resize', () => {
+      clearTimeout(_projCanvasLayoutTimer);
+      _projCanvasLayoutTimer = setTimeout(projAdjustCanvasFirstRow, 120);
+    });
+  }
+  requestAnimationFrame(projAdjustCanvasFirstRow);
+}
+
+function projAdjustCanvasFirstRow() {
+  const grid = document.querySelector('#canvas-manual-mode .proj-canvas-grid');
+  if(!grid || getComputedStyle(grid).display === 'none') return;
+  const firstCells = [...grid.querySelectorAll('.proj-canvas-col')]
+    .map(col => col.querySelector('.proj-canvas-cell'))
+    .filter(Boolean);
+  if(!firstCells.length) return;
+  firstCells.forEach(cell => { cell.style.minHeight = ''; });
+  const targetHeight = Math.max(112, ...firstCells.map(cell => cell.scrollHeight + 2));
+  firstCells.forEach(cell => { cell.style.minHeight = `${Math.ceil(targetHeight)}px`; });
 }
 
 function projApplyProjectReadonly(faseId){
