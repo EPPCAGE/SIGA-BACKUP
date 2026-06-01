@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 class FakeTimestamp {
   constructor(value = new Date('2026-06-01T12:00:00Z')) {
-    this._date = value instanceof Date ? new Date(value) : new Date(value);
+    this._date = new Date(value);
   }
 
   toDate() {
