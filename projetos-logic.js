@@ -720,10 +720,27 @@ function projSafeHtml(html) {
 
 // Renderiza HTML de desenvolvedor (templates internos com event handlers).
 // Só use com strings literais do código — nunca com input do usuário direto.
+function projDeveloperHtml(html) {
+  const value = String(html || '');
+  if(globalThis.DOMPurify && typeof globalThis.DOMPurify.sanitize === 'function') {
+    return globalThis.DOMPurify.sanitize(value, {
+      ADD_ATTR: [
+        'target',
+        'onclick', 'onchange', 'oninput', 'onblur', 'onfocus', 'onsubmit',
+        'onkeydown', 'onkeyup', 'onmousedown', 'onmouseup', 'onmouseover', 'onmouseout'
+      ],
+      FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'base'],
+      FORBID_ATTR: ['srcdoc'],
+      ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i
+    });
+  }
+  return projSafeHtml(value);
+}
+
 function projHtmlFragment(html) {
   const range = document.createRange();
   range.selectNode(document.body || document.documentElement);
-  return range.createContextualFragment(String(html || ''));
+  return range.createContextualFragment(projDeveloperHtml(html));
 }
 
 function projSetHtml(el, html) {
