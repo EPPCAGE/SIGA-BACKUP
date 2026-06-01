@@ -4785,7 +4785,6 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     wfDesignerAplicarAutoFixPublicacao,
     wfDesignerAplicarPreset,
     wfDesignerRemoverArestaSel,
-    wfDesignerCampoNo,
     wfDesignerCampoCfg,
     wfDesignerPapel,
     wfDesignerToggleAcao,
