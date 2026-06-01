@@ -21,8 +21,14 @@ const {
   criarEtapaModelo,
   criarTransicaoFluxo,
   criarFormularioModelo,
+  normalizarProcessoModeloDoc,
   fsClean,
 } = require('./entities');
+const { listarTarefasAbertasUsuario } = require('./task-listing');
+const { handleWfTarefasRoute } = require('./task-routes');
+const { handleWfInstanciasRoute, handleWfInstanciaItemRoute } = require('./instance-routes');
+const { handleWfNotificacoesRoute } = require('./notification-routes');
+const { handleWfComentariosRoute } = require('./comment-routes');
 
 const CORS_ORIGINS = new Set(['https://eppcage.com.br', 'https://sigaepp.web.app', 'https://sigaepp.firebaseapp.com']);
 
@@ -69,7 +75,9 @@ const col = {
   instancias: db.collection('wf_instancia_processos'),
   tarefas: db.collection('wf_tarefa_workflows'),
   historico: db.collection('wf_historico_workflows'),
+  comentarios: db.collection('wf_comentarios'),
   notificacoes: db.collection('wf_notificacoes'),
+  grupos: db.collection('wf_grupos'),
   arquitetura: db.collection('arquitetura'),
 };
 
@@ -83,7 +91,6 @@ function perfisPermitidos(perfil, ...perfisValidos) {
 
 // ---------------------------------------------------------------------------
 // Endpoints
-// ---------------------------------------------------------------------------
 
 /**
  * GET  /wf/processos-modelo
@@ -158,7 +165,19 @@ exports.wfProcessoModeloItem = onRequest({ region: 'us-central1', cors: false },
     if (req.method === 'PUT') {
       perfisPermitidos(perfil, 'ep', 'gestor');
       const { Timestamp } = require('firebase-admin/firestore');
-      await col.modelos.doc(id).update(fsClean({ ...req.body, atualizado_em: Timestamp.now() }));
+      const snap = await col.modelos.doc(id).get();
+      if (!snap.exists) { res.status(404).json({ erro: 'NAO_ENCONTRADO' }); return; }
+      const atual = snap.data();
+      const normalizado = normalizarProcessoModeloDoc({
+        ...atual,
+        ...req.body,
+        criado_por: atual.criado_por || user.uid,
+      });
+      await col.modelos.doc(id).update(fsClean({
+        ...normalizado,
+        criado_em: atual.criado_em || null,
+        atualizado_em: Timestamp.now(),
+      }));
       res.json({ ok: true });
       return;
     }
@@ -273,27 +292,7 @@ exports.wfFormularios = onRequest({ region: 'us-central1', cors: false }, async 
  */
 exports.wfInstancias = onRequest({ region: 'us-central1', cors: false }, async (req, res) => {
   await handler(req, res, async (req, res, user) => {
-    if (req.method === 'GET') {
-      const snap = await col.instancias
-        .where('solicitante_uid', '==', user.uid)
-        .orderBy('iniciado_em', 'desc')
-        .limit(50)
-        .get();
-      res.json(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      return;
-    }
-
-    if (req.method === 'POST') {
-      const instancia = await engine.iniciarInstancia({
-        processo_modelo_id: req.body.processo_modelo_id,
-        titulo: req.body.titulo,
-        solicitante_uid: user.uid,
-      });
-      res.status(201).json(instancia);
-      return;
-    }
-
-    res.status(405).end();
+    await handleWfInstanciasRoute({ req, res, user, instanciasCol: col.instancias, engine });
   });
 });
 
@@ -304,90 +303,35 @@ exports.wfInstancias = onRequest({ region: 'us-central1', cors: false }, async (
  */
 exports.wfInstanciaItem = onRequest({ region: 'us-central1', cors: false }, async (req, res) => {
   await handler(req, res, async (req, res, user) => {
-    const segments = req.path.split('/').filter(Boolean);
-    const id = segments[0];
-    const acao = segments[1];
-
-    if (req.method === 'GET' && !acao) {
-      const snap = await col.instancias.doc(id).get();
-      if (!snap.exists) { res.status(404).json({ erro: 'NAO_ENCONTRADO' }); return; }
-      res.json({ id: snap.id, ...snap.data() });
-      return;
-    }
-
-    if (req.method === 'GET' && acao === 'historico') {
-      const snap = await col.historico
-        .where('instancia_id', '==', id)
-        .orderBy('ocorrido_em', 'asc')
-        .get();
-      res.json(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      return;
-    }
-
-    if (req.method === 'POST' && acao === 'cancelar') {
-      const result = await engine.cancelarInstancia({
-        instancia_id: id,
-        usuario_uid: user.uid,
-        motivo: req.body?.motivo || '',
-      });
-      res.json(result);
-      return;
-    }
-
-    res.status(405).end();
+    await handleWfInstanciaItemRoute({
+      req,
+      res,
+      user,
+      instanciasCol: col.instancias,
+      historicoCol: col.historico,
+      engine,
+    });
   });
 });
 
 /**
  * GET  /wf/tarefas
  * GET  /wf/tarefas/:id
+ * POST /wf/tarefas/:id/assumir
  * POST /wf/tarefas/:id/iniciar
  * POST /wf/tarefas/:id/concluir
  */
 exports.wfTarefas = onRequest({ region: 'us-central1', cors: false }, async (req, res) => {
   await handler(req, res, async (req, res, user) => {
-    const segments = req.path.split('/').filter(Boolean);
-    const id = segments[0];
-    const acao = segments[1];
-
-    if (req.method === 'GET' && !id) {
-      const snap = await col.tarefas
-        .where('responsavel_uid', '==', user.uid)
-        .where('status', 'in', ['pendente', 'em_execucao'])
-        .orderBy('prazo', 'asc')
-        .limit(50)
-        .get();
-      res.json(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      return;
-    }
-
-    if (req.method === 'GET' && id && !acao) {
-      const snap = await col.tarefas.doc(id).get();
-      if (!snap.exists) { res.status(404).json({ erro: 'NAO_ENCONTRADO' }); return; }
-      res.json({ id: snap.id, ...snap.data() });
-      return;
-    }
-
-    if (req.method === 'POST' && acao === 'iniciar') {
-      const result = await engine.iniciarTarefa({ tarefa_id: id, usuario_uid: user.uid });
-      res.json(result);
-      return;
-    }
-
-    if (req.method === 'POST' && acao === 'concluir') {
-      const { acao: acaoTarefa, observacao, dados_formulario } = req.body;
-      const result = await engine.concluirTarefa({
-        tarefa_id: id,
-        usuario_uid: user.uid,
-        acao: acaoTarefa,
-        observacao,
-        dados_formulario: dados_formulario || {},
-      });
-      res.json(result);
-      return;
-    }
-
-    res.status(405).end();
+    await handleWfTarefasRoute({
+      req,
+      res,
+      user,
+      tarefasCol: col.tarefas,
+      gruposCol: col.grupos,
+      engine,
+      listarTarefasAbertasUsuario,
+    });
   });
 });
 
@@ -398,39 +342,24 @@ exports.wfTarefas = onRequest({ region: 'us-central1', cors: false }, async (req
  */
 exports.wfNotificacoes = onRequest({ region: 'us-central1', cors: false }, async (req, res) => {
   await handler(req, res, async (req, res, user) => {
-    const segments = req.path.split('/').filter(Boolean);
-    const id = segments[0];
-    const acao = segments[1];
+    await handleWfNotificacoesRoute({ req, res, user, notificacoesCol: col.notificacoes, db });
+  });
+});
 
-    if (req.method === 'GET') {
-      const snap = await col.notificacoes
-        .where('destinatario_uid', '==', user.uid)
-        .orderBy('criado_em', 'desc')
-        .limit(30)
-        .get();
-      res.json(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      return;
-    }
-
-    if (req.method === 'POST' && id === 'marcar-todas-lidas') {
-      const snap = await col.notificacoes
-        .where('destinatario_uid', '==', user.uid)
-        .where('lida', '==', false)
-        .get();
-      const batch = db.batch();
-      snap.docs.forEach(d => batch.update(d.ref, { lida: true }));
-      await batch.commit();
-      res.json({ ok: true, marcadas: snap.size });
-      return;
-    }
-
-    if (req.method === 'POST' && acao === 'marcar-lida') {
-      await col.notificacoes.doc(id).update({ lida: true });
-      res.json({ ok: true });
-      return;
-    }
-
-    res.status(405).end();
+/**
+ * GET  /wf/comentarios?tarefa_id=:id
+ * GET  /wf/comentarios?instancia_id=:id
+ * POST /wf/comentarios
+ */
+exports.wfComentarios = onRequest({ region: 'us-central1', cors: false }, async (req, res) => {
+  await handler(req, res, async (req, res, user) => {
+    await handleWfComentariosRoute({
+      req,
+      res,
+      user,
+      comentariosCol: col.comentarios,
+      nowFactory: () => admin.firestore.Timestamp.now(),
+    });
   });
 });
 

@@ -51,6 +51,16 @@ function makeNotificacoes(db) {
     }));
   }
 
+  async function cienciaEtapa({ destinatario_uid, instancia, etapa }) {
+    return _salvar(criarNotificacao({
+      destinatario_uid,
+      tipo: 'tarefa_criada',
+      titulo: `Ciência: ${etapa.nome}`,
+      mensagem: `Processo "${instancia.titulo}" chegou à etapa "${etapa.nome}".`,
+      instancia_id: instancia.id,
+    }));
+  }
+
   async function instanciaConcluida({ instancia }) {
     return _salvar(criarNotificacao({
       destinatario_uid: instancia.solicitante_uid,
@@ -61,7 +71,18 @@ function makeNotificacoes(db) {
     }));
   }
 
-  return { tarefaCriada, prazoProximo, tarefaVencida, instanciaConcluida };
+  async function tarefaDelegada({ destinatario_uid, tarefa, motivo = '' }) {
+    return _salvar(criarNotificacao({
+      destinatario_uid,
+      tipo: 'tarefa_delegada',
+      titulo: `Tarefa delegada: ${tarefa.etapa_nome}`,
+      mensagem: `A tarefa "${tarefa.etapa_nome}" do processo "${tarefa.processo_nome}" foi delegada a você.${motivo ? ` Motivo: ${motivo}` : ''}`,
+      instancia_id: tarefa.instancia_id,
+      tarefa_id: tarefa.id,
+    }));
+  }
+
+  return { tarefaCriada, prazoProximo, tarefaVencida, cienciaEtapa, instanciaConcluida, tarefaDelegada };
 }
 
 module.exports = { makeNotificacoes };

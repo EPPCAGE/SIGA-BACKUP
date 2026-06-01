@@ -6,6 +6,13 @@ const crypto = require("node:crypto");
 
 admin.initializeApp();
 
+// Publica os endpoints REST do módulo workflow sem sobrescrever exports legados.
+Object.entries(require('./workflow/index')).forEach(([name, fn]) => {
+  if (!Object.prototype.hasOwnProperty.call(exports, name)) {
+    exports[name] = fn;
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Rate limiting — Firestore-backed sliding window counter.
 // key:      document ID under rate_limits/ (must be Firestore-safe)

@@ -4,6 +4,7 @@
 globalThis.CONFIG = {
   FIREBASE_API_KEY: '',
   AI_FUNCTION_URL: '',
+  WORKFLOW_API_BASE_URL: '',
   // URL da Cloud Function checkEmail (público, sem auth).
   // Elimina a leitura pública do Firestore no fluxo de Primeiro Acesso.
   // Obtida após o primeiro deploy das Cloud Functions.

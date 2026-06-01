@@ -141,6 +141,7 @@
   const TIPO_EVENTO_HISTORICO = Object.freeze({
     INSTANCIA_CRIADA: 'instancia_criada',
     TAREFA_CRIADA: 'tarefa_criada',
+    TAREFA_ASSUMIDA: 'tarefa_assumida',
     TAREFA_INICIADA: 'tarefa_iniciada',
     TAREFA_CONCLUIDA: 'tarefa_concluida',
     ETAPA_AVANCADA: 'etapa_avancada',
@@ -153,6 +154,7 @@
   const TIPO_EVENTO_HISTORICO_LABELS = Object.freeze({
     instancia_criada: 'Processo iniciado',
     tarefa_criada: 'Tarefa criada',
+    tarefa_assumida: 'Tarefa assumida',
     tarefa_iniciada: 'Tarefa iniciada',
     tarefa_concluida: 'Tarefa concluída',
     etapa_avancada: 'Etapa avançada',

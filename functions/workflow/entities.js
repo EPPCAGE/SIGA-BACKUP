@@ -37,28 +37,153 @@ const STATUS_INSTANCIA = ['em_andamento', 'concluido', 'cancelado', 'suspenso'];
 const STATUS_TAREFA = ['pendente', 'em_execucao', 'concluida', 'cancelada', 'vencida'];
 const TIPO_CAMPO = ['texto', 'textarea', 'numero', 'data', 'select', 'checkbox', 'anexo'];
 const CONDICAO_TRANSICAO = ['sempre', 'aprovado', 'rejeitado'];
-const TIPO_NOTIFICACAO = ['tarefa_criada', 'prazo_proximo', 'tarefa_vencida', 'tarefa_concluida'];
+const TIPO_NOTIFICACAO = ['tarefa_criada', 'prazo_proximo', 'tarefa_vencida', 'tarefa_concluida', 'tarefa_delegada'];
+const FLUXO_ORIGEM = ['asis', 'tobe'];
+const ACAO_WORKFLOW = ['avancar', 'concluir', 'aprovar', 'rejeitar', 'devolver', 'solicitar_ajuste'];
+const PAPEL_WORKFLOW = ['executor', 'revisor', 'aprovador'];
 const TIPO_EVENTO = [
-  'instancia_criada', 'tarefa_criada', 'tarefa_iniciada', 'tarefa_concluida',
-  'etapa_avancada', 'instancia_concluida', 'instancia_cancelada', 'sla_alerta', 'sla_vencido',
+  'instancia_criada', 'tarefa_criada', 'tarefa_assumida', 'tarefa_iniciada', 'tarefa_concluida',
+  'tarefa_delegada', 'etapa_avancada', 'instancia_concluida', 'instancia_cancelada', 'sla_alerta', 'sla_vencido',
 ];
 
 // ---------------------------------------------------------------------------
 // Factories
 // ---------------------------------------------------------------------------
 
-function criarProcessoModelo({ nome, descricao, criado_por, perfis_permitidos = [] }) {
-  _requerido({ nome, criado_por }, 'nome');
-  _requerido({ nome, criado_por }, 'criado_por');
+function _stringOuNull(valor) {
+  if (valor == null || valor === '') return null;
+  return String(valor).trim() || null;
+}
+
+function _listaStrings(valores) {
+  if (!Array.isArray(valores)) return [];
+  return valores.map((valor) => _stringOuNull(valor)).filter(Boolean);
+}
+
+function _normalizarCondicao(condicao = {}) {
+  return fsClean({
+    campo: _stringOuNull(condicao.campo),
+    operador: _stringOuNull(condicao.operador) || '=',
+    valor: condicao.valor ?? null,
+  });
+}
+
+function _normalizarPapeisWorkflow(papeis = {}) {
+  const normalizado = {
+    executor: 'solicitante',
+    revisor: null,
+    aprovador: null,
+    ciente: [],
+  };
+  PAPEL_WORKFLOW.forEach((papel) => {
+    normalizado[papel] = _stringOuNull(papeis[papel]) || normalizado[papel];
+  });
+  normalizado.ciente = _listaStrings(papeis.ciente);
+  return fsClean(normalizado);
+}
+
+function _normalizarConfigNo(config = {}) {
+  const acoes = Array.isArray(config.acoes)
+    ? config.acoes.filter((acao) => ACAO_WORKFLOW.includes(acao))
+    : [];
+  return fsClean({
+    papeis: _normalizarPapeisWorkflow(config.papeis || {}),
+    acoes: acoes.length ? Array.from(new Set(acoes)) : ['avancar'],
+    formulario_id: _stringOuNull(config.formulario_id),
+    sla_horas: Math.max(0, Number(config.sla_horas) || 0),
+    instrucoes: String(config.instrucoes || '').trim(),
+    exige_parecer: Boolean(config.exige_parecer),
+    titulo_notificacao: String(config.titulo_notificacao || '').trim(),
+    mensagem_notificacao: String(config.mensagem_notificacao || '').trim(),
+    comentario_automatico: String(config.comentario_automatico || '').trim(),
+    acoes_condicionais: Array.isArray(config.acoes_condicionais)
+      ? config.acoes_condicionais.map((regra) => fsClean({
+        acao: ACAO_WORKFLOW.includes(regra?.acao) ? regra.acao : 'avancar',
+        campo: _stringOuNull(regra?.campo),
+        operador: _stringOuNull(regra?.operador) || '=',
+        valor: regra?.valor ?? null,
+      }))
+      : [],
+    campos_condicionais: Array.isArray(config.campos_condicionais)
+      ? config.campos_condicionais.map((regra) => fsClean({
+        campo_id: _stringOuNull(regra?.campo_id),
+        operador_logico: regra?.operador_logico === 'OR' ? 'OR' : 'AND',
+        acao: ['mostrar', 'ocultar', 'obrigatorio', 'opcional'].includes(regra?.acao) ? regra.acao : 'mostrar',
+        condicoes: Array.isArray(regra?.condicoes) ? regra.condicoes.map(_normalizarCondicao) : [],
+      }))
+      : [],
+    condicoes: Array.isArray(config.condicoes) ? config.condicoes.map(_normalizarCondicao) : [],
+    operador_logico: config.operador_logico === 'OR' ? 'OR' : 'AND',
+    padrao: Boolean(config.padrao),
+  });
+}
+
+function _normalizarConfigNos(configNos = {}) {
+  if (!configNos || typeof configNos !== 'object' || Array.isArray(configNos)) return {};
+  return fsClean(Object.fromEntries(
+    Object.entries(configNos).map(([noId, config]) => [String(noId), _normalizarConfigNo(config)])
+  ));
+}
+
+function _normalizarCanvas(canvas = {}) {
+  const nos = Array.isArray(canvas?.nos)
+    ? canvas.nos.map((no) => fsClean({
+      id: _stringOuNull(no?.id),
+      nome: String(no?.nome || '').trim(),
+      tipo: TIPO_ETAPA.includes(no?.tipo) ? no.tipo : 'tarefa',
+      x: Number(no?.x) || 0,
+      y: Number(no?.y) || 0,
+      config: _normalizarConfigNo(no?.config || {}),
+    })).filter((no) => no.id)
+    : [];
+  const arestas = Array.isArray(canvas?.arestas)
+    ? canvas.arestas.map((aresta) => fsClean({
+      id: _stringOuNull(aresta?.id),
+      origem: _stringOuNull(aresta?.origem),
+      destino: _stringOuNull(aresta?.destino),
+      acao: _stringOuNull(aresta?.acao),
+      label: String(aresta?.label || '').trim(),
+      condicao: _stringOuNull(aresta?.condicao),
+      condicoes: Array.isArray(aresta?.condicoes) ? aresta.condicoes.map(_normalizarCondicao) : [],
+      operador_logico: aresta?.operador_logico === 'OR' ? 'OR' : 'AND',
+      padrao: Boolean(aresta?.padrao),
+    })).filter((aresta) => aresta.origem && aresta.destino)
+    : [];
+  return fsClean({ nos, arestas });
+}
+
+function normalizarProcessoModeloDoc(data = {}, opts = {}) {
+  const { forCreate = false } = opts;
+  const nome = String(data.nome || '').trim();
+  const criadoPor = _stringOuNull(data.criado_por);
+  if (!nome) throw Object.assign(new Error('Campo obrigatório ausente: nome'), { code: 'CAMPO_OBRIGATORIO', status: 400 });
+  if (forCreate && !criadoPor) throw Object.assign(new Error('Campo obrigatório ausente: criado_por'), { code: 'CAMPO_OBRIGATORIO', status: 400 });
+  const status = STATUS_MODELO.includes(data.status) ? data.status : 'rascunho';
+  const fluxoOrigem = _stringOuNull(data.fluxo_origem);
+  if (fluxoOrigem && !FLUXO_ORIGEM.includes(fluxoOrigem)) {
+    throw Object.assign(new Error(`fluxo_origem inválido: ${fluxoOrigem}`), { code: 'TIPO_INVALIDO', status: 400 });
+  }
 
   return fsClean({
-    nome: String(nome).trim(),
-    descricao: descricao ? String(descricao).trim() : '',
-    versao: 1,
-    status: 'rascunho',
-    etapa_inicial: null,
-    criado_por,
-    perfis_permitidos: Array.isArray(perfis_permitidos) ? perfis_permitidos : [],
+    nome,
+    descricao: String(data.descricao || '').trim(),
+    versao: Math.max(1, Number(data.versao) || 1),
+    status,
+    etapa_inicial: _stringOuNull(data.etapa_inicial),
+    criado_por: criadoPor,
+    perfis_permitidos: _listaStrings(data.perfis_permitidos),
+    processo_origem_id: _stringOuNull(data.processo_origem_id),
+    processo_origem_nome: _stringOuNull(data.processo_origem_nome),
+    fluxo_origem: fluxoOrigem,
+    bpmn_xml: String(data.bpmn_xml || '').trim(),
+    config_nos: _normalizarConfigNos(data.config_nos),
+    canvas: _normalizarCanvas(data.canvas),
+  });
+}
+
+function criarProcessoModelo({ nome, descricao, criado_por, perfis_permitidos = [] }) {
+  return fsClean({
+    ...normalizarProcessoModeloDoc({ nome, descricao, criado_por, perfis_permitidos }, { forCreate: true }),
     criado_em: agora(),
     atualizado_em: agora(),
   });
@@ -141,7 +266,7 @@ function criarFormularioModelo({ titulo, campos, criado_por }) {
   });
 }
 
-function criarInstanciaProcesso({ processo_modelo_id, processo_modelo_versao, titulo, solicitante_uid }) {
+function criarInstanciaProcesso({ processo_modelo_id, processo_modelo_versao, titulo, solicitante_uid, grupo_id = null, grupo_nome = null }) {
   _requerido({ processo_modelo_id }, 'processo_modelo_id');
   _requerido({ solicitante_uid }, 'solicitante_uid');
 
@@ -152,6 +277,44 @@ function criarInstanciaProcesso({ processo_modelo_id, processo_modelo_versao, ti
     status: 'em_andamento',
     etapa_atual_id: null,
     solicitante_uid,
+    grupo_id: _stringOuNull(grupo_id),
+    grupo_nome: _stringOuNull(grupo_nome),
+    dados_consolidados: {},
+    iniciado_em: agora(),
+    concluido_em: null,
+    prazo_geral: null,
+  });
+}
+
+function criarInstanciaProcessoMapeado({ processo_id, processo_nome, titulo, solicitante_uid, snapshot_etapas = [], fluxo_origem = null }) {
+  _requerido({ processo_id }, 'processo_id');
+  _requerido({ processo_nome }, 'processo_nome');
+  _requerido({ solicitante_uid }, 'solicitante_uid');
+
+  const etapas = Array.isArray(snapshot_etapas)
+    ? snapshot_etapas
+      .map((etapa, index) => fsClean({
+        id: _stringOuNull(etapa?.id) || `${processo_id}_${index}`,
+        nome: String(etapa?.nome || `Etapa ${index + 1}`).trim(),
+        tipo: _stringOuNull(etapa?.tipo) || 'Atividade',
+        desc: _stringOuNull(etapa?.desc),
+        executor: _stringOuNull(etapa?.executor),
+        modo: _stringOuNull(etapa?.modo) || 'Manual',
+        natureza: _stringOuNull(etapa?.natureza),
+        sla_horas: Math.max(0, Number(etapa?.sla_horas) || 0),
+      }))
+      .filter((etapa) => etapa.id)
+    : [];
+
+  return fsClean({
+    processo_id: _stringOuNull(processo_id),
+    processo_nome: String(processo_nome).trim(),
+    titulo: titulo ? String(titulo).trim() : `Processo ${new Date().toLocaleDateString('pt-BR')}`,
+    status: 'em_andamento',
+    etapa_atual_id: etapas[0]?.id || null,
+    solicitante_uid,
+    snapshot_etapas: etapas,
+    fluxo_origem: FLUXO_ORIGEM.includes(fluxo_origem) ? fluxo_origem : null,
     dados_consolidados: {},
     iniciado_em: agora(),
     concluido_em: null,
@@ -221,11 +384,15 @@ module.exports = {
   CONDICAO_TRANSICAO,
   TIPO_NOTIFICACAO,
   TIPO_EVENTO,
+  ACAO_WORKFLOW,
+  PAPEL_WORKFLOW,
   criarProcessoModelo,
+  normalizarProcessoModeloDoc,
   criarEtapaModelo,
   criarTransicaoFluxo,
   criarFormularioModelo,
   criarInstanciaProcesso,
+  criarInstanciaProcessoMapeado,
   criarTarefaWorkflow,
   criarHistoricoWorkflow,
   criarNotificacao,

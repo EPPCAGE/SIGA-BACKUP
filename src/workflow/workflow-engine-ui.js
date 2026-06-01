@@ -18,8 +18,10 @@
     designerDrag: null,
     iniciarAba: 'mapeamento',
     // Paginação
-    tarefasCursor: null,      // último doc do Firestore para paginação
-    instanciasCursor: null,
+    tarefasCursor: 0,
+    instanciasCursor: 0,
+    tarefasLista: null,
+    instanciasLista: null,
   };
 
   function _uid() {
@@ -217,6 +219,44 @@
     }
   }
 
+  function _wfApiBaseUrl() {
+    const explicit = String(globalScope.CONFIG?.WORKFLOW_API_BASE_URL || '').trim();
+    if (explicit && explicit !== '__WORKFLOW_API_BASE_URL__') {
+      return explicit.replace(/\/+$/, '');
+    }
+    const projectId = globalScope.fb?.()?.FIREBASE_CONFIG?.projectId || 'gesproc2';
+    return `https://us-central1-${projectId}.cloudfunctions.net`;
+  }
+
+  async function _wfApiRequest(functionName, path = '', options = {}) {
+    const auth = globalScope.fb?.()?.auth;
+    const currentUser = auth?.currentUser;
+    if (!currentUser || typeof currentUser.getIdToken !== 'function') {
+      throw new Error('Usuário não autenticado.');
+    }
+
+    const token = await currentUser.getIdToken();
+    const url = `${_wfApiBaseUrl()}/${functionName}${path}`;
+    const headers = { Authorization: `Bearer ${token}`, ...(options.headers || {}) };
+    const hasBody = Object.prototype.hasOwnProperty.call(options, 'body');
+    if (hasBody && !headers['Content-Type']) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    const response = await fetch(url, {
+      method: options.method || 'GET',
+      headers,
+      body: hasBody ? JSON.stringify(options.body) : undefined,
+    });
+
+    const text = await response.text();
+    const payload = text ? JSON.parse(text) : null;
+    if (!response.ok) {
+      throw new Error(payload?.mensagem || payload?.erro || `Falha ao chamar ${functionName}.`);
+    }
+    return payload;
+  }
+
   // ── Helpers de UI ─────────────────────────────────────────────────────────
   function _esc(v) {
     return typeof globalScope.esc === 'function'
@@ -290,65 +330,60 @@
   }
 
   // P2.1 — Badge de notificações não lidas no botão do módulo
-  let _unsubNotifs = null;
-
-  function _wfIniciarBadge() {
-    const uid = _uid();
-    if (!uid || _unsubNotifs) return;
-    const { onSnapshot, where, query, collection, and, or } = globalScope.fb();
-    const isEP = globalScope.isEP?.();
-    // Firestore exige um único filtro composto no topo quando há or(...)
-    const destinatarioFiltro = isEP && or
-      ? or(where('destinatario_uid', '==', uid), where('destinatario_uid', '==', 'ep_escalada'))
-      : where('destinatario_uid', '==', uid);
-    const filtro = and
-      ? and(destinatarioFiltro, where('lida', '==', false))
-      : destinatarioFiltro;
-    const q = query(collection(_db(), 'wf_notificacoes'), filtro);
-    _unsubNotifs = onSnapshot(q, snap => {
-      const count = snap.size;
-      const btn = document.getElementById('nb-workflow');
-      if (!btn) return;
-      let badge = btn.querySelector('.wf-notif-badge');
-      if (count > 0) {
-        if (!badge) {
-          badge = document.createElement('span');
-          badge.className = 'wf-notif-badge';
-          badge.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;margin-left:4px;vertical-align:middle';
-          btn.appendChild(badge);
-        }
-        badge.textContent = count > 99 ? '99+' : String(count);
-        _st._notifCount = count;
-        if (_st.painelAtual === 'notificacoes') _wfRenderNotifPanel();
-      } else {
-        badge?.remove();
-        _st._notifCount = 0;
+  function _wfAplicarBadgeNotificacoes(count) {
+    const btn = document.getElementById('nb-workflow');
+    if (!btn) return;
+    let badge = btn.querySelector('.wf-notif-badge');
+    if (count > 0) {
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'wf-notif-badge';
+        badge.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;margin-left:4px;vertical-align:middle';
+        btn.appendChild(badge);
       }
-    }, (error_) => {
-      _wfReportarErroNaoCritico('falha ao observar notificacoes do workflow', error_);
-    });
+      badge.textContent = count > 99 ? '99+' : String(count);
+      return;
+    }
+    badge?.remove();
   }
 
-  async function _wfRenderNotifPanel() {
+  async function _wfAtualizarBadgeNotificacoes(notificacoes = null) {
+    const uid = _uid();
+    if (!uid) {
+      _st._notifCount = 0;
+      _wfAplicarBadgeNotificacoes(0);
+      return [];
+    }
+    try {
+      const lista = Array.isArray(notificacoes) ? notificacoes : await _wfApiRequest('wfNotificacoes');
+      const count = lista.filter((item) => !item.lida).length;
+      _st._notifCount = count;
+      _wfAplicarBadgeNotificacoes(count);
+      return lista;
+    } catch (error_) {
+      _wfReportarErroNaoCritico('falha ao carregar notificacoes do workflow', error_);
+      return [];
+    }
+  }
+
+  function _wfIniciarBadge() {
+    void _wfAtualizarBadgeNotificacoes();
+  }
+
+  async function _wfRenderNotifPanel(notificacoes = null) {
     const el = document.getElementById('wf-notif-lista');
     if (!el || _st.painelAtual !== 'notificacoes') return;
     const uid = _uid();
     if (!uid) return;
     el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Carregando…</div>';
     try {
-      const { where, limit, query, collection, getDocs } = globalScope.fb();
-      const q = query(
-        collection(_db(), 'wf_notificacoes'),
-        where('destinatario_uid', '==', uid),
-        limit(50),
-      );
-      const snap = await getDocs(q);
-      let notifs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      let notifs = Array.isArray(notificacoes) ? notificacoes : await _wfApiRequest('wfNotificacoes');
       notifs.sort((a, b) => {
-        const ta = a._criado_em?.seconds ?? 0;
-        const tb = b._criado_em?.seconds ?? 0;
+        const ta = a.criado_em?.seconds ?? a._criado_em?.seconds ?? 0;
+        const tb = b.criado_em?.seconds ?? b._criado_em?.seconds ?? 0;
         return tb - ta;
       });
+      await _wfAtualizarBadgeNotificacoes(notifs);
       if (!notifs.length) {
         el.innerHTML = '<div style="color:var(--ink3);font-size:14px;padding:16px 0">Nenhuma notificação.</div>';
         return;
@@ -357,8 +392,9 @@
       el.innerHTML = renderer
         ? renderer.renderNotificacoes(notifs, _esc)
         : notifs.map(n => {
-          const ts = n._criado_em?.seconds
-            ? new Date(n._criado_em.seconds * 1000).toLocaleString('pt-BR')
+          const seconds = n.criado_em?.seconds ?? n._criado_em?.seconds ?? null;
+          const ts = seconds
+            ? new Date(seconds * 1000).toLocaleString('pt-BR')
             : '—';
           const bg = n.lida ? 'var(--bg)' : 'var(--blue-soft,#eff6ff)';
           return `<div style="background:${bg};border:1px solid var(--bdr);border-radius:8px;padding:12px 14px;margin-bottom:8px;cursor:pointer"
@@ -375,10 +411,13 @@
 
   async function wfMarcarNotifLida(notifId, instanciaId, titulo, id) {
     try {
-      await _updateDoc('wf_notificacoes', notifId, { lida: true });
+      await _wfApiRequest('wfNotificacoes', `/${encodeURIComponent(notifId)}/marcar-lida`, { method: 'POST' });
+      await _wfAtualizarBadgeNotificacoes();
       if (instanciaId) wfAbrirHistorico(instanciaId, titulo || instanciaId, '');
       else wfNavWorkflow('notificacoes');
-    } catch { wfNavWorkflow('notificacoes'); }
+    } catch {
+      wfNavWorkflow('notificacoes');
+    }
   }
 
   function rWorkflow() {
@@ -401,6 +440,13 @@
 
   function _wfMensagemLista(el, mensagem) {
     if (el) el.innerHTML = `<div style="color:var(--ink3);font-size:14px">${mensagem}</div>`;
+  }
+
+  async function _wfBuscarComentarios(params = {}) {
+    const qs = new URLSearchParams();
+    if (params.tarefaId) qs.set('tarefa_id', params.tarefaId);
+    if (params.instanciaId) qs.set('instancia_id', params.instanciaId);
+    return _wfApiRequest('wfComentarios', `?${qs.toString()}`);
   }
 
   async function _wfCarregarMinhasTarefas(uid) {
@@ -552,23 +598,22 @@
     if (!el) return;
     if (!acrescentar) {
       _wfMensagemLista(el, 'Carregando…');
-      _st.tarefasCursor = null;
+      _st.tarefasCursor = 0;
+      _st.tarefasLista = null;
     }
     try {
       const uid = _uid();
       if (!uid) {
+        _st.tarefasLista = [];
         _wfMensagemLista(el, 'Usuário não autenticado.');
         return;
       }
 
-      const snap = await _wfCarregarMinhasTarefas(uid);
-      const minhas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (!_st.tarefasLista) {
+        _st.tarefasLista = await _wfApiRequest('wfTarefas');
+      }
 
-      const perfil = globalScope.usuarioLogado?.perfil;
-      const porPerfil = perfil && !acrescentar ? await _wfCarregarTarefasPorPerfil(perfil) : [];
-      await _wfGarantirMeusGrupos(acrescentar);
-      const tarefasGrupo = await _wfCarregarTarefasDeGrupo(acrescentar);
-      const tarefas = _wfMesclarTarefas(acrescentar, el, [minhas, porPerfil, tarefasGrupo]);
+      const tarefas = Array.isArray(_st.tarefasLista) ? _st.tarefasLista.slice() : [];
 
       if (!tarefas.length) {
         _wfMensagemLista(el, 'Nenhuma tarefa pendente.');
@@ -583,9 +628,12 @@
         _wfMensagemLista(el, 'Nenhuma tarefa encontrada.');
         return;
       }
-      const cards = _wfRenderCardsTarefas(tarefasFiltradas, podeGerenciar);
+      const quantidade = acrescentar ? _st.tarefasCursor + _WF_PAGE : _WF_PAGE;
+      _st.tarefasCursor = Math.min(quantidade, tarefasFiltradas.length);
+      const tarefasVisiveis = tarefasFiltradas.slice(0, _st.tarefasCursor);
+      const cards = _wfRenderCardsTarefas(tarefasVisiveis, podeGerenciar);
 
-      const temMais = snap.docs.length === _WF_PAGE;
+      const temMais = _st.tarefasCursor < tarefasFiltradas.length;
       el.innerHTML = cards + (temMais
         ? `<div style="text-align:center;margin-top:12px"><button type="button" class="btn btn-sm" onclick="wfCarregarTarefas(true)">Carregar mais</button></div>`
         : '');
@@ -596,12 +644,11 @@
 
   async function _wfMarcarTarefaEmExecucaoSeNecessario(tarefaId, tarefa) {
     if (tarefa.status !== 'pendente') return;
-    const patch = { status: 'em_execucao', iniciado_em: new Date() };
+    await _wfApiRequest('wfTarefas', `/${encodeURIComponent(tarefaId)}/iniciar`, { method: 'POST' });
+    tarefa.status = 'em_execucao';
     if (!tarefa.responsavel_uid) {
-      patch.responsavel_uid = _uid();
       tarefa.responsavel_uid = _uid();
     }
-    await _updateDoc('wf_tarefa_workflows', tarefaId, patch);
   }
 
   function _wfPrepararTelaExecucaoTarefa(tarefa) {
@@ -689,7 +736,7 @@
   }
 
   async function wfAbrirTarefa(tarefaId) {
-    const tarefa = await _getDoc('wf_tarefa_workflows', tarefaId);
+    const tarefa = await _wfApiRequest('wfTarefas', `/${encodeURIComponent(tarefaId)}`);
     if (!tarefa) { alert('Tarefa não encontrada.'); return; }
     _st.tarefaAtual = tarefa;
 
@@ -697,7 +744,7 @@
     _wfPrepararTelaExecucaoTarefa(tarefa);
 
     // Dados já coletados nas etapas anteriores
-    const instancia = await _getDoc('wf_instancia_processos', tarefa.instancia_id);
+    const instancia = await _wfApiRequest('wfInstanciaItem', `/${encodeURIComponent(tarefa.instancia_id)}`);
     _wfRenderDadosAnterioresExecucao(instancia);
     _wfRenderProgressoExecucao(instancia, tarefa);
     _wfRenderPapelExecucao(tarefa);
@@ -731,13 +778,7 @@
     const tarefa = await _getDoc('wf_tarefa_workflows', tarefaId);
     if (!tarefa) { alert('Tarefa não encontrada.'); return; }
     if (tarefa.responsavel_uid) { alert('Esta tarefa já foi assumida por outro usuário.'); return; }
-    await _updateDoc('wf_tarefa_workflows', tarefaId, {
-      responsavel_uid: uid,
-      status: 'em_execucao',
-      assumida_em: new Date(),
-      assumida_por_uid: uid,
-    });
-    await _registrarHistorico(tarefa.instancia_id, 'tarefa_assumida', uid, tarefa.etapa_modelo_id || null, tarefaId, 'Tarefa assumida da fila.');
+    await _wfApiRequest('wfTarefas', `/${encodeURIComponent(tarefaId)}/assumir`, { method: 'POST' });
     _st.meusGrupos = null;
     wfCarregarTarefas();
   }
@@ -905,54 +946,6 @@
     return dadosForm;
   }
 
-  async function _wfAtualizarTarefaConcluida(tarefa, acao, obs, dadosForm) {
-    await _updateDoc('wf_tarefa_workflows', tarefa.id, {
-      status: 'concluida',
-      observacao: obs,
-      parecer: obs || null,
-      acao_tomada: acao,
-      dados_formulario: dadosForm,
-      anexos: _st._anexosTarefa || [],
-      concluido_em: new Date(),
-    });
-  }
-
-  async function _wfNotificarSolicitanteConclusao(instancia, tarefa, acao) {
-    if (!instancia.solicitante_uid || instancia.solicitante_uid === _uid()) return;
-    await _addDoc('wf_notificacoes', {
-      destinatario_uid: instancia.solicitante_uid,
-      tipo: 'etapa_concluida',
-      titulo: `Etapa concluída: ${tarefa.etapa_nome}`,
-      mensagem: `A etapa "${tarefa.etapa_nome}" do processo "${tarefa.processo_nome}" foi ${globalScope.WF_ACAO_LABELS?.[acao] || acao}.`,
-      instancia_id: tarefa.instancia_id,
-      tarefa_id: tarefa.id,
-      lida: false,
-    });
-  }
-
-  async function _wfProcessarInstanciaConclusao(tarefa, acao, dadosForm) {
-    const instancia = await _getDoc('wf_instancia_processos', tarefa.instancia_id);
-    if (!instancia) return;
-    const merged = { ...instancia.dados_consolidados, ...dadosForm };
-    await _updateDoc('wf_instancia_processos', tarefa.instancia_id, {
-      dados_consolidados: merged,
-      ultimo_executor_uid: _uid(),
-    });
-    if (instancia.canvas) {
-      await _avancarFluxoCanvas(instancia, tarefa.etapa_modelo_id, acao);
-    } else {
-      await _avancarFluxo(instancia, tarefa.etapa_modelo_id, acao);
-    }
-    await _wfNotificarSolicitanteConclusao(instancia, tarefa, acao);
-  }
-
-  async function _wfRegistrarHistoricoConclusao(tarefa, acao, obs) {
-    await _registrarHistorico(tarefa.instancia_id, 'tarefa_concluida', _uid(),
-      tarefa.etapa_modelo_id, tarefa.id,
-      `Etapa "${tarefa.etapa_nome || tarefa.etapa_modelo_id}" — ${globalScope.WF_ACAO_LABELS?.[acao] || acao}.`,
-      { acao, papel: tarefa.papel_responsavel || null, parecer: obs || null });
-  }
-
   async function wfConcluirTarefa(acao) {
     if (!_st.tarefaAtual) return;
     const tarefa = _st.tarefaAtual;
@@ -963,312 +956,20 @@
     if (dadosForm == null) return;
 
     try {
-      await _wfAtualizarTarefaConcluida(tarefa, acao, obs, dadosForm);
-      await _wfProcessarInstanciaConclusao(tarefa, acao, dadosForm);
-      await _wfRegistrarHistoricoConclusao(tarefa, acao, obs);
+      await _wfApiRequest('wfTarefas', `/${encodeURIComponent(tarefa.id)}/concluir`, {
+        method: 'POST',
+        body: {
+          acao,
+          observacao: obs,
+          dados_formulario: dadosForm,
+          anexos: _st._anexosTarefa || [],
+        },
+      });
 
       wfNavWorkflow('tarefas');
     } catch (e) {
       alert('Erro ao concluir tarefa: ' + e.message);
     }
-  }
-
-  // Resolve um valor de papel para um uid (ou null)
-  function _resolverPapel(valorPapel, instancia, dadosForm = {}) {
-    if (!valorPapel) return null;
-    // Perfis fixos
-    if (valorPapel === 'solicitante') return instancia.solicitante_uid || null;
-    if (['ep','gestor','dono'].includes(valorPapel)) {
-      // Atribuição específica registrada ao iniciar a instância tem prioridade
-      if (instancia.atribuicoes?.[valorPapel]) return instancia.atribuicoes[valorPapel];
-      const perfil = globalScope.usuarioLogado?.perfil;
-      return perfil === valorPapel ? _uid() : null;
-    }
-    // Dinâmico: gestor_solicitante
-    if (valorPapel === 'gestor_solicitante') {
-      const uid = instancia.solicitante_uid;
-      if (!uid) return null;
-      const u = (globalScope.USUARIOS || []).find(x => x.uid === uid || x.id === uid);
-      return u?.gestor_uid || u?.gestor || null;
-    }
-    // Dinâmico: gestor_executor — gestor de quem executou a etapa anterior
-    if (valorPapel === 'gestor_executor') {
-      const executorUid = instancia.ultimo_executor_uid;
-      if (!executorUid) return null;
-      const u = (globalScope.USUARIOS || []).find(x => x.uid === executorUid || x.id === executorUid);
-      return u?.gestor_uid || u?.gestor || null;
-    }
-    // Dinâmico: campo:NOME_DO_CAMPO
-    if (valorPapel.startsWith('campo:')) {
-      const campo = valorPapel.slice(6);
-      const dadosBase = dadosForm ?? instancia.dados_consolidados ?? {};
-      return dadosBase[campo] ?? null;
-    }
-    // Dinâmico: grupo:GRUPO_ID  → null (qualquer membro do grupo assume)
-    if (valorPapel.startsWith('grupo:')) return null;
-    // assume UID direto
-    return valorPapel;
-  }
-
-  function _wfContextoNotificacaoNo(instancia, no, prazo) {
-    const prazoStr = prazo ? prazo.toLocaleDateString('pt-BR') : 'sem prazo';
-    return {
-      processo: {
-        titulo: instancia.titulo,
-        id: instancia.id,
-        numero: instancia.numero || instancia.id.slice(-6).toUpperCase(),
-      },
-      etapa: { nome: no.nome },
-      solicitante: { nome: (globalScope.USUARIOS || []).find(u => u.uid === instancia.solicitante_uid)?.nome || '' },
-      prazo: prazoStr,
-    };
-  }
-
-  function _wfMensagensNotificacaoNo(no, ctxNotif) {
-    return {
-      titulo: _interpolarTemplate(no.config?.titulo_notificacao || 'Nova etapa: {{etapa.nome}}', ctxNotif),
-      mensagem: _interpolarTemplate(
-        no.config?.mensagem_notificacao || 'Processo "{{processo.titulo}}" — etapa "{{etapa.nome}}" aguarda sua ação.',
-        ctxNotif,
-      ),
-    };
-  }
-
-  async function _wfCriarNotificacaoTarefa(destinatarioUid, titulo, mensagem, instanciaId, tarefaId) {
-    if (!destinatarioUid) return;
-    await _addDoc('wf_notificacoes', {
-      destinatario_uid: destinatarioUid,
-      tipo: 'tarefa_criada',
-      titulo,
-      mensagem,
-      instancia_id: instanciaId,
-      tarefa_id: tarefaId,
-      lida: false,
-    });
-  }
-
-  async function _wfCriarTarefaNo(instancia, no, cfg, prazo, papel, papelAlvo, acoesDisp) {
-    const uidResp = _resolverPapel(papelAlvo, instancia);
-    const grupoId = papelAlvo.startsWith('grupo:') ? papelAlvo.slice(6) : null;
-    const tarefaId = await _addDoc('wf_tarefa_workflows', {
-      instancia_id: instancia.id,
-      processo_nome: instancia.titulo,
-      processo_id: instancia.processo_id || null,
-      etapa_modelo_id: no.id,
-      etapa_nome: no.nome,
-      etapa_desc: cfg.instrucoes || null,
-      etapa_tipo: no.tipo,
-      responsavel_uid: uidResp,
-      papel_responsavel: papel,
-      papel_alvo: papelAlvo,
-      grupo_id: grupoId,
-      acoes_disponiveis: acoesDisp,
-      acao_tomada: null,
-      parecer: null,
-      exige_parecer: !!cfg.exige_parecer,
-      formulario_id: cfg.formulario_id || null,
-      status: 'pendente',
-      prazo,
-      dados_formulario: {},
-      observacao: null,
-    });
-    return { tarefaId, uidResp };
-  }
-
-  async function _wfNotificarGrupoDaTarefa(tarefaId, titulo, mensagem, instanciaId) {
-    const tarefaDoc = await _getDoc('wf_tarefa_workflows', tarefaId);
-    const papelAlvoTarefa = tarefaDoc?.papel_alvo || '';
-    if (!papelAlvoTarefa.startsWith('grupo:')) return;
-    const grupoId = papelAlvoTarefa.slice(6);
-    try {
-      const grupo = await _getDoc('wf_grupos', grupoId);
-      for (const email of (grupo?.membros_email || [])) {
-        const u = (globalScope.USUARIOS || []).find(x => x.email === email);
-        const destUid = u?.uid || (email === globalScope.usuarioLogado?.email ? _uid() : null);
-        if (!destUid) continue;
-        await _wfCriarNotificacaoTarefa(destUid, titulo, mensagem, instanciaId, tarefaId);
-      }
-    } catch (error_) {
-      _wfReportarErroNaoCritico(`grupo ${grupoId} nao encontrado para notificacao`, error_);
-    }
-  }
-
-  async function _wfCriarComentarioAutomaticoNo(cfg, criados, instancia, no, ctxNotif) {
-    if (!(cfg.comentario_automatico && criados.length)) return;
-    const textoAuto = _interpolarTemplate(cfg.comentario_automatico, ctxNotif);
-    if (!textoAuto.trim()) return;
-    await _addDoc('wf_comentarios', {
-      tarefa_id: criados[0],
-      instancia_id: instancia.id,
-      etapa_id: no.id,
-      etapa_nome: no.nome,
-      autor_uid: 'sistema',
-      texto: textoAuto,
-      respondendo_a: null,
-    });
-  }
-
-  async function _wfNotificarCientesNo(cientes, instancia, no) {
-    for (const ciente of cientes) {
-      const uidC = _resolverPapel(ciente, instancia);
-      if (!uidC) continue;
-      await _addDoc('wf_notificacoes', {
-        destinatario_uid: uidC,
-        tipo: 'tarefa_criada',
-        titulo: `Ciência: ${no.nome}`,
-        mensagem: `Processo "${instancia.titulo}" chegou à etapa "${no.nome}".`,
-        instancia_id: instancia.id,
-        lida: false,
-      });
-    }
-  }
-
-  async function _wfCriarTarefaPadraoSolicitante(instancia, no, cfg, prazo, acoesNo, tituloNotif, msgNotif) {
-    const { tarefaId, uidResp } = await _wfCriarTarefaNo(instancia, no, cfg, prazo, 'executor', 'solicitante', acoesNo);
-    await _wfCriarNotificacaoTarefa(uidResp, tituloNotif, msgNotif, instancia.id, tarefaId);
-    return tarefaId;
-  }
-
-  // Cria as tarefas de um nó do canvas, uma por papel preenchido
-  async function _criarTarefasDoNo(instancia, no) {
-    const cfg = no.config ?? {};
-    const papeis = cfg.papeis ?? {};
-    const acoesNo = cfg.acoes?.length ? cfg.acoes : ['avancar'];
-    const prazo = cfg.sla_horas > 0 ? new Date(Date.now() + cfg.sla_horas * 3600000) : null;
-    const acoesAprovador = acoesNo.filter(a => a !== 'avancar');
-
-    const mapaPapelAcoes = {
-      executor: acoesNo,
-      revisor: ['avancar'],
-      aprovador: acoesAprovador.length ? acoesAprovador : ['aprovar', 'rejeitar'],
-    };
-
-    const criados = [];
-    const ctxNotif = _wfContextoNotificacaoNo(instancia, no, prazo);
-    const { titulo: tituloNotif, mensagem: msgNotif } = _wfMensagensNotificacaoNo(no, ctxNotif);
-
-    for (const papel of ['executor','revisor','aprovador']) {
-      const valor = papeis[papel];
-      if (!valor) continue;
-      const acoesDisp = mapaPapelAcoes[papel];
-      const { tarefaId, uidResp } = await _wfCriarTarefaNo(instancia, no, cfg, prazo, papel, valor, acoesDisp);
-      await _wfCriarNotificacaoTarefa(uidResp, tituloNotif, msgNotif, instancia.id, tarefaId);
-      criados.push(tarefaId);
-    }
-
-    for (const tarefaId of criados) {
-      await _wfNotificarGrupoDaTarefa(tarefaId, tituloNotif, msgNotif, instancia.id);
-    }
-
-    await _wfCriarComentarioAutomaticoNo(cfg, criados, instancia, no, ctxNotif);
-
-    await _wfNotificarCientesNo(papeis.ciente || [], instancia, no);
-
-    if (!criados.length) {
-      const tarefaId = await _wfCriarTarefaPadraoSolicitante(instancia, no, cfg, prazo, acoesNo, tituloNotif, msgNotif);
-      criados.push(tarefaId);
-    }
-    return criados;
-  }
-
-  // Avança fluxo baseado no canvas do modelo
-  async function _avancarFluxoCanvas(instancia, noOrigemId, acao) {
-    const canvas = instancia.canvas;
-
-    // Rejeitar/devolver: retorna ao nó anterior (aresta de entrada em noOrigemId)
-    if (acao === 'rejeitar' || acao === 'devolver') {
-      const arestas = canvas.arestas || [];
-      const nos = canvas.nos || [];
-      const arestaEntrada = arestas.find(a => a.destino === noOrigemId);
-      const noAnterior = arestaEntrada ? nos.find(n => n.id === arestaEntrada.origem) : null;
-      if (noAnterior && noAnterior.tipo !== 'inicio') {
-        await _updateDoc('wf_instancia_processos', instancia.id, { no_atual_id: noAnterior.id, etapa_atual_id: noAnterior.id });
-        await _criarTarefasDoNo(instancia, noAnterior);
-        await _registrarHistorico(instancia.id, 'etapa_retornada', _uid(), noAnterior.id, null,
-          `Etapa devolvida para "${noAnterior.nome}".`, { acao });
-        return;
-      }
-    }
-
-    const prox = _proximoNoExecutavel(canvas, noOrigemId, acao, instancia.dados_consolidados ?? {});
-    if (!prox || prox.tipo === 'fim') {
-      await _updateDoc('wf_instancia_processos', instancia.id, {
-        status: 'concluido', concluido_em: new Date(), no_atual_id: null, etapa_atual_id: null,
-      });
-      await _registrarHistorico(instancia.id, 'instancia_concluida', null, null, null, 'Processo concluído.', {});
-      return;
-    }
-    await _updateDoc('wf_instancia_processos', instancia.id, { no_atual_id: prox.id, etapa_atual_id: prox.id });
-    await _criarTarefasDoNo(instancia, prox);
-    await _registrarHistorico(instancia.id, 'etapa_avancada', null, prox.id, null,
-      `Avançou para etapa "${prox.nome}".`, { acao });
-  }
-
-  // Avança para a próxima etapa do snapshot sequencial
-  async function _avancarFluxo(instancia, etapaOrigemId, acao) {
-    const etapas = instancia.snapshot_etapas || [];
-    const idx = etapas.findIndex(e => e.id === etapaOrigemId);
-
-    // Rejeitar/devolver: retorna à etapa anterior
-    if (acao === 'rejeitar' || acao === 'devolver') {
-      const etapaAnterior = idx > 0 ? etapas[idx - 1] : null;
-      if (etapaAnterior) {
-        await _updateDoc('wf_instancia_processos', instancia.id, { etapa_atual_id: etapaAnterior.id });
-        await _criarTarefa(instancia, etapaAnterior);
-        await _registrarHistorico(instancia.id, 'etapa_retornada', _uid(), etapaAnterior.id, null,
-          `Etapa devolvida para "${etapaAnterior.nome}".`, { acao });
-        return;
-      }
-    }
-
-    const proxEtapa = etapas[idx + 1];
-    if (!proxEtapa) {
-      // Última etapa — conclui o processo
-      await _updateDoc('wf_instancia_processos', instancia.id, {
-        status: 'concluido', concluido_em: new Date(), etapa_atual_id: null,
-      });
-      await _registrarHistorico(instancia.id, 'instancia_concluida', null, null, null, 'Processo concluído.', {});
-      return;
-    }
-
-    await _updateDoc('wf_instancia_processos', instancia.id, { etapa_atual_id: proxEtapa.id });
-    await _criarTarefa(instancia, proxEtapa);
-    await _registrarHistorico(instancia.id, 'etapa_avancada', null, proxEtapa.id, null,
-      `Avançou para etapa "${proxEtapa.nome}".`, {});
-  }
-
-  async function _criarTarefa(instancia, etapa) {
-    const uid = instancia.solicitante_uid;
-    const prazo = etapa.sla_horas > 0
-      ? new Date(Date.now() + etapa.sla_horas * 3600000)
-      : null;
-
-    const tarefaId = await _addDoc('wf_tarefa_workflows', {
-      instancia_id: instancia.id,
-      processo_nome: instancia.titulo,
-      processo_id: instancia.processo_id,
-      etapa_modelo_id: etapa.id,
-      etapa_nome: etapa.nome,
-      etapa_desc: etapa.desc || null,
-      etapa_tipo: etapa.tipo || 'Atividade',
-      responsavel_uid: uid,
-      status: 'pendente',
-      prazo,
-      dados_formulario: {},
-      observacao: null,
-    });
-
-    await _addDoc('wf_notificacoes', {
-      destinatario_uid: uid,
-      tipo: 'tarefa_criada',
-      titulo: `Nova etapa: ${etapa.nome}`,
-      mensagem: `Processo "${instancia.titulo}" — etapa "${etapa.nome}" aguarda sua ação.`,
-      instancia_id: instancia.id,
-      tarefa_id: tarefaId,
-      lida: false,
-    });
-
-    return tarefaId;
   }
 
   async function _registrarHistorico(instanciaId, tipo, usuarioUid, etapaId, tarefaId, descricao, dados) {
@@ -1287,19 +988,23 @@
   async function wfCarregarInstancias(acrescentar = false) {
     const el = document.getElementById('wf-lista-instancias');
     if (!el) return;
-    if (!acrescentar) { el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Carregando…</div>'; _st.instanciasCursor = null; }
+    if (!acrescentar) {
+      el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Carregando…</div>';
+      _st.instanciasCursor = 0;
+      _st.instanciasLista = null;
+    }
     try {
       const uid = _uid();
-      if (!uid) { el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Usuário não autenticado.</div>'; return; }
-      const { where, limit, startAfter, query, collection, getDocs } = globalScope.fb();
-      const db = _db();
+      if (!uid) {
+        _st.instanciasLista = [];
+        el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Usuário não autenticado.</div>';
+        return;
+      }
+      if (!_st.instanciasLista) {
+        _st.instanciasLista = await _wfApiRequest('wfInstancias');
+      }
 
-      const constraints = [where('solicitante_uid', '==', uid), limit(_WF_PAGE)];
-      if (_st.instanciasCursor) constraints.push(startAfter(_st.instanciasCursor));
-      const snap = await getDocs(query(collection(db, 'wf_instancia_processos'), ...constraints));
-      _st.instanciasCursor = snap.docs[snap.docs.length - 1] || null;
-
-      let instancias = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      let instancias = Array.isArray(_st.instanciasLista) ? _st.instanciasLista.slice() : [];
       instancias.sort((a, b) => {
         const ta = a._criado_em?.seconds ?? (a._criado_em ? a._criado_em.getTime() / 1000 : 0);
         const tb = b._criado_em?.seconds ?? (b._criado_em ? b._criado_em.getTime() / 1000 : 0);
@@ -1320,19 +1025,22 @@
         el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Nenhum processo encontrado.</div>';
         return;
       }
+      const quantidade = acrescentar ? _st.instanciasCursor + _WF_PAGE : _WF_PAGE;
+      _st.instanciasCursor = Math.min(quantidade, instanciasFiltradas.length);
+      const instanciasVisiveis = instanciasFiltradas.slice(0, _st.instanciasCursor);
       const statusLabels = { em_andamento:'Em andamento', concluido:'Concluído', cancelado:'Cancelado', suspenso:'Suspenso' };
       const statusCores = { em_andamento:'#3b82f6', concluido:'#10b981', cancelado:'#ef4444', suspenso:'#f59e0b' };
       const podeGerenciar = globalScope.isEP?.() || globalScope.isGestor?.();
       const renderer = _renderer();
       const cards = renderer
-        ? renderer.renderInstanciasCards(instanciasFiltradas, {
+        ? renderer.renderInstanciasCards(instanciasVisiveis, {
           esc: _esc,
           badge: _badge,
           podeGerenciar,
           statusLabels,
           statusCores,
         })
-        : instanciasFiltradas.map(i => {
+        : instanciasVisiveis.map(i => {
         const etapas = i.snapshot_etapas || [];
         const idxAtual = etapas.findIndex(e => e.id === i.etapa_atual_id);
         let pct = 0;
@@ -1373,7 +1081,7 @@
         `);
       }).join('');
 
-      const temMais = snap.docs.length === _WF_PAGE;
+      const temMais = _st.instanciasCursor < instanciasFiltradas.length;
       const btnMais = temMais ? `<div style="text-align:center;margin-top:12px"><button type="button" class="btn btn-sm" onclick="wfCarregarInstancias(true)">Carregar mais</button></div>` : '';
 
       if (acrescentar) {
@@ -1552,28 +1260,16 @@
     const titulo = `${proc.nome} — ${new Date().toLocaleDateString('pt-BR')}`;
 
     try {
-      const instanciaId = await _addDoc('wf_instancia_processos', {
-        processo_id: processoId,
-        processo_nome: proc.nome,
-        titulo,
-        status: 'em_andamento',
-        etapa_atual_id: snapshotEtapas[0].id,
-        solicitante_uid: uid,
-        snapshot_etapas: snapshotEtapas,
-        fluxo_origem: usaToBe ? 'tobe' : 'asis',
-        dados_consolidados: {},
-        concluido_em: null,
+      await _wfApiRequest('wfInstancias', '', {
+        method: 'POST',
+        body: {
+          processo_id: processoId,
+          processo_nome: proc.nome,
+          titulo,
+          snapshot_etapas: snapshotEtapas,
+          fluxo_origem: usaToBe ? 'tobe' : 'asis',
+        },
       });
-
-      await _registrarHistorico(instanciaId, 'instancia_criada', uid, null, null,
-        `Workflow iniciado a partir do processo "${proc.nome}" (${usaToBe ? 'TO BE' : 'AS IS'}).`,
-        { processo_id: processoId });
-
-      // Cria a primeira tarefa
-      await _criarTarefa(
-        { id: instanciaId, titulo, processo_id: processoId, solicitante_uid: uid, snapshot_etapas: snapshotEtapas },
-        snapshotEtapas[0],
-      );
 
       alert(`Workflow iniciado! A primeira etapa "${snapshotEtapas[0].nome}" foi criada nas suas tarefas.`);
       wfNavWorkflow('tarefas');
@@ -1850,6 +1546,117 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       condicoes: [],                // [{ campo, operador, valor }]
       operador_logico: 'AND',
       padrao: false,
+    };
+  }
+
+  function _wfStringOuNull(valor) {
+    if (valor == null || valor === '') return null;
+    const texto = String(valor).trim();
+    return texto || null;
+  }
+
+  function _wfNormalizarCondicaoPersistencia(condicao) {
+    return {
+      campo: _wfStringOuNull(condicao?.campo),
+      operador: _wfStringOuNull(condicao?.operador) || '=',
+      valor: condicao?.valor ?? null,
+    };
+  }
+
+  function _wfNormalizarConfigNoPersistencia(config) {
+    const base = _configPadrao();
+    const papeis = config?.papeis || {};
+    const acoes = Array.isArray(config?.acoes) ? config.acoes.filter(Boolean) : [];
+    return {
+      papeis: {
+        executor: _wfStringOuNull(papeis.executor) || 'solicitante',
+        revisor: _wfStringOuNull(papeis.revisor),
+        aprovador: _wfStringOuNull(papeis.aprovador),
+        ciente: Array.isArray(papeis.ciente) ? papeis.ciente.map(_wfStringOuNull).filter(Boolean) : [],
+      },
+      acoes: acoes.length ? Array.from(new Set(acoes)) : base.acoes.slice(),
+      formulario_id: _wfStringOuNull(config?.formulario_id),
+      sla_horas: Math.max(0, Number(config?.sla_horas) || 0),
+      instrucoes: String(config?.instrucoes || '').trim(),
+      exige_parecer: !!config?.exige_parecer,
+      titulo_notificacao: String(config?.titulo_notificacao || '').trim(),
+      mensagem_notificacao: String(config?.mensagem_notificacao || '').trim(),
+      comentario_automatico: String(config?.comentario_automatico || '').trim(),
+      acoes_condicionais: Array.isArray(config?.acoes_condicionais)
+        ? config.acoes_condicionais.map((regra) => ({
+          acao: _wfStringOuNull(regra?.acao) || 'avancar',
+          campo: _wfStringOuNull(regra?.campo),
+          operador: _wfStringOuNull(regra?.operador) || '=',
+          valor: regra?.valor ?? null,
+        }))
+        : [],
+      campos_condicionais: Array.isArray(config?.campos_condicionais)
+        ? config.campos_condicionais.map((regra) => ({
+          campo_id: _wfStringOuNull(regra?.campo_id),
+          operador_logico: regra?.operador_logico === 'OR' ? 'OR' : 'AND',
+          acao: ['mostrar', 'ocultar', 'obrigatorio', 'opcional'].includes(regra?.acao) ? regra.acao : 'mostrar',
+          condicoes: Array.isArray(regra?.condicoes)
+            ? regra.condicoes.map(_wfNormalizarCondicaoPersistencia)
+            : [],
+        }))
+        : [],
+      condicoes: Array.isArray(config?.condicoes)
+        ? config.condicoes.map(_wfNormalizarCondicaoPersistencia)
+        : [],
+      operador_logico: config?.operador_logico === 'OR' ? 'OR' : 'AND',
+      padrao: !!config?.padrao,
+    };
+  }
+
+  function _wfNormalizarConfigNosPersistencia(configNos) {
+    if (!configNos || typeof configNos !== 'object' || Array.isArray(configNos)) return {};
+    return Object.fromEntries(
+      Object.entries(configNos).map(([noId, config]) => [String(noId), _wfNormalizarConfigNoPersistencia(config)])
+    );
+  }
+
+  function _wfNormalizarCanvasPersistencia(canvas) {
+    return {
+      nos: Array.isArray(canvas?.nos)
+        ? canvas.nos.map((no) => ({
+          id: _wfStringOuNull(no?.id),
+          tipo: _wfStringOuNull(no?.tipo) || 'tarefa',
+          nome: String(no?.nome || '').trim(),
+          x: Number(no?.x) || 0,
+          y: Number(no?.y) || 0,
+          config: _wfNormalizarConfigNoPersistencia(no?.config || {}),
+        })).filter((no) => no.id)
+        : [],
+      arestas: Array.isArray(canvas?.arestas)
+        ? canvas.arestas.map((aresta) => ({
+          id: _wfStringOuNull(aresta?.id),
+          origem: _wfStringOuNull(aresta?.origem),
+          destino: _wfStringOuNull(aresta?.destino),
+          acao: _wfStringOuNull(aresta?.acao) || 'avancar',
+          label: String(aresta?.label || aresta?.acao || 'Avançar').trim(),
+          condicoes: Array.isArray(aresta?.condicoes)
+            ? aresta.condicoes.map(_wfNormalizarCondicaoPersistencia)
+            : [],
+          operador_logico: aresta?.operador_logico === 'OR' ? 'OR' : 'AND',
+          padrao: !!aresta?.padrao,
+        })).filter((aresta) => aresta.id && aresta.origem && aresta.destino)
+        : [],
+    };
+  }
+
+  function _wfMontarModeloPersistencia(dadosBase) {
+    return {
+      nome: String(dadosBase?.nome || '').trim() || 'Novo workflow',
+      descricao: String(dadosBase?.descricao || '').trim(),
+      status: dadosBase?.status || 'rascunho',
+      versao: Math.max(1, Number(dadosBase?.versao) || 1),
+      processo_origem_id: _wfStringOuNull(dadosBase?.processo_origem_id),
+      processo_origem_nome: _wfStringOuNull(dadosBase?.processo_origem_nome),
+      fluxo_origem: _wfStringOuNull(dadosBase?.fluxo_origem),
+      bpmn_xml: String(dadosBase?.bpmn_xml || '').trim(),
+      config_nos: _wfNormalizarConfigNosPersistencia(dadosBase?.config_nos || {}),
+      canvas: _wfNormalizarCanvasPersistencia(dadosBase?.canvas || { nos: [], arestas: [] }),
+      criado_por: _wfStringOuNull(dadosBase?.criado_por) || _uid(),
     };
   }
 
@@ -3007,17 +2814,18 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       const canvas = _wfSyncCanvas();
       const nome = document.getElementById('wf-designer-nome')?.value.trim() || _wfModeloAtual.nome;
       const descricao = document.getElementById('wf-designer-desc')?.value.trim() || '';
-      const dados = {
+      const dados = _wfMontarModeloPersistencia({
         nome, descricao,
         status: _wfModeloAtual.status || 'rascunho',
         versao: _wfModeloAtual.versao || 1,
         processo_origem_id: _wfModeloAtual.processo_origem_id || null,
+        processo_origem_nome: _wfModeloAtual.processo_origem_nome || null,
         fluxo_origem: _wfModeloAtual.fluxo_origem || null,
         bpmn_xml: xml,
         config_nos: _wfConfigNos,
         canvas,
         criado_por: _wfModeloAtual.criado_por || _uid(),
-      };
+      });
       if (_wfModeloAtual.id) {
         await _updateDoc('wf_processo_modelos', _wfModeloAtual.id, dados);
       } else {
@@ -3209,34 +3017,6 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     if (typeof el._atribCallback === 'function') el._atribCallback(null);
   }
 
-  async function _wfCriarInstanciaDeModelo(modelo, primeira, uid, vinculo) {
-    const titulo = `${modelo.nome} — ${new Date().toLocaleDateString('pt-BR')}`;
-    const anoAtual = new Date().getFullYear();
-    const instanciaId = await _addDoc('wf_instancia_processos', {
-      processo_id: modelo.processo_origem_id || null,
-      modelo_id: modelo.id,
-      processo_nome: modelo.nome,
-      titulo,
-      numero: `${anoAtual}-${Date.now().toString().slice(-6)}`,
-      status: 'em_andamento',
-      no_atual_id: primeira.id,
-      etapa_atual_id: primeira.id,
-      solicitante_uid: uid,
-      ultimo_executor_uid: null,
-      grupo_id: vinculo.grupo_id || null,
-      grupo_nome: vinculo.grupo_nome || null,
-      canvas: modelo.canvas,
-      snapshot_etapas: (modelo.canvas?.nos || [])
-        .filter(n => n.tipo === 'tarefa' || n.tipo === 'aprovacao')
-        .map(n => ({ id: n.id, nome: n.nome, tipo: n.tipo })),
-      dados_consolidados: {},
-      concluido_em: null,
-    });
-    await _registrarHistorico(instanciaId, 'instancia_criada', uid, null, null,
-      `Workflow "${modelo.nome}" iniciado a partir de template.`, { modelo_id: modelo.id, grupo_id: vinculo.grupo_id || null });
-    return { instanciaId, titulo };
-  }
-
   // — Iniciar uma instância a partir de um modelo do designer —
   async function wfIniciarDeModelo(modeloId) {
     const uid = _uid();
@@ -3253,9 +3033,16 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     _wfAbrirModalAtribuicao(modelo.nome, async (vinculo) => {
       if (vinculo === null) return;
       try {
-        const { instanciaId, titulo } = await _wfCriarInstanciaDeModelo(modelo, primeira, uid, vinculo);
-        const instObj = { id: instanciaId, titulo, processo_id: modelo.processo_origem_id, solicitante_uid: uid, grupo_id: vinculo.grupo_id || null };
-        await _criarTarefasDoNo(instObj, primeira);
+        const titulo = `${modelo.nome} — ${new Date().toLocaleDateString('pt-BR')}`;
+        await _wfApiRequest('wfInstancias', '', {
+          method: 'POST',
+          body: {
+            processo_modelo_id: modelo.id,
+            titulo,
+            grupo_id: vinculo.grupo_id || null,
+            grupo_nome: vinculo.grupo_nome || null,
+          },
+        });
         alert(`Workflow iniciado! Etapa "${primeira.nome}" criada.`);
         wfNavWorkflow(globalScope.isSolicitante?.() ? 'instancias' : 'tarefas');
       } catch (e) {
@@ -3393,10 +3180,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     const tl = document.getElementById('wf-hist-timeline');
     tl.innerHTML = '<div style="color:var(--ink3);font-size:14px">Carregando…</div>';
     try {
-      const { where } = globalScope.fb();
-      const eventos = (await _getAll('wf_historico_workflows',
-        where('instancia_id', '==', instanciaId),
-      )).sort((a, b) => {
+      const eventos = (await _wfApiRequest('wfInstanciaItem', `/${encodeURIComponent(instanciaId)}/historico`)).sort((a, b) => {
         const ta = a._criado_em?.seconds ?? (a._criado_em ? a._criado_em.getTime() / 1000 : 0);
         const tb = b._criado_em?.seconds ?? (b._criado_em ? b._criado_em.getTime() / 1000 : 0);
         return ta - tb;
@@ -3429,10 +3213,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     const elComentPorEtapa = document.getElementById('wf-hist-comentarios-por-etapa');
     if (elComentPorEtapa) {
       try {
-        const { where: whereC } = globalScope.fb();
-        const todosComentarios = (await _getAll('wf_comentarios',
-          whereC('instancia_id', '==', instanciaId),
-        )).sort((a, b) => (a._criado_em?.seconds ?? 0) - (b._criado_em?.seconds ?? 0));
+        const todosComentarios = await _wfBuscarComentarios({ instanciaId });
 
         if (todosComentarios.length === 0) {
           elComentPorEtapa.innerHTML = '<div style="color:var(--ink3);font-size:13px">Nenhum comentário registrado.</div>';
@@ -3470,27 +3251,10 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
   async function wfConfirmarCancelar(instanciaId) {
     const motivo = prompt('Motivo do cancelamento:');
     if (motivo === null) return;
-    const { where, writeBatch, doc } = globalScope.fb();
-
-    // Cancela tarefas abertas da instância em batch
-    const tarefasAbertas = await _getAll('wf_tarefa_workflows',
-      where('instancia_id', '==', instanciaId),
-      where('status', '==', 'pendente'),
-    );
-    if (tarefasAbertas.length) {
-      const batch = writeBatch(_db());
-      tarefasAbertas.forEach(t => {
-        batch.update(doc(_db(), 'wf_tarefa_workflows', t.id), {
-          status: 'cancelada',
-          cancelada_em: new Date(),
-        });
-      });
-      await batch.commit();
-    }
-
-    await _updateDoc('wf_instancia_processos', instanciaId, { status: 'cancelado', concluido_em: new Date() });
-    await _registrarHistorico(instanciaId, 'instancia_cancelada', _uid(),
-      null, null, `Processo cancelado. Motivo: ${motivo}`, { motivo, tarefas_canceladas: tarefasAbertas.length });
+    await _wfApiRequest('wfInstanciaItem', `/${encodeURIComponent(instanciaId)}/cancelar`, {
+      method: 'POST',
+      body: { motivo },
+    });
     wfCarregarInstancias();
   }
 
@@ -3513,14 +3277,9 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
         await wfConfirmarCancelar(instanciaId);
       }
 
-      await _updateDoc('wf_instancia_processos', instanciaId, {
-        excluida: true,
-        excluida_em: new Date(),
-        excluida_por_uid: _uid(),
+      await _wfApiRequest('wfInstanciaItem', `/${encodeURIComponent(instanciaId)}/excluir`, {
+        method: 'POST',
       });
-
-      await _registrarHistorico(instanciaId, 'instancia_excluida_logica', _uid(), null, null,
-        'Instância removida da listagem (exclusão lógica).', {});
 
       wfCarregarInstancias();
       if (_st.painelAtual === 'solicitacoes') wfCarregarSolicitacoes();
@@ -3795,10 +3554,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     if (!el) return;
     el.innerHTML = '<div style="color:var(--ink3);font-size:13px">Carregando comentários…</div>';
     try {
-      const { where } = globalScope.fb();
-      const comentarios = (await _getAll('wf_comentarios',
-        where('tarefa_id', '==', tarefaId),
-      )).sort((a, b) => (a._criado_em?.seconds ?? 0) - (b._criado_em?.seconds ?? 0));
+      const comentarios = await _wfBuscarComentarios({ tarefaId });
       _renderThreadComentarios(comentarios, el, true);
     } catch (e) {
       el.innerHTML = `<div style="color:#ef4444;font-size:13px">Erro: ${_esc(e.message)}</div>`;
@@ -3831,14 +3587,16 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     const texto = area?.value?.trim();
     if (!texto) return;
     try {
-      await _addDoc('wf_comentarios', {
-        tarefa_id: _st.tarefaAtual.id,
-        instancia_id: _st.tarefaAtual.instancia_id,
-        etapa_id: _st.tarefaAtual.etapa_modelo_id || null,
-        etapa_nome: _st.tarefaAtual.etapa_nome || null,
-        autor_uid: _uid(),
-        texto,
-        respondendo_a: _st._respondendoA || null,
+      await _wfApiRequest('wfComentarios', '', {
+        method: 'POST',
+        body: {
+          tarefa_id: _st.tarefaAtual.id,
+          instancia_id: _st.tarefaAtual.instancia_id,
+          etapa_id: _st.tarefaAtual.etapa_modelo_id || null,
+          etapa_nome: _st.tarefaAtual.etapa_nome || null,
+          texto,
+          respondendo_a: _st._respondendoA || null,
+        },
       });
       area.value = '';
       wfCancelarResposta();
@@ -3858,10 +3616,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
         where('instancia_id', '==', _st.instanciaAtual.id),
       )).sort((a, b) => (a._criado_em?.seconds ?? 0) - (b._criado_em?.seconds ?? 0));
 
-      const { where: whereC } = globalScope.fb();
-      const comentariosCSV = (await _getAll('wf_comentarios',
-        whereC('instancia_id', '==', _st.instanciaAtual.id),
-      )).sort((a, b) => (a._criado_em?.seconds ?? 0) - (b._criado_em?.seconds ?? 0));
+      const comentariosCSV = await _wfBuscarComentarios({ instanciaId: _st.instanciaAtual.id });
 
       const esc = v => `"${String(v ?? '').replaceAll('"', '""')}"`;
       const linhas = [
@@ -3874,8 +3629,9 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
             d.acao || '', d.parecer || '', h.descricao || ''].map(esc).join(',');
         }),
         ...comentariosCSV.map(c => {
-          const ts = c._criado_em?.seconds
-            ? new Date(c._criado_em.seconds * 1000).toLocaleString('pt-BR') : '';
+          const seconds = c.criado_em?.seconds ?? c._criado_em?.seconds ?? 0;
+          const ts = seconds
+            ? new Date(seconds * 1000).toLocaleString('pt-BR') : '';
           return [ts, 'comentario', _wfNomeUsuario(c.autor_uid, ''), c.etapa_nome || c.etapa_id || '',
             '', '', c.texto || ''].map(esc).join(',');
         }),
@@ -3899,10 +3655,10 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       const { where } = globalScope.fb();
       const [eventos, comentarios] = await Promise.all([
         _getAll('wf_historico_workflows', where('instancia_id', '==', _st.instanciaAtual.id)),
-        _getAll('wf_comentarios', where('instancia_id', '==', _st.instanciaAtual.id)),
+        _wfBuscarComentarios({ instanciaId: _st.instanciaAtual.id }),
       ]);
       eventos.sort((a, b) => (a._criado_em?.seconds ?? 0) - (b._criado_em?.seconds ?? 0));
-      comentarios.sort((a, b) => (a._criado_em?.seconds ?? 0) - (b._criado_em?.seconds ?? 0));
+      comentarios.sort((a, b) => (a.criado_em?.seconds ?? a._criado_em?.seconds ?? 0) - (b.criado_em?.seconds ?? b._criado_em?.seconds ?? 0));
 
       const esc = v => String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
       const ts = s => s?.seconds ? new Date(s.seconds * 1000).toLocaleString('pt-BR') : '—';
@@ -3930,7 +3686,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       const secaoComentarios = ordemGrupos.length ? `<h2>Comentários por etapa</h2>` + ordemGrupos.map(chave => {
         const linhas = gruposComent[chave].map(c => {
           const indent = c.respondendo_a ? 'padding-left:20px;color:#555' : '';
-          return `<tr><td style="${indent}">${esc(ts(c._criado_em))}</td><td style="${indent}">${esc(_wfNomeUsuario(c.autor_uid))}</td><td style="${indent}">${esc(c.texto)}</td></tr>`;
+          return `<tr><td style="${indent}">${esc(ts(c.criado_em || c._criado_em))}</td><td style="${indent}">${esc(_wfNomeUsuario(c.autor_uid))}</td><td style="${indent}">${esc(c.texto)}</td></tr>`;
         }).join('');
         return `<h3 style="font-size:11px;color:#3b82f6;text-transform:uppercase;margin:12px 0 4px">${esc(chave)}</h3>
         <table><thead><tr><th>Data/Hora</th><th>Autor</th><th>Comentário</th></tr></thead><tbody>${linhas}</tbody></table>`;
@@ -3978,13 +3734,9 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
   async function wfExcluirTarefa(tarefaId) {
     if (!confirm('Excluir esta tarefa permanentemente? Esta ação não pode ser desfeita.')) return;
     try {
-      const tarefa = await _getDoc('wf_tarefa_workflows', tarefaId);
-      await _deleteDoc('wf_tarefa_workflows', tarefaId);
-      if (tarefa?.instancia_id) {
-        await _registrarHistorico(tarefa.instancia_id, 'tarefa_excluida', _uid(),
-          tarefa.etapa_modelo_id || null, tarefaId,
-          `Tarefa "${tarefa.etapa_nome || tarefaId}" excluída manualmente.`, {});
-      }
+      await _wfApiRequest('wfTarefas', `/${encodeURIComponent(tarefaId)}/excluir`, {
+        method: 'POST',
+      });
       wfCarregarTarefas();
     } catch (e) {
       alert('Erro ao excluir tarefa: ' + e.message);
@@ -4020,29 +3772,13 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     const motivo = document.getElementById('wf-delegacao-motivo')?.value || '';
     if (!novoUid) { alert('Selecione um usuário.'); return; }
     try {
-      await _updateDoc('wf_tarefa_workflows', tarefaId, {
-        responsavel_uid: novoUid,
-        status: 'pendente',
-        iniciado_em: null,
+      await _wfApiRequest('wfTarefas', `/${encodeURIComponent(tarefaId)}/delegar`, {
+        method: 'POST',
+        body: {
+          novo_responsavel_uid: novoUid,
+          motivo,
+        },
       });
-      // Notifica o novo responsável
-      const tarefa = await _getDoc('wf_tarefa_workflows', tarefaId);
-      if (tarefa) {
-        const motivoTexto = motivo ? ` Motivo: ${motivo}` : '';
-        await _addDoc('wf_notificacoes', {
-          destinatario_uid: novoUid,
-          tipo: 'tarefa_delegada',
-          titulo: `Tarefa delegada: ${tarefa.etapa_nome}`,
-          mensagem: `A tarefa "${tarefa.etapa_nome}" do processo "${tarefa.processo_nome}" foi delegada a você.${motivoTexto}`,
-          instancia_id: tarefa.instancia_id,
-          tarefa_id: tarefaId,
-          lida: false,
-        });
-        await _registrarHistorico(tarefa.instancia_id, 'tarefa_delegada', _uid(),
-          tarefa.etapa_modelo_id, tarefaId,
-          `Tarefa delegada para usuário ${novoUid}.${motivoTexto}`,
-          { novoResponsavel: novoUid, motivo });
-      }
       wfFecharDelegacao();
       wfCarregarTarefas();
     } catch (e) {
@@ -4055,8 +3791,9 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
   async function wfSuspenderInstancia(instanciaId) {
     if (!confirm('Suspender este processo? Ele poderá ser retomado depois.')) return;
     try {
-      await _updateDoc('wf_instancia_processos', instanciaId, { status: 'suspenso', suspenso_em: new Date() });
-      await _registrarHistorico(instanciaId, 'instancia_suspensa', _uid(), null, null, 'Processo suspenso.', {});
+      await _wfApiRequest('wfInstanciaItem', `/${encodeURIComponent(instanciaId)}/suspender`, {
+        method: 'POST',
+      });
       wfCarregarInstancias();
     } catch (e) {
       alert('Erro ao suspender: ' + e.message);
@@ -4066,8 +3803,9 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
   async function wfRetomarInstancia(instanciaId) {
     if (!confirm('Retomar este processo?')) return;
     try {
-      await _updateDoc('wf_instancia_processos', instanciaId, { status: 'em_andamento', suspenso_em: null });
-      await _registrarHistorico(instanciaId, 'instancia_retomada', _uid(), null, null, 'Processo retomado.', {});
+      await _wfApiRequest('wfInstanciaItem', `/${encodeURIComponent(instanciaId)}/retomar`, {
+        method: 'POST',
+      });
       wfCarregarInstancias();
     } catch (e) {
       alert('Erro ao retomar: ' + e.message);
@@ -4077,20 +3815,8 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
   // ── P3: Marcar todas as notificações como lidas ───────────────────────────
 
   async function wfMarcarTodasLidas() {
-    const uid = _uid();
-    if (!uid) return;
     try {
-      const { where, query, collection, getDocs, writeBatch, doc } = globalScope.fb();
-      const q = query(
-        collection(_db(), 'wf_notificacoes'),
-        where('destinatario_uid', '==', uid),
-        where('lida', '==', false),
-      );
-      const snap = await getDocs(q);
-      if (snap.empty) return;
-      const batch = writeBatch(_db());
-      snap.docs.forEach(d => batch.update(doc(_db(), 'wf_notificacoes', d.id), { lida: true }));
-      await batch.commit();
+      await _wfApiRequest('wfNotificacoes', '/marcar-todas-lidas', { method: 'POST' });
       _wfRenderNotifPanel();
     } catch (e) {
       alert('Erro: ' + e.message);
