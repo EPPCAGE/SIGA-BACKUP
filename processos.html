@@ -3084,11 +3084,33 @@ function go(page,btn){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('on'));
   document.getElementById('page-'+page).classList.add('on');
   if(btn)btn.classList.add('on');
-  ({fila:rFila,meusprocessos:rMeusProc,dashboard:rDash,processos:renderProcs,arq:rArq,solicitacoes:rSolicitacoes,faq:rFaq,indicadores:()=>{rInd();},notificacoes:()=>{rNotif();},auditoria:rAuditoria,publicacoes:()=>{rPub();},admin:renderAdmin,plano:rPlano,avisos:rAvisos,trilhas:rTrilhas,painelgestor:rPainelGestor,workflow:rWorkflow}[page]||function(){})();
+  _getPageRenderer(page)();
   // Mobile: close drawer, update title
   if(globalThis.innerWidth<=720){mobClose();}
   const ttl={fila:'Minhas tarefas',meusprocessos:'Meus Processos',dashboard:'Painel geral',processos:'Processos',arq:'Arquitetura',solicitacoes:'Solicitações',faq:'Base de FAQs',indicadores:'Indicadores',plano:'PAT',notificacoes:'Notificações',auditoria:'Análise de Aderência',publicacoes:'Publicações',admin:'Usuários',avisos:'Avisos',detalhe:'Processo',trilhas:'Trilhas de capacitação',painelgestor:'Painel do Gestor',workflow:'Workflow'};
   const el=document.getElementById('mob-page-title');if(el)el.textContent=ttl[page]||'SIGA 2.0';
+}
+function _getPageRenderer(page){
+  const renderer = ({
+    fila:rFila,
+    meusprocessos:rMeusProc,
+    dashboard:rDash,
+    processos:renderProcs,
+    arq:rArq,
+    solicitacoes:rSolicitacoes,
+    faq:rFaq,
+    indicadores:()=>{rInd();},
+    notificacoes:()=>{rNotif();},
+    auditoria:rAuditoria,
+    publicacoes:()=>{rPub();},
+    admin:renderAdmin,
+    plano:rPlano,
+    avisos:rAvisos,
+    trilhas:rTrilhas,
+    painelgestor:rPainelGestor,
+    workflow:globalThis.rWorkflow,
+  })[page];
+  return typeof renderer === 'function' ? renderer : function(){};
 }
 // Re-renderiza a página ativa sem alterar a navegação.
 // Chamada pelo listener de tempo real quando chegam dados de outro usuário.
@@ -3096,10 +3118,7 @@ function _renderCurrentPage(){
   const active = document.querySelector('.page.on');
   if(!active) return;
   const page = active.id.replace('page-','');
-  ({fila:rFila,meusprocessos:rMeusProc,dashboard:rDash,processos:renderProcs,
-    arq:rArq,solicitacoes:rSolicitacoes,faq:rFaq,indicadores:()=>{rInd();},
-    notificacoes:()=>{rNotif();},auditoria:rAuditoria,publicacoes:()=>{rPub();},
-    admin:renderAdmin,plano:rPlano,avisos:rAvisos,trilhas:rTrilhas,painelgestor:rPainelGestor,workflow:rWorkflow}[page]||function(){})();
+  _getPageRenderer(page)();
 }
 globalThis._renderCurrentPage = _renderCurrentPage;
 
