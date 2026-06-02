@@ -37,12 +37,12 @@ jobs:
 
       - name: Deploy das Cloud Functions
         env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           echo "$FIREBASE_SERVICE_ACCOUNT" > /tmp/sa.json
           npx firebase-tools deploy --only functions \
             --project gesproc2 \
-            --service-account /tmp/sa.json \
             --non-interactive
           rm /tmp/sa.json
 
