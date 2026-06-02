@@ -18307,7 +18307,7 @@ function gerarStatusReportPDF(){
 
   <div class="no-print" style="position:sticky;top:0;z-index:999;background:#1E3A5F;display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:8px 16px;margin:-1.2cm -1.5cm 1rem">
     <span style="color:#fff;font-size:12px;margin-right:auto;font-weight:600">📄 Relatório Executivo — use os botões para salvar</span>
-    <button onclick="(function(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([document.documentElement.outerHTML],{type:'text/html;charset=utf-8'}));a.download='relatorio-executivo.html';a.click();})()" style="padding:5px 14px;background:#fff;color:#1E3A5F;border:none;border-radius:5px;cursor:pointer;font-size:11px;font-weight:600">⬇ Baixar HTML</button>
+    <a id="pat-dl-btn" href="#" style="padding:5px 14px;background:#fff;color:#1E3A5F;border-radius:5px;cursor:pointer;font-size:11px;font-weight:600;text-decoration:none">⬇ Baixar HTML</a>
     <button onclick="window.print()" style="padding:5px 14px;background:#00C5B4;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:11px;font-weight:600">🖨 Imprimir / Salvar PDF</button>
   </div>
 
@@ -18429,6 +18429,11 @@ function gerarStatusReportPDF(){
   if(!w){toast('Bloqueio de popup. Permita popups para este site.','var(--amber)');return;}
   w.document.write(html);
   w.document.close();
+  // injeta link de download após a janela estar pronta
+  const _dlBlob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const _dlUrl=URL.createObjectURL(_dlBlob);
+  const _dlBtn=w.document.getElementById('pat-dl-btn');
+  if(_dlBtn){_dlBtn.href=_dlUrl;_dlBtn.download='relatorio-executivo-pat.html';}
 
   // Registra o relatório no histórico
   _registrarRelatorioPatEmitido(dtMesL, html);
