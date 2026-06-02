@@ -28,10 +28,7 @@
       "index.js"
     ],
     "rewrites": [
-      {
-        "source": "**",
-        "destination": "/processos.html"
-      }
+      { "source": "**", "destination": "/processos.html" }
     ],
     "headers": [
       {
