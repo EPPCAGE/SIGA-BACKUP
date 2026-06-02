@@ -996,7 +996,7 @@ function projRenderInicio() {
                style="left:${projRocketLeftStyle(pct)}"
                onmousedown="projRocketUnifiedDrag(event,'${pid}')"
                ontouchstart="projRocketUnifiedDrag(event,'${pid}')"
-               ondblclick="projAbrirDetalhe('${pid}')">
+               ondblclick="projAbrirDetalhe('${pid}', true)">
             <div class="proj-rocket-icon">
               ${p.icone_url ? `<img src="${projEsc(p.icone_url)}" style="width:100%;height:100%;object-fit:cover;border-radius:9px">` : emoji}
             </div>
@@ -1189,6 +1189,13 @@ function projApplyLaneOrder(lanesContainer, dragLaneEl, targetIdx) {
   projToast('Ordem atualizada','#0e7490');
 }
 function projRocketUnifiedDrag(e, projId) {
+  if(e.type === 'mousedown' && e.button !== 0) return;
+  if(!e.touches && e.detail >= 2) {
+    e.preventDefault();
+    e.stopPropagation();
+    projAbrirDetalhe(projId, true);
+    return;
+  }
   e.preventDefault();
   e.stopPropagation();
   const lane = document.getElementById('proj-lane-' + projId);
