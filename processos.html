@@ -18391,8 +18391,8 @@ function gerarStatusReportPDF(){
   ${tbl(['Processo','Objetivo do trabalho','Macroprocesso','Dono','EP','Prazo previsto','Entrega efetiva','Tempo total'],
     mapConclMes.map(p=>{
       const _tTotal=_calcTotalDias(p.ent);
-      const _pubMap=(publicacoes||[]).find(pub=>(pub.proc_ids||[]).includes(p.id)&&pub.url);
-      const _nomeMap=_pubMap?`<a href="${esc(safeUrl(_pubMap.url))}" style="color:#1E3A5F;text-decoration:underline" target="_blank" rel="noopener noreferrer">${_e(p.nome)}</a>`:_e(p.nome);
+      const _pubMap=(publicacoes||[]).find(pub=>((pub.proc_ids||[]).includes(p.id)||(pub.arq_ids||[]).includes(p.arq_id))&&pub.url);
+      const _nomeMap=_pubMap?`<a href="${_pubMap.url}" style="color:#1E3A5F;text-decoration:underline" target="_blank" rel="noopener noreferrer">${_e(p.nome)}</a>`:_e(p.nome);
       return [_nomeMap,_e(p.objetivo||'—'),_e(p.macro),_e(p.dono),_e(p.resp_ep),_d(p.ent?.dt_prev),_d(p.ent?.dt_efetiva||_fimCiclo(p)),_e(_tTotal)];
     })
   )}
@@ -18401,8 +18401,8 @@ function gerarStatusReportPDF(){
     audConclMes.map(p=>{
       const aud=p.auditoria||{};
       const corConf={'Conforme':'#16a34a','Conforme com ressalvas':'#d97706','Não conforme':'#dc2626'};
-      const _pubAud=(publicacoes||[]).find(pub=>(pub.proc_ids||[]).includes(p.id)&&pub.url);
-      const _nomeAud=_pubAud?`<a href="${esc(safeUrl(_pubAud.url))}" style="color:#1E3A5F;text-decoration:underline" target="_blank" rel="noopener noreferrer">${_e(p.nome)}</a>`:_e(p.nome);
+      const _pubAud=(publicacoes||[]).find(pub=>((pub.proc_ids||[]).includes(p.id)||(pub.arq_ids||[]).includes(p.arq_id))&&pub.url);
+      const _nomeAud=_pubAud?`<a href="${_pubAud.url}" style="color:#1E3A5F;text-decoration:underline" target="_blank" rel="noopener noreferrer">${_e(p.nome)}</a>`:_e(p.nome);
       return[_nomeAud,_e(p.macro),badge(aud.conformidade,corConf[aud.conformidade]||'#888'),_d(aud.data),(aud.achados_list||[]).length,(aud.achados_list||[]).filter(a=>a.acao_corretiva).length];
     })
   )}
