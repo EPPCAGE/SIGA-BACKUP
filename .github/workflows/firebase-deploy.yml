@@ -32,20 +32,6 @@ jobs:
             require('fs').writeFileSync('config.deploy.js', 'window.CONFIG = ' + JSON.stringify(cfg) + ';');
           "
 
-      - name: Instalar dependências das Cloud Functions
-        run: npm ci --prefix functions
-
-      - name: Deploy das Cloud Functions
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: |
-          echo "$FIREBASE_SERVICE_ACCOUNT" > /tmp/sa.json
-          npx firebase-tools deploy --only functions \
-            --project gesproc2 \
-            --non-interactive
-          rm /tmp/sa.json
-
       - name: Deploy para Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@0cbcac4740c2bfb00d632f0b863b57713124eb5a  # v0.9.0
         with:

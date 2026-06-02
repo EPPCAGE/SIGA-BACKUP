@@ -226,6 +226,11 @@
       while (normalized.endsWith('/')) normalized = normalized.slice(0, -1);
       return normalized;
     }
+    // Em produção usa caminhos relativos (same-origin via Firebase Hosting rewrites).
+    // Em localhost usa a URL direta das Cloud Functions (emulador ou produção).
+    if (typeof location !== 'undefined' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+      return '';
+    }
     const projectId = globalScope.fb?.()?.FIREBASE_CONFIG?.projectId || 'gesproc2';
     return `https://us-central1-${projectId}.cloudfunctions.net`;
   }

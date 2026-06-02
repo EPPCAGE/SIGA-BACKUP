@@ -28,10 +28,28 @@
       "index.js"
     ],
     "rewrites": [
-      {
-        "source": "**",
-        "destination": "/processos.html"
-      }
+      { "source": "/wfProcessosModelo/**", "function": "wfProcessosModelo" },
+      { "source": "/wfProcessosModelo",    "function": "wfProcessosModelo" },
+      { "source": "/wfArquiteturaProcessos", "function": "wfArquiteturaProcessos" },
+      { "source": "/wfProcessoModeloItem/**", "function": "wfProcessoModeloItem" },
+      { "source": "/wfProcessoModeloItem",    "function": "wfProcessoModeloItem" },
+      { "source": "/wfEtapas/**",          "function": "wfEtapas" },
+      { "source": "/wfEtapas",             "function": "wfEtapas" },
+      { "source": "/wfTransicoes/**",      "function": "wfTransicoes" },
+      { "source": "/wfTransicoes",         "function": "wfTransicoes" },
+      { "source": "/wfFormularios/**",     "function": "wfFormularios" },
+      { "source": "/wfFormularios",        "function": "wfFormularios" },
+      { "source": "/wfInstancias/**",      "function": "wfInstancias" },
+      { "source": "/wfInstancias",         "function": "wfInstancias" },
+      { "source": "/wfInstanciaItem/**",   "function": "wfInstanciaItem" },
+      { "source": "/wfInstanciaItem",      "function": "wfInstanciaItem" },
+      { "source": "/wfTarefas/**",         "function": "wfTarefas" },
+      { "source": "/wfTarefas",            "function": "wfTarefas" },
+      { "source": "/wfNotificacoes/**",    "function": "wfNotificacoes" },
+      { "source": "/wfNotificacoes",       "function": "wfNotificacoes" },
+      { "source": "/wfComentarios/**",     "function": "wfComentarios" },
+      { "source": "/wfComentarios",        "function": "wfComentarios" },
+      { "source": "**",                    "destination": "/processos.html" }
     ],
     "headers": [
       {
