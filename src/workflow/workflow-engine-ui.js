@@ -226,11 +226,6 @@
       while (normalized.endsWith('/')) normalized = normalized.slice(0, -1);
       return normalized;
     }
-    // Usa caminho relativo (same-origin via Firebase Hosting rewrites) para evitar CORS.
-    // Em dev local sem Hosting, cai no fallback direto para as Cloud Functions.
-    if (typeof location !== 'undefined' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-      return '';
-    }
     const projectId = globalScope.fb?.()?.FIREBASE_CONFIG?.projectId || 'gesproc2';
     return `https://us-central1-${projectId}.cloudfunctions.net`;
   }
