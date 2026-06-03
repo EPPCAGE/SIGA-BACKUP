@@ -228,8 +228,18 @@ function makeEngine(db) {
     if (alvo.startsWith('grupo:')) {
       return { responsavel_uid: null, papel_alvo: alvo, grupo_id: alvo.slice(6) || null };
     }
-    if (['ep', 'gestor', 'dono', 'gestor_solicitante', 'gestor_executor'].includes(alvo)) {
+    if (['ep', 'gestor', 'dono'].includes(alvo)) {
       return { responsavel_uid: null, papel_alvo: alvo, grupo_id: null };
+    }
+    if (alvo === 'gestor_solicitante') {
+      const usuario = await _buscarUsuarioPorUid(instancia.solicitante_uid);
+      const uid = usuario?.gestor_uid || usuario?.gestor || null;
+      return { responsavel_uid: uid, papel_alvo: alvo, grupo_id: null };
+    }
+    if (alvo === 'gestor_executor') {
+      const usuario = await _buscarUsuarioPorUid(instancia.ultimo_executor_uid);
+      const uid = usuario?.gestor_uid || usuario?.gestor || null;
+      return { responsavel_uid: uid, papel_alvo: alvo, grupo_id: null };
     }
     if (alvo.includes('@')) {
       const uid = await _resolverUidPorEmail(alvo);
