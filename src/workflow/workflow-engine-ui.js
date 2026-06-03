@@ -1328,16 +1328,23 @@
     _wfDesignerDirty = !!ativo;
     const d = document.getElementById('wf-bpmn-dirty');
     if (d) d.style.display = ativo ? 'inline' : 'none';
+    const btn = document.getElementById('wf-btn-salvar-modelo');
+    if (btn) {
+      btn.textContent = ativo ? '💾 Salvar modelo *' : 'Salvar modelo';
+      btn.style.borderColor = ativo ? 'var(--amber)' : '';
+      btn.style.color = ativo ? 'var(--amber)' : '';
+    }
   }
 
   function _wfAgendarAutosave() {
-    if (!_wfModeler || !_wfModeloAtual || _wfAutosaveEmCurso) return;
+    if (!_wfModeloAtual || _wfAutosaveEmCurso) return;
     _wfLimparAutosavePendente();
     _wfAutosaveTimer = setTimeout(() => {
       _wfAutosaveTimer = null;
       if (!_wfTemAlteracoesPendentes()) return;
       wfDesignerSalvar({ silent: true, source: 'autosave' }).catch((error_) => {
         _wfReportarErroNaoCritico('falha no autosave do workflow', error_);
+        if (typeof globalScope.toast === 'function') globalScope.toast('⚠ Autosave falhou: ' + (error_?.message || error_), 'var(--red)');
       });
     }, 1200);
   }
@@ -2166,7 +2173,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     _wfAtualizarAcoesFormularioNo(id);
     _wfRenderAcoesCond(id);
     _wfRenderCamposCond(id);
-    _wfRenderDestinoDevolucao(id);
+    setTimeout(() => _wfRenderDestinoDevolucao(id), 0);
     _wfAplicarModoPainel();
   }
 
@@ -2916,12 +2923,16 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
   }
 
   async function wfDesignerSalvar(opts = {}) {
-    if (!_wfModeler || !_wfModeloAtual) return;
+    if (!_wfModeloAtual) return;
     const silent = !!opts.silent;
     try {
       _wfAutosaveEmCurso = true;
-      const { xml } = await _wfModeler.saveXML({ format: true });
-      const canvas = _wfSyncCanvas();
+      let xml = _wfModeloAtual.bpmn_xml || '';
+      let canvas = _wfModeloAtual.canvas || { nos: [], arestas: [] };
+      if (_wfModeler) {
+        ({ xml } = await _wfModeler.saveXML({ format: true }));
+        canvas = _wfSyncCanvas();
+      }
       const nome = document.getElementById('wf-designer-nome')?.value.trim() || _wfModeloAtual.nome;
       const descricao = document.getElementById('wf-designer-desc')?.value.trim() || '';
       const dados = _wfMontarModeloPersistencia({
