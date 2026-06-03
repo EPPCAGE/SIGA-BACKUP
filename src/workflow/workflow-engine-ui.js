@@ -1837,14 +1837,6 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       }
     }
 
-    if (!_st.grupos.length) {
-      try {
-        _st.grupos = await _getAll('wf_grupos');
-      } catch (error_) {
-        _wfReportarErroNaoCritico('carregamento de equipes', error_);
-      }
-    }
-
     _wfPrepararCamposCabecalhoDesigner(modelo);
     _wfLimparAutosavePendente();
     _wfAtualizarIndicadorSujo(false);
@@ -4325,7 +4317,10 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     if (_wfTemAlteracoesPendentes() && _wfModeloAtual) {
       await wfDesignerSalvar({ silent: true }).catch(() => {});
     }
-    const modelo = await _getDoc('wf_processo_modelos', modeloId);
+    const [modelo] = await Promise.all([
+      _getDoc('wf_processo_modelos', modeloId),
+      _getAll('wf_grupos').then(g => { _st.grupos = g; }).catch(() => {}),
+    ]);
     if (!modelo) { alert('Modelo não encontrado.'); return; }
     _wfModeloAtual = modelo;
     // Sempre sincroniza _wfConfigNos com o modelo carregado do Firestore
