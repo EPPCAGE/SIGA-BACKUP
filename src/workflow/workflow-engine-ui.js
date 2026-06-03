@@ -4313,6 +4313,9 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     const modelo = await _getDoc('wf_processo_modelos', modeloId);
     if (!modelo) { alert('Modelo não encontrado.'); return; }
     _wfModeloAtual = modelo;
+    // Sempre sincroniza _wfConfigNos com o modelo carregado do Firestore
+    Object.keys(_wfConfigNos).forEach(k => delete _wfConfigNos[k]);
+    Object.assign(_wfConfigNos, modelo.config_nos ?? {});
     _wfPrepararCamposCabecalhoDesigner(modelo);
     _wfLimparAutosavePendente();
     _wfAtualizarIndicadorSujo(false);
