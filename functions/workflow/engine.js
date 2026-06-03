@@ -454,7 +454,14 @@ function makeEngine(db) {
   }
 
   async function _avancarFluxoCanvas(instancia, tarefa, acao) {
-    const canvas = instancia.canvas || { nos: [], arestas: [] };
+    // Usa o canvas do modelo publicado atual, não o snapshot da instância,
+    // pois o snapshot pode estar desatualizado se o modelo foi editado após o início.
+    const modelo = await col.modelos.doc(instancia.processo_modelo_id).get();
+    const modeloData = modelo.exists ? { id: modelo.id, ...modelo.data() } : null;
+    const canvas = (modeloData && _modeloUsaCanvas(modeloData))
+      ? modeloData.canvas
+      : (instancia.canvas || { nos: [], arestas: [] });
+
     const noAtual = _noCanvasPorId(canvas, tarefa.etapa_modelo_id);
     if (!noAtual) lancarErro(ERRO.ETAPA_NAO_ENCONTRADA, `Nó ${tarefa.etapa_modelo_id} não encontrado no canvas.`);
 
@@ -468,7 +475,8 @@ function makeEngine(db) {
 
     await col.instancias.doc(instancia.id).update({ no_atual_id: proximoNo.id, etapa_atual_id: proximoNo.id });
     await _registrarHistorico(instancia.id, 'etapa_avancada', null, proximoNo.id, null, `Fluxo avançou para "${proximoNo.nome || proximoNo.id}".`, { de: noAtual.id, para: proximoNo.id, acao: acao || null });
-    await _criarTarefaCanvas({ ...instancia, etapa_atual_id: proximoNo.id }, instancia, proximoNo);
+    const modeloParaConfig = modeloData || instancia;
+    await _criarTarefaCanvas({ ...instancia, etapa_atual_id: proximoNo.id }, modeloParaConfig, proximoNo);
   }
 
   async function _criarTarefa(instancia, etapa) {
