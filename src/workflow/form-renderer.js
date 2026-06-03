@@ -22,12 +22,13 @@
 
     const grid = document.createElement('div');
     grid.className = 'wf-form-campos';
+    grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:0 24px;';
     form.appendChild(grid);
 
     (schema.campos || []).forEach(campo => {
       const grupo = _renderizarCampo(campo, valoresIniciais[campo.id], somenteLeitura);
       if (campo.tipo === 'textarea' || campo.tipo === 'anexo' || campo.tipo === 'checkbox') {
-        grupo.classList.add('wf-campo-grupo--full');
+        grupo.style.gridColumn = '1 / -1';
       }
       grid.appendChild(grupo);
     });
@@ -39,14 +40,16 @@
     const grupo = document.createElement('div');
     grupo.className = 'wf-campo-grupo';
     grupo.dataset.campoId = campo.id;
+    grupo.style.cssText = 'display:flex;flex-direction:column;gap:5px;margin-bottom:16px;min-width:0';
 
     const label = document.createElement('label');
     label.className = 'wf-campo-label';
     label.htmlFor = `wf-campo-${campo.id}`;
+    label.style.cssText = 'display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;margin:0';
     label.textContent = campo.label;
     if (campo.obrigatorio) {
       const asterisco = document.createElement('span');
-      asterisco.className = 'wf-obrigatorio';
+      asterisco.style.cssText = 'color:#ef4444;margin-left:3px';
       asterisco.textContent = '*';
       label.appendChild(asterisco);
     }
@@ -106,14 +109,19 @@
     return span;
   }
 
+  const _ESTILO_INPUT = 'display:block;width:100%;box-sizing:border-box;padding:8px 11px;border-radius:7px;border:1.5px solid #d1d5db;font-size:14px;color:#1e1e2e;background:#fff;font-family:inherit;line-height:1.5;transition:border-color .15s;outline:none;';
+
   function _base(campo, tipo) {
     const el = document.createElement('input');
     el.type = tipo;
     el.id = `wf-campo-${campo.id}`;
     el.name = campo.id;
     el.className = 'wf-campo-input';
+    el.style.cssText = _ESTILO_INPUT;
     if (campo.obrigatorio) el.required = true;
     if (campo.placeholder) el.placeholder = campo.placeholder;
+    el.addEventListener('focus', function() { this.style.borderColor = '#1a5dc8'; this.style.boxShadow = '0 0 0 3px rgba(26,93,200,.12)'; });
+    el.addEventListener('blur',  function() { this.style.borderColor = '#d1d5db'; this.style.boxShadow = 'none'; });
     return el;
   }
 
@@ -129,10 +137,13 @@
     el.id = `wf-campo-${campo.id}`;
     el.name = campo.id;
     el.className = 'wf-campo-input wf-campo-textarea';
+    el.style.cssText = _ESTILO_INPUT + 'resize:vertical;min-height:88px;line-height:1.6;';
     el.rows = 4;
     if (campo.obrigatorio) el.required = true;
     if (campo.placeholder) el.placeholder = campo.placeholder;
     if (valor != null) el.value = String(valor);
+    el.addEventListener('focus', function() { this.style.borderColor = '#1a5dc8'; this.style.boxShadow = '0 0 0 3px rgba(26,93,200,.12)'; });
+    el.addEventListener('blur',  function() { this.style.borderColor = '#d1d5db'; this.style.boxShadow = 'none'; });
     return el;
   }
 
@@ -180,6 +191,7 @@
     el.id = `wf-campo-${campo.id}`;
     el.name = campo.id;
     el.className = 'wf-campo-input wf-campo-select';
+    el.style.cssText = _ESTILO_INPUT + 'cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'8\' viewBox=\'0 0 12 8\'%3E%3Cpath d=\'M1 1l5 5 5-5\' stroke=\'%236b7280\' stroke-width=\'1.5\' fill=\'none\' stroke-linecap=\'round\'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;padding-right:32px;-webkit-appearance:none;appearance:none;';
     if (campo.obrigatorio) el.required = true;
 
     const vazio = document.createElement('option');
