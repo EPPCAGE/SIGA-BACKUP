@@ -20,9 +20,16 @@
       form.appendChild(titulo);
     }
 
+    const grid = document.createElement('div');
+    grid.className = 'wf-form-campos';
+    form.appendChild(grid);
+
     (schema.campos || []).forEach(campo => {
       const grupo = _renderizarCampo(campo, valoresIniciais[campo.id], somenteLeitura);
-      form.appendChild(grupo);
+      if (campo.tipo === 'textarea' || campo.tipo === 'anexo' || campo.tipo === 'checkbox') {
+        grupo.classList.add('wf-campo-grupo--full');
+      }
+      grid.appendChild(grupo);
     });
 
     return form;
@@ -36,7 +43,13 @@
     const label = document.createElement('label');
     label.className = 'wf-campo-label';
     label.htmlFor = `wf-campo-${campo.id}`;
-    label.textContent = campo.label + (campo.obrigatorio ? ' *' : '');
+    label.textContent = campo.label;
+    if (campo.obrigatorio) {
+      const asterisco = document.createElement('span');
+      asterisco.className = 'wf-obrigatorio';
+      asterisco.textContent = '*';
+      label.appendChild(asterisco);
+    }
     grupo.appendChild(label);
 
     let input;
