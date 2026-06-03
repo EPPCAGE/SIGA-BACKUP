@@ -37,6 +37,21 @@ async function listarTarefasAbertasUsuario({ tarefasCol, gruposCol, user }) {
     );
   }
 
+  // Tarefas direcionadas a gestor_solicitante/gestor_executor sem UID resolvido
+  // aparecem para gestors e eps (fila de fallback)
+  if (['ep', 'gestor'].includes(perfil)) {
+    for (const papelEspecial of ['gestor_solicitante', 'gestor_executor']) {
+      consultasTarefas.push(
+        tarefasCol
+          .where('papel_alvo', '==', papelEspecial)
+          .where('responsavel_uid', '==', null)
+          .where('status', 'in', statusAbertos)
+          .limit(50)
+          .get()
+      );
+    }
+  }
+
   const gruposSnap = user?.email
     ? await gruposCol.where('membros_email', 'array-contains', user.email).limit(20).get()
     : { docs: [] };
