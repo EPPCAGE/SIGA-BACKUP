@@ -83,4 +83,37 @@ async function listarTarefasAbertasUsuario({ tarefasCol, gruposCol, user }) {
     .slice(0, 100);
 }
 
-module.exports = { listarTarefasAbertasUsuario };
+async function listarTodasTarefasAbertas({ tarefasCol, usuariosConfig, statusFiltro, processoBusca, paginaSize = 200 }) {
+  const statusAbertos = statusFiltro ? [statusFiltro] : ['pendente', 'em_execucao'];
+  const snap = await tarefasCol
+    .where('status', 'in', statusAbertos)
+    .orderBy('criado_em', 'asc')
+    .limit(paginaSize)
+    .get();
+
+  const usuarios = usuariosConfig ? (usuariosConfig.data()?.data || []) : [];
+  const mapUsuarios = {};
+  (typeof usuarios === 'string' ? JSON.parse(usuarios) : (Array.isArray(usuarios) ? usuarios : []))
+    .forEach(u => { if (u?.uid) mapUsuarios[u.uid] = u; });
+
+  const tarefas = snap.docs.map(doc => {
+    const d = { id: doc.id, ...doc.data() };
+    const responsavel = d.responsavel_uid ? mapUsuarios[d.responsavel_uid] : null;
+    d._responsavel_nome = responsavel?.nome || responsavel?.email || d.papel_alvo || '—';
+    d._responsavel_email = responsavel?.email || null;
+    return d;
+  });
+
+  if (processoBusca) {
+    const q = processoBusca.toLowerCase();
+    return tarefas.filter(t =>
+      (t.processo_nome || '').toLowerCase().includes(q) ||
+      (t.etapa_nome || '').toLowerCase().includes(q) ||
+      (t._responsavel_nome || '').toLowerCase().includes(q)
+    );
+  }
+
+  return tarefas;
+}
+
+module.exports = { listarTarefasAbertasUsuario, listarTodasTarefasAbertas };

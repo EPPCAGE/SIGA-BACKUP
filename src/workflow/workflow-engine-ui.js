@@ -302,7 +302,7 @@
   }
 
   // ── Navegação interna do módulo ───────────────────────────────────────────
-  const _paineis = ['tarefas','instancias','solicitacoes','iniciar','executar','historico','formularios','modelagem','config-modelo','notificacoes','equipes'];
+  const _paineis = ['tarefas','instancias','solicitacoes','iniciar','executar','historico','formularios','modelagem','config-modelo','notificacoes','equipes','admin-tarefas'];
 
   function wfNavWorkflow(painel) {
     _st.painelAtual = painel;
@@ -313,7 +313,7 @@
     const alvo = document.getElementById(`wf-painel-${painel}`);
     if (alvo) alvo.style.display = '';
 
-    const tabIds = ['tarefas','instancias','solicitacoes','modelagem','formularios'];
+    const tabIds = ['tarefas','instancias','solicitacoes','modelagem','formularios','equipes','admin-tarefas'];
     tabIds.forEach(t => {
       const btn = document.getElementById(`wf-tab-${t}`);
       if (btn) btn.style.fontWeight = t === painel ? '700' : '';
@@ -328,6 +328,7 @@
       modelagem: wfCarregarModelos,
       notificacoes: _wfRenderNotifPanel,
       equipes: wfCarregarEquipes,
+      'admin-tarefas': wfCarregarAdminTarefas,
     };
     carregadores[painel]?.();
   }
@@ -4629,6 +4630,78 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     _wfInicioFormCallback = null;
   }
 
+  // ── Visão Admin — todas as tarefas ───────────────────────────────────────
+  let _adminTarefasCache = null;
+
+  async function wfCarregarAdminTarefas() {
+    const tbody = document.getElementById('wf-admin-tabela-body');
+    const contador = document.getElementById('wf-admin-contador');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--ink3)">Carregando…</td></tr>';
+    try {
+      const status = document.getElementById('wf-admin-filtro-status')?.value || '';
+      const qs = status ? `?admin=true&status=${encodeURIComponent(status)}` : '?admin=true';
+      _adminTarefasCache = await _wfApiRequest('wfTarefas', qs);
+      _wfAdminRenderTabela(_adminTarefasCache, contador, tbody);
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--red)">${_esc(err?.message || 'Erro ao carregar tarefas.')}</td></tr>`;
+    }
+  }
+
+  function wfAdminRecarregar() {
+    _adminTarefasCache = null;
+    wfCarregarAdminTarefas();
+  }
+
+  function wfAdminFiltrar() {
+    if (!_adminTarefasCache) return;
+    const tbody = document.getElementById('wf-admin-tabela-body');
+    const contador = document.getElementById('wf-admin-contador');
+    const q = (document.getElementById('wf-admin-filtro-texto')?.value || '').toLowerCase();
+    const filtrado = q
+      ? _adminTarefasCache.filter(t =>
+          (t.processo_nome || '').toLowerCase().includes(q) ||
+          (t.etapa_nome || '').toLowerCase().includes(q) ||
+          (t._responsavel_nome || '').toLowerCase().includes(q) ||
+          (t._responsavel_email || '').toLowerCase().includes(q)
+        )
+      : _adminTarefasCache;
+    _wfAdminRenderTabela(filtrado, contador, tbody);
+  }
+
+  function _wfAdminRenderTabela(tarefas, contador, tbody) {
+    if (contador) contador.textContent = `${tarefas.length} tarefa${tarefas.length !== 1 ? 's' : ''}`;
+    if (!tarefas.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--ink3)">Nenhuma tarefa encontrada.</td></tr>';
+      return;
+    }
+    const statusLabel = { pendente: 'Pendente', em_execucao: 'Em execução', vencida: 'Vencida' };
+    const statusCor = { pendente: '#3b82f6', em_execucao: '#f59e0b', vencida: '#ef4444' };
+    tbody.innerHTML = tarefas.map((t, i) => {
+      const prazoTs = t.prazo?._seconds ? t.prazo._seconds * 1000 : (t.prazo ? new Date(t.prazo).getTime() : null);
+      const prazoStr = prazoTs ? new Date(prazoTs).toLocaleDateString('pt-BR') : '—';
+      const vencida = prazoTs && prazoTs < Date.now();
+      const cor = statusCor[t.status] || '#6b7280';
+      const lbl = statusLabel[t.status] || t.status;
+      const bg = i % 2 === 0 ? 'transparent' : 'var(--surf)';
+      return `<tr style="background:${bg};border-bottom:1px solid var(--bdr)">
+        <td style="padding:8px 10px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${_esc(t.processo_nome || '')}">${_esc(t.processo_nome || t.instancia_id || '—')}</td>
+        <td style="padding:8px 10px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(t.etapa_nome || t.etapa_modelo_id || '—')}</td>
+        <td style="padding:8px 10px">
+          <div style="font-weight:600">${_esc(t._responsavel_nome || '—')}</div>
+          ${t._responsavel_email ? `<div style="font-size:11px;color:var(--ink3)">${_esc(t._responsavel_email)}</div>` : ''}
+          ${!t.responsavel_uid ? `<span style="font-size:10px;background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:3px">${_esc(t.papel_alvo || 'sem responsável')}</span>` : ''}
+        </td>
+        <td style="padding:8px 10px"><span style="background:${cor};color:#fff;font-size:11px;padding:2px 7px;border-radius:10px">${_esc(lbl)}</span></td>
+        <td style="padding:8px 10px;color:${vencida ? '#ef4444' : 'inherit'};font-weight:${vencida ? '600' : 'normal'}">${prazoStr}${vencida ? ' ⚠' : ''}</td>
+        <td style="padding:8px 10px;white-space:nowrap">
+          <button type="button" class="btn btn-sm" onclick="wfAbrirTarefa('${_esc(t.id)}')">Ver</button>
+          <button type="button" class="btn btn-r btn-sm" onclick="wfExcluirTarefa('${_esc(t.id)}')">Excluir</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
   // ── Exposição global ──────────────────────────────────────────────────────
   Object.assign(globalScope, {
     rWorkflow,
@@ -4703,6 +4776,10 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     wfSalvarGrupo,
     wfExcluirGrupo,
     wfCarregarEquipesUsuarios,
+    // Admin
+    wfCarregarAdminTarefas,
+    wfAdminRecarregar,
+    wfAdminFiltrar,
     // Formulários
     wfCarregarFormularios,
     wfAbrirModalNovoFormulario,

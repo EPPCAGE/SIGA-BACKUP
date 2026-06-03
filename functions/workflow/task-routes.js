@@ -1,11 +1,26 @@
 'use strict';
 
-async function handleWfTarefasRoute({ req, res, user, tarefasCol, gruposCol, engine, listarTarefasAbertasUsuario }) {
+async function handleWfTarefasRoute({ req, res, user, tarefasCol, gruposCol, usuariosConfigDoc, engine, listarTarefasAbertasUsuario, listarTodasTarefasAbertas }) {
   const segments = req.path.split('/').filter(Boolean);
   const id = segments[0];
   const acao = segments[1];
 
   if (req.method === 'GET' && !id) {
+    if (req.query.admin === 'true') {
+      if (user?.perfil !== 'ep') {
+        res.status(403).json({ erro: 'SEM_PERMISSAO' });
+        return;
+      }
+      const usuariosSnap = usuariosConfigDoc ? await usuariosConfigDoc.get() : null;
+      const tarefas = await listarTodasTarefasAbertas({
+        tarefasCol,
+        usuariosConfig: usuariosSnap,
+        statusFiltro: req.query.status || null,
+        processoBusca: req.query.q || null,
+      });
+      res.json(tarefas);
+      return;
+    }
     const tarefas = await listarTarefasAbertasUsuario({
       tarefasCol,
       gruposCol,
