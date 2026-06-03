@@ -43,7 +43,8 @@ const ACAO_WORKFLOW = ['avancar', 'concluir', 'aprovar', 'rejeitar', 'devolver',
 const PAPEL_WORKFLOW = ['executor', 'revisor', 'aprovador'];
 const TIPO_EVENTO = [
   'instancia_criada', 'tarefa_criada', 'tarefa_assumida', 'tarefa_iniciada', 'tarefa_concluida',
-  'tarefa_delegada', 'etapa_avancada', 'instancia_concluida', 'instancia_cancelada', 'sla_alerta', 'sla_vencido',
+  'tarefa_delegada', 'tarefa_excluida', 'etapa_avancada', 'instancia_concluida', 'instancia_cancelada',
+  'instancia_excluida_logica', 'sla_alerta', 'sla_vencido',
 ];
 
 // ---------------------------------------------------------------------------

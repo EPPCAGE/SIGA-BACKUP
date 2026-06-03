@@ -1056,6 +1056,7 @@
       const statusLabels = { em_andamento:'Em andamento', concluido:'Concluído', cancelado:'Cancelado', suspenso:'Suspenso' };
       const statusCores = { em_andamento:'#3b82f6', concluido:'#10b981', cancelado:'#ef4444', suspenso:'#f59e0b' };
       const podeGerenciar = globalScope.isEP?.() || globalScope.isGestor?.();
+      const isEp = globalScope.isEP?.();
       const renderer = _renderer();
       const cards = renderer
         ? renderer.renderInstanciasCards(instanciasVisiveis, {
@@ -1101,7 +1102,7 @@
             ${i.status === 'em_andamento' && podeGerenciar ? `<button type="button" class="btn btn-sm" onclick="wfSuspenderInstancia('${_esc(i.id)}')">Suspender</button>` : ''}
             ${i.status === 'suspenso' && podeGerenciar ? `<button type="button" class="btn btn-p btn-sm" onclick="wfRetomarInstancia('${_esc(i.id)}')">Retomar</button>` : ''}
             ${i.status === 'em_andamento' && podeGerenciar ? `<button type="button" class="btn btn-r btn-sm" onclick="wfConfirmarCancelar('${_esc(i.id)}')">Cancelar</button>` : ''}
-            ${i.status === 'cancelado' && podeGerenciar ? `<button type="button" class="btn btn-r btn-sm" onclick="wfExcluirInstancia('${_esc(i.id)}')">🗑 Excluir</button>` : ''}
+            ${(i.status === 'cancelado' && podeGerenciar) || isEp ? `<button type="button" class="btn btn-r btn-sm" onclick="wfExcluirInstancia('${_esc(i.id)}')">🗑 Excluir</button>` : ''}
           </div>
         `);
       }).join('');
@@ -3312,6 +3313,9 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 
     const podeCancelar = status === 'em_andamento' && (globalScope.isEP?.() || globalScope.isGestor?.());
     document.getElementById('wf-hist-btn-cancelar').style.display = podeCancelar ? '' : 'none';
+    const podeExcluir = globalScope.isEP?.();
+    const btnExcluir = document.getElementById('wf-hist-btn-excluir');
+    if (btnExcluir) btnExcluir.style.display = podeExcluir ? '' : 'none';
 
     document.getElementById('wf-hist-resumo').innerHTML =
       `<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
@@ -3407,27 +3411,23 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
   }
 
   async function wfExcluirInstancia(instanciaId) {
-    if (!confirm('Excluir esta instância da listagem? O histórico será preservado para auditoria.')) return;
+    if (!confirm('Excluir este processo? O histórico será preservado para auditoria.')) return;
     try {
-      const instancia = await _getDoc('wf_instancia_processos', instanciaId);
-      if (!instancia) { alert('Instância não encontrada.'); return; }
-
-      // A exclusão lógica exige instância cancelada para manter consistência do fluxo.
-      if (instancia.status !== 'cancelado') {
-        const podeCancelarExcluir = confirm('A instância ainda está ativa. Deseja cancelar antes de excluir da listagem?');
-        if (!podeCancelarExcluir) return;
-        await wfConfirmarCancelar(instanciaId);
-      }
-
       await _wfApiRequest('wfInstanciaItem', `/${encodeURIComponent(instanciaId)}/excluir`, {
         method: 'POST',
       });
-
+      wfNavWorkflow(_st.painelAtual === 'historico' ? 'instancias' : (_st.painelAtual || 'instancias'));
       wfCarregarInstancias();
       if (_st.painelAtual === 'solicitacoes') wfCarregarSolicitacoes();
     } catch (e) {
       alert('Erro ao excluir: ' + e.message);
     }
+  }
+
+  function wfExcluirInstanciaAtual() {
+    const instancia = _st.instanciaAtual;
+    if (!instancia?.id) return;
+    wfExcluirInstancia(instancia.id);
   }
 
   // ── Formulários ───────────────────────────────────────────────────────────
@@ -4686,6 +4686,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     wfAbrirHistorico,
     wfCancelarInstancia,
     wfExcluirInstancia,
+    wfExcluirInstanciaAtual,
     wfConfirmarCancelar,
     wfCarregarComentarios,
     wfResponderComentario,

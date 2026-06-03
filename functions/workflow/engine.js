@@ -848,8 +848,8 @@ function makeEngine(db) {
   async function excluirInstanciaLogica({ instancia_id, usuario_uid, usuario_email = null, usuario_perfil = null }) {
     _garantirPermissaoGestaoWorkflow({ uid: usuario_uid, email: usuario_email, perfil: usuario_perfil }, 'Usuário não pode excluir esta instância.');
     const instancia = await buscarDoc(col.instancias, instancia_id, ERRO.INSTANCIA_NAO_ENCONTRADA);
-    if (instancia.status !== 'cancelado') {
-      lancarErro(ERRO.INSTANCIA_NAO_ATIVA, 'Instância precisa estar cancelada para exclusão lógica.');
+    if (instancia.status !== 'cancelado' && usuario_perfil !== 'ep') {
+      lancarErro(ERRO.INSTANCIA_NAO_ATIVA, 'Instância precisa estar cancelada para exclusão. Apenas EP pode excluir instâncias ativas.');
     }
 
     await col.instancias.doc(instancia_id).update({
