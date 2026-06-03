@@ -1875,7 +1875,10 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     _wfModeler = new BpmnJS({ container: '#wf-bpmn-canvas' });
 
     _wfModeler.on('commandStack.changed', () => {
-      _wfMarcarDesignerSujo();
+      // Apenas sinaliza que há alterações — NÃO agenda autosave,
+      // para não interferir com operações em andamento no canvas.
+      // O usuário salva manualmente ou o autosave dispara ao alterar campos de config.
+      _wfAtualizarIndicadorSujo(true);
     });
 
     _wfModeler.on('selection.changed', ({ newSelection }) => {
