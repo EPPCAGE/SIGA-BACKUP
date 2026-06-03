@@ -234,12 +234,13 @@ function makeEngine(db) {
     if (alvo === 'gestor_solicitante') {
       const usuario = await _buscarUsuarioPorUid(instancia.solicitante_uid);
       const uid = usuario?.gestor_uid || usuario?.gestor || null;
-      return { responsavel_uid: uid, papel_alvo: alvo, grupo_id: null };
+      // If gestor not configured, fall back to generic 'gestor' queue so the task is visible
+      return { responsavel_uid: uid, papel_alvo: uid ? alvo : 'gestor', grupo_id: null };
     }
     if (alvo === 'gestor_executor') {
       const usuario = await _buscarUsuarioPorUid(instancia.ultimo_executor_uid);
       const uid = usuario?.gestor_uid || usuario?.gestor || null;
-      return { responsavel_uid: uid, papel_alvo: alvo, grupo_id: null };
+      return { responsavel_uid: uid, papel_alvo: uid ? alvo : 'gestor', grupo_id: null };
     }
     if (alvo.includes('@')) {
       const uid = await _resolverUidPorEmail(alvo);
