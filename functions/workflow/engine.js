@@ -336,22 +336,14 @@ function makeEngine(db) {
       ? tarefa.acoes_disponiveis
       : ['avancar']).map(_normalizarAcao);
     if (!base.includes(_normalizarAcao(acao))) return false;
-    const arestas = (instancia.canvas?.arestas || []).filter((aresta) => aresta.origem === tarefa.etapa_modelo_id);
-    if (!arestas.length) return base.includes(acao);
-    const noAtual = _noCanvasPorId(instancia.canvas, tarefa.etapa_modelo_id);
-    const regrasAcoes = noAtual?.config?.acoes_condicionais || _configNo(instancia, tarefa.etapa_modelo_id)?.acoes_condicionais || [];
-    const regrasDaAcao = regrasAcoes.filter((regra) => regra.acao === acao && regra.campo);
-    if (regrasDaAcao.length) {
-      const passou = regrasDaAcao.some((regra) => _avaliarCondicaoCanvas({ campo: regra.campo, operador: regra.operador, valor: regra.valor }, dados));
-      if (!passou) return false;
-    }
     if (acao === 'devolver' || acao === 'rejeitar') {
+      const arestas = (instancia.canvas?.arestas || []).filter((aresta) => aresta.origem === tarefa.etapa_modelo_id);
       const regrasAresta = arestas.filter((aresta) => aresta.acao === acao);
       if (!regrasAresta.length) return true;
       return regrasAresta.some((aresta) => _avaliarCondicoesCanvas(aresta.condicoes, aresta.operador_logico, dados))
         || regrasAresta.some((aresta) => aresta.padrao);
     }
-    return !!_proximoNoExecutavelCanvas(instancia.canvas, tarefa.etapa_modelo_id, acao, dados);
+    return true;
   }
 
   function _acoesPorPapelCanvas(cfg = {}, papel = 'executor') {
