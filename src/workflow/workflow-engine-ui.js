@@ -911,26 +911,41 @@
     });
   }
 
+  const _WF_ACAO_NORMALIZAR = { aprovar: 'avancar', rejeitar: 'devolver', solicitar_ajuste: 'devolver', concluir: 'avancar' };
+  const _WF_ACAO_DESC = {
+    avancar:  'Confirma a etapa e avança para a próxima.',
+    devolver: 'Retorna à etapa anterior. Informe o que precisa ser ajustado.',
+  };
+
   function _wfRenderAcoesExecucao(instancia, tarefa, dadosParciais) {
     const acoesEl = document.getElementById('wf-exec-acoes');
     if (!acoesEl) return;
-    const acoes = _wfAcoesVisiveisExecucao(instancia, tarefa, dadosParciais);
-    const btnClasse = (a) => {
-      if (a === 'rejeitar') return 'btn btn-r';
-      if (a === 'aprovar' || a === 'avancar' || a === 'concluir') return 'btn btn-p';
-      return 'btn';
-    };
+    const acoesBruto = _wfAcoesVisiveisExecucao(instancia, tarefa, dadosParciais);
+    // normaliza ações legadas para avancar/devolver, sem duplicatas
+    const acoes = [...new Set(acoesBruto.map(a => _WF_ACAO_NORMALIZAR[a] || a))].filter(a => a === 'avancar' || a === 'devolver');
+    if (!acoes.length) acoes.push('avancar');
 
     acoesEl.innerHTML = acoes.map(a => {
-      const cor = globalScope.WF_ACAO_COR?.[a];
-      const style = (a === 'devolver' || a === 'solicitar_ajuste') && cor
-        ? ` style="background:${cor};color:#fff;border-color:${cor}"` : '';
-      return `<button type="button" class="${btnClasse(a)}"${style} onclick="wfConcluirTarefa('${a}')">${_esc(globalScope.WF_ACAO_LABELS?.[a] || a)}</button>`;
+      const isDevolver = a === 'devolver';
+      const cls = isDevolver ? 'btn' : 'btn btn-p';
+      const style = isDevolver ? ' style="background:#f59e0b;color:#fff;border-color:#f59e0b"' : '';
+      return `<button type="button" class="${cls}"${style} title="${_esc(_WF_ACAO_DESC[a]||'')}" onclick="wfConcluirTarefa('${a}')">${_esc(globalScope.WF_ACAO_LABELS?.[a] || a)}</button>`;
     }).join('') + `<button type="button" class="btn" onclick="wfNavWorkflow('tarefas')">Cancelar</button>`;
+
+    // mostra/oculta campo de motivo da devolução
+    let motivoEl = document.getElementById('wf-exec-motivo-devolucao');
+    if (!motivoEl) {
+      motivoEl = document.createElement('div');
+      motivoEl.id = 'wf-exec-motivo-devolucao';
+      motivoEl.style.cssText = 'display:none;margin-top:10px';
+      motivoEl.innerHTML = `<label class="lbl">O que precisa ser ajustado? <span style="color:var(--red)">*</span></label><textarea id="wf-exec-motivo-devolucao-txt" class="fi" rows="3" placeholder="Descreva o que o solicitante deve corrigir ou complementar…" style="margin-top:4px;width:100%"></textarea>`;
+      acoesEl.parentElement.insertBefore(motivoEl, acoesEl);
+    }
+    motivoEl.style.display = acoes.includes('devolver') ? '' : 'none';
   }
 
   function _wfValidarConclusaoTarefa(tarefa, acao, obs) {
-    const exigeParecer = tarefa.exige_parecer || acao === 'rejeitar' || acao === 'devolver';
+    const exigeParecer = tarefa.exige_parecer;
     if (exigeParecer && !obs) {
       alert('É obrigatório informar um parecer/justificativa para esta ação.');
       return false;
@@ -948,11 +963,17 @@
     return dadosForm;
   }
 
-  async function wfConcluirTarefa(acao) {
+  async function wfConcluirTarefa(acaoOriginal) {
     if (!_st.tarefaAtual) return;
     const tarefa = _st.tarefaAtual;
-    acao = acao ?? tarefa.acoes_disponiveis?.[0] ?? 'avancar';
+    const acao = _WF_ACAO_NORMALIZAR[acaoOriginal] || acaoOriginal || tarefa.acoes_disponiveis?.[0] || 'avancar';
     const obs = (document.getElementById('wf-exec-obs')?.value || '').trim();
+    const motivoDevolucao = acao === 'devolver' ? (document.getElementById('wf-exec-motivo-devolucao-txt')?.value || '').trim() : '';
+    if (acao === 'devolver' && !motivoDevolucao) {
+      alert('Informe o que precisa ser ajustado antes de devolver.');
+      document.getElementById('wf-exec-motivo-devolucao-txt')?.focus();
+      return;
+    }
     if (!_wfValidarConclusaoTarefa(tarefa, acao, obs)) return;
     const dadosForm = _wfColetarDadosConclusaoTarefa(tarefa, acao);
     if (dadosForm == null) return;
@@ -963,6 +984,7 @@
         body: {
           acao,
           observacao: obs,
+          motivo_devolucao: motivoDevolucao || undefined,
           dados_formulario: dadosForm,
           anexos: _st._anexosTarefa || [],
         },
@@ -2100,7 +2122,10 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
           </div>
           <div class="wf-guide-card wf-guide-card-full">
             <div class="wf-guide-card-hd"><div class="wf-guide-card-ttl">O que pode acontecer depois?</div><div class="wf-guide-card-sub">Marque as ações que o usuário poderá escolher ao concluir esta etapa. Use o gateway para decidir aprovar/avançar por respostas do formulário; <strong>rejeitar</strong> e <strong>devolver</strong> retornam para a etapa anterior.</div></div>
-            <div class="wf-guide-row" style="margin-bottom:10px">${['avancar','aprovar','rejeitar','devolver','solicitar_ajuste'].map(a => `<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;padding:6px 10px;border:1px solid var(--bdr);border-radius:999px;background:var(--surf2)"><input type="checkbox" ${acoes.includes(a) ? 'checked' : ''} onchange="wfDesignerToggleAcao('${_esc(id)}','${a}',this.checked)"> ${_esc(labelsAcao?.[a] || a)}</label>`).join('')}</div>
+            <div class="wf-guide-row" style="margin-bottom:10px">${[
+              { v:'avancar',  desc:'Progride para a próxima etapa do fluxo.' },
+              { v:'devolver', desc:'Retorna à etapa anterior pedindo correção ou ajuste.' },
+            ].map(({v,desc}) => `<label style="display:flex;flex-direction:column;gap:2px;font-size:12px;cursor:pointer;padding:8px 12px;border:1px solid var(--bdr);border-radius:8px;background:var(--surf2);min-width:160px"><span style="display:flex;align-items:center;gap:6px"><input type="checkbox" ${acoes.includes(v) ? 'checked' : ''} onchange="wfDesignerToggleAcao('${_esc(id)}','${v}',this.checked)"> <strong>${_esc(labelsAcao?.[v] || v)}</strong></span><span style="font-size:11px;color:var(--ink3);padding-left:20px">${_esc(desc)}</span></label>`).join('')}</div>
             ${_wfRotasResumoHtml(id)}
           </div>
           <div class="wf-guide-card wf-guide-card-full">
