@@ -132,10 +132,33 @@
   }
 
   function _inputData(campo, valor) {
-    const el = _base(campo, 'date');
-    if (valor) el.value = String(valor).substring(0, 10);
-    if (campo.validacao?.min) el.min = String(campo.validacao.min).substring(0, 10);
-    if (campo.validacao?.max) el.max = String(campo.validacao.max).substring(0, 10);
+    const el = _base(campo, 'text');
+    el.placeholder = 'DD/MM/AAAA';
+    el.inputMode = 'numeric';
+    el.maxLength = 10;
+    el.autocomplete = 'off';
+
+    // Converte valor armazenado (ISO YYYY-MM-DD ou DD/MM/AAAA) para exibição
+    if (valor) {
+      const s = String(valor);
+      if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+        const [y, m, d] = s.substring(0, 10).split('-');
+        el.value = `${d}/${m}/${y}`;
+      } else {
+        el.value = s.substring(0, 10);
+      }
+    }
+
+    // Auto-máscara: insere '/' conforme o usuário digita
+    el.addEventListener('input', function () {
+      let digits = this.value.replace(/\D/g, '').substring(0, 8);
+      let masked = '';
+      if (digits.length > 4) masked = `${digits.substring(0, 2)}/${digits.substring(2, 4)}/${digits.substring(4)}`;
+      else if (digits.length > 2) masked = `${digits.substring(0, 2)}/${digits.substring(2)}`;
+      else masked = digits;
+      this.value = masked;
+    });
+
     return el;
   }
 
@@ -266,8 +289,10 @@
         valor = input.value.trim();
       }
 
-      if (campo.obrigatorio && (valor === '' || valor === null || valor === undefined)) {
+      if (campo.obrigatorio && (valor === '' || valor === null || valor === undefined || (Array.isArray(valor) && !valor.length))) {
         erros[campo.id] = `${campo.label} é obrigatório.`;
+      } else if (campo.tipo === 'data' && valor && !/^\d{2}\/\d{2}\/\d{4}$/.test(valor)) {
+        erros[campo.id] = `${campo.label}: use o formato DD/MM/AAAA.`;
       }
 
       dados[campo.id] = valor;
