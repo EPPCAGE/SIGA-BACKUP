@@ -2166,7 +2166,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     _wfAtualizarAcoesFormularioNo(id);
     _wfRenderAcoesCond(id);
     _wfRenderCamposCond(id);
-    _wfRenderDestinoDevolucao(id);
+    setTimeout(() => _wfRenderDestinoDevolucao(id), 0);
     _wfAplicarModoPainel();
   }
 
