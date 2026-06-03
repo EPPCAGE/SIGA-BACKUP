@@ -332,10 +332,10 @@ function makeEngine(db) {
   }
 
   function _acaoPermitidaNoCanvas(instancia, tarefa, acao, dados = {}) {
-    const base = Array.isArray(tarefa.acoes_disponiveis) && tarefa.acoes_disponiveis.length
+    const base = (Array.isArray(tarefa.acoes_disponiveis) && tarefa.acoes_disponiveis.length
       ? tarefa.acoes_disponiveis
-      : ['concluir'];
-    if (!base.includes(acao)) return false;
+      : ['avancar']).map(_normalizarAcao);
+    if (!base.includes(_normalizarAcao(acao))) return false;
     const arestas = (instancia.canvas?.arestas || []).filter((aresta) => aresta.origem === tarefa.etapa_modelo_id);
     if (!arestas.length) return base.includes(acao);
     const noAtual = _noCanvasPorId(instancia.canvas, tarefa.etapa_modelo_id);
@@ -654,6 +654,12 @@ function makeEngine(db) {
   /**
    * Conclui uma tarefa, valida o formulário e avança o fluxo.
    */
+  const _ACAO_NORMALIZAR = { concluir: 'avancar', aprovar: 'avancar', solicitar_ajuste: 'devolver' };
+
+  function _normalizarAcao(acao) {
+    return _ACAO_NORMALIZAR[acao] || acao || 'avancar';
+  }
+
   async function concluirTarefa({ tarefa_id, usuario_uid, usuario_email = null, usuario_perfil = null, acao, observacao = '', dados_formulario = {}, anexos = [] }) {
     const tarefa = await buscarDoc(col.tarefas, tarefa_id, ERRO.TAREFA_NAO_ENCONTRADA);
     const usuario = { uid: usuario_uid, email: usuario_email, perfil: usuario_perfil };
@@ -666,7 +672,7 @@ function makeEngine(db) {
 
     if (_modeloUsaCanvas(instancia)) {
       const dadosMesclados = { ...instancia.dados_consolidados, ...dados_formulario };
-      const acaoFinal = acao ?? tarefaAtual.acoes_disponiveis?.[0] ?? 'avancar';
+      const acaoFinal = _normalizarAcao(acao ?? tarefaAtual.acoes_disponiveis?.[0] ?? 'avancar');
       if (!_acaoPermitidaNoCanvas(instancia, tarefaAtual, acaoFinal, dadosMesclados)) {
         lancarErro(ERRO.ACAO_INVALIDA, `Ação "${acaoFinal}" não está disponível para esta tarefa.`);
       }
