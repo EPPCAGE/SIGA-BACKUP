@@ -10,6 +10,7 @@
     formularioCampos: [],
     formularioModelos: [],
     formularioOrigem: null,
+    grupos: [],
     // Designer visual
     designerModelo: null,
     designerModo: 'simples',
@@ -1836,6 +1837,14 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       }
     }
 
+    if (!_st.grupos.length) {
+      try {
+        _st.grupos = await _getAll('wf_grupos');
+      } catch (error_) {
+        _wfReportarErroNaoCritico('carregamento de equipes', error_);
+      }
+    }
+
     _wfPrepararCamposCabecalhoDesigner(modelo);
     _wfLimparAutosavePendente();
     _wfAtualizarIndicadorSujo(false);
@@ -1913,7 +1922,15 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     const usuariosHtml = usuarios.length
       ? `<optgroup label="Usuário específico">${usuariosOptions}</optgroup>`
       : '';
-    return fixosHtml + usuariosHtml;
+    const grupos = _st.grupos || [];
+    const gruposOptions = grupos.map(g => {
+      const val = `grupo:${g.id}`;
+      return `<option value="${_esc(val)}"${(sel || '') === val ? ' selected' : ''}>${_esc(g.nome || g.id)}</option>`;
+    }).join('');
+    const gruposHtml = grupos.length
+      ? `<optgroup label="Equipe (fila)">${gruposOptions}</optgroup>`
+      : '';
+    return fixosHtml + gruposHtml + usuariosHtml;
   }
 
   function _wfFormOptsNo(cfg) {
