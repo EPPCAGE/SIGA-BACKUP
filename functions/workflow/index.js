@@ -24,7 +24,7 @@ const {
   normalizarProcessoModeloDoc,
   fsClean,
 } = require('./entities');
-const { listarTarefasAbertasUsuario } = require('./task-listing');
+const { listarTarefasAbertasUsuario, listarTodasTarefasAbertas } = require('./task-listing');
 const { handleWfTarefasRoute } = require('./task-routes');
 const { handleWfInstanciasRoute, handleWfInstanciaItemRoute } = require('./instance-routes');
 const { handleWfNotificacoesRoute } = require('./notification-routes');
@@ -329,8 +329,10 @@ exports.wfTarefas = onRequest({ region: 'us-central1', cors: ['https://eppcage.c
       user,
       tarefasCol: col.tarefas,
       gruposCol: col.grupos,
+      usuariosConfigDoc: db.doc('config/usuarios'),
       engine,
       listarTarefasAbertasUsuario,
+      listarTodasTarefasAbertas,
     });
   });
 });
