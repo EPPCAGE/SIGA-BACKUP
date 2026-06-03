@@ -1346,7 +1346,7 @@
         _wfReportarErroNaoCritico('falha no autosave do workflow', error_);
         if (typeof globalScope.toast === 'function') globalScope.toast('⚠ Autosave falhou: ' + (error_?.message || error_), 'var(--red)');
       });
-    }, 1200);
+    }, 600);
   }
 
   globalScope.addEventListener('beforeunload', (event) => {
@@ -1636,6 +1636,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
         : [],
       operador_logico: config?.operador_logico === 'OR' ? 'OR' : 'AND',
       padrao: !!config?.padrao,
+      destino_devolucao: _wfStringOuNull(config?.destino_devolucao),
     };
   }
 
@@ -2441,6 +2442,15 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     }
   }
 
+  function _wfSalvarConfigNosImediato() {
+    if (!_wfModeloAtual?.id) return;
+    const dados = { config_nos: _wfNormalizarConfigNosPersistencia(_wfConfigNos) };
+    _updateDoc('wf_processo_modelos', _wfModeloAtual.id, dados).catch((e) => {
+      _wfReportarErroNaoCritico('salvar config_nos', e);
+      if (typeof globalScope.toast === 'function') globalScope.toast('⚠ Erro ao salvar configuração: ' + (e?.message || e), 'var(--red)');
+    });
+  }
+
   function wfDesignerCampoCfg(noId, campo, valor) {
     if (!_wfConfigNos[noId]) _wfConfigNos[noId] = _configPadrao();
     _wfConfigNos[noId][campo] = valor;
@@ -2448,12 +2458,14 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       wfDesignerAtualizarRotulo(noId, valor);
     }
     _wfMarcarDesignerSujo();
+    _wfSalvarConfigNosImediato();
   }
   function wfDesignerPapel(noId, papel, valor) {
     if (!_wfConfigNos[noId]) _wfConfigNos[noId] = _configPadrao();
     _wfConfigNos[noId].papeis ??= {};
     _wfConfigNos[noId].papeis[papel] = valor || null;
     _wfMarcarDesignerSujo();
+    _wfSalvarConfigNosImediato();
   }
   function wfDesignerToggleAcao(noId, acao, on) {
     if (!_wfConfigNos[noId]) _wfConfigNos[noId] = _configPadrao();
@@ -2463,6 +2475,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     if (acao === 'devolver') _wfRenderDestinoDevolucao(noId);
     _wfRenderAcoesCond(noId);
     _wfMarcarDesignerSujo();
+    _wfSalvarConfigNosImediato();
   }
 
   function _wfNosAnterioresAo(noId) {
@@ -2499,6 +2512,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     if (!_wfConfigNos[noId]) _wfConfigNos[noId] = _configPadrao();
     _wfConfigNos[noId].destino_devolucao = destinoId || null;
     _wfMarcarDesignerSujo();
+    _wfSalvarConfigNosImediato();
   }
 
   function _wfMarcarDesignerSujo() {
@@ -4292,6 +4306,10 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
   }
 
   async function wfAbrirConfigModelo(modeloId) {
+    // Salva alterações pendentes do modelo anterior antes de trocar
+    if (_wfTemAlteracoesPendentes() && _wfModeloAtual) {
+      await wfDesignerSalvar({ silent: true }).catch(() => {});
+    }
     const modelo = await _getDoc('wf_processo_modelos', modeloId);
     if (!modelo) { alert('Modelo não encontrado.'); return; }
     _wfModeloAtual = modelo;
