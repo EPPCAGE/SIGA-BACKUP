@@ -71,7 +71,11 @@
     span.className = 'wf-campo-leitura';
 
     if (campo.tipo === 'checkbox') {
-      span.textContent = valor ? 'Sim' : 'Não';
+      if (Array.isArray(valor)) {
+        span.textContent = valor.length ? valor.join(', ') : '—';
+      } else {
+        span.textContent = valor ? 'Sim' : 'Não';
+      }
     } else if (campo.tipo === 'anexo') {
       if (valor) {
         const link = document.createElement('a');
@@ -162,21 +166,49 @@
     const wrapper = document.createElement('div');
     wrapper.className = 'wf-campo-checkbox-wrapper';
 
-    const el = document.createElement('input');
-    el.type = 'checkbox';
-    el.id = `wf-campo-${campo.id}`;
-    el.name = campo.id;
-    el.className = 'wf-campo-checkbox';
-    el.checked = Boolean(valor);
-    if (campo.obrigatorio) el.required = true;
+    const opcoes = Array.isArray(campo.opcoes) && campo.opcoes.length ? campo.opcoes : null;
 
-    const lbl = document.createElement('label');
-    lbl.htmlFor = el.id;
-    lbl.textContent = campo.label;
-    lbl.className = 'wf-campo-checkbox-label';
+    if (opcoes) {
+      // Múltiplas opções: array de checkboxes
+      const selecionados = Array.isArray(valor) ? valor : (valor ? [valor] : []);
+      wrapper.id = `wf-campo-${campo.id}`;
+      wrapper.dataset.multiCheckbox = '1';
+      opcoes.forEach((op, i) => {
+        const row = document.createElement('label');
+        row.className = 'wf-campo-checkbox-label';
+        row.style.display = 'flex';
+        row.style.alignItems = 'center';
+        row.style.gap = '6px';
+        row.style.marginBottom = '4px';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'wf-campo-checkbox';
+        cb.name = campo.id;
+        cb.value = op;
+        cb.checked = selecionados.includes(op);
+        if (campo.obrigatorio && i === 0) cb.required = true;
+        row.appendChild(cb);
+        row.appendChild(document.createTextNode(op));
+        wrapper.appendChild(row);
+      });
+    } else {
+      // Sem opções: Sim/Não simples
+      const el = document.createElement('input');
+      el.type = 'checkbox';
+      el.id = `wf-campo-${campo.id}`;
+      el.name = campo.id;
+      el.className = 'wf-campo-checkbox';
+      el.checked = Boolean(valor);
+      if (campo.obrigatorio) el.required = true;
 
-    wrapper.appendChild(el);
-    wrapper.appendChild(lbl);
+      const lbl = document.createElement('label');
+      lbl.htmlFor = el.id;
+      lbl.textContent = campo.label;
+      lbl.className = 'wf-campo-checkbox-label';
+
+      wrapper.appendChild(el);
+      wrapper.appendChild(lbl);
+    }
     return wrapper;
   }
 
@@ -222,7 +254,12 @@
 
       let valor;
       if (campo.tipo === 'checkbox') {
-        valor = input.checked;
+        if (grupo.querySelector('[data-multi-checkbox]') || input?.dataset?.multiCheckbox) {
+          // multi-checkbox: coleta array de valores marcados
+          valor = Array.from(grupo.querySelectorAll(`input[name="${campo.id}"]:checked`)).map(cb => cb.value);
+        } else {
+          valor = input.checked;
+        }
       } else if (campo.tipo === 'anexo') {
         valor = input.files?.[0] ?? null;
       } else {

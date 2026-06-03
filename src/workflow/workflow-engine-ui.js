@@ -3420,9 +3420,9 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
               ${_tiposCampo.map(t => `<option value="${_esc(t.v)}"${c.tipo===t.v?' selected':''}>${_esc(t.l)}</option>`).join('')}
             </select>
           </div>
-          ${c.tipo === 'select' ? `
+          ${(c.tipo === 'select' || c.tipo === 'checkbox') ? `
           <div class="wf-field-col wf-field-card-full">
-            <label class="lbl">Opções de seleção <span style="font-weight:400;text-transform:none;letter-spacing:0">(uma por linha)</span></label>
+            <label class="lbl">${c.tipo === 'checkbox' ? 'Opções de marcação' : 'Opções de seleção'} <span style="font-weight:400;text-transform:none;letter-spacing:0">(uma por linha)</span></label>
             <textarea class="fi" rows="3" placeholder="Opção 1&#10;Opção 2&#10;Opção 3" oninput="_wfAtualizarCampo(${i},'_opcoesTexto',this.value)">${_esc((c.opcoes||[]).join('\n'))}</textarea>
           </div>` : ''}
         </div>
