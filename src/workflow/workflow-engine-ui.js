@@ -705,17 +705,41 @@
          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:16px">${barras}</div>`;
   }
 
+  function _wfTimelineEtapasOrdenadas(instancia, tarefa) {
+    const canvas = instancia?.canvas;
+    if (canvas?.nos?.length && canvas?.arestas) {
+      // Reconstrói a ordem topológica percorrendo os arcos a partir do início
+      const nos = canvas.nos;
+      const arestas = canvas.arestas;
+      const inicio = nos.find(n => n.tipo === 'inicio');
+      if (inicio) {
+        const visitados = new Set();
+        const ordenados = [];
+        let atual = inicio;
+        while (atual && !visitados.has(atual.id)) {
+          visitados.add(atual.id);
+          if (atual.tipo === 'tarefa' || atual.tipo === 'aprovacao') {
+            ordenados.push({ id: atual.id, nome: atual.nome || atual.id, tipo: atual.tipo });
+          }
+          // Pega o primeiro arco de saída sem condição (caminho principal)
+          const proxAresta = arestas.find(a => a.origem === atual.id && (!a.acao || a.acao === 'avancar') && !a.condicoes?.length);
+          const proxNo = proxAresta ? nos.find(n => n.id === proxAresta.destino) : null;
+          atual = proxNo || null;
+        }
+        if (ordenados.length) return ordenados;
+      }
+    }
+    // Fallback: snapshot_etapas (pode estar fora de ordem mas melhor que nada)
+    const snap = instancia?.snapshot_etapas || [];
+    if (snap.length) return snap;
+    // Último fallback: só a etapa atual
+    return [{ id: tarefa.etapa_modelo_id, nome: tarefa.etapa_nome || tarefa.etapa_modelo_id }];
+  }
+
   function _wfRenderTimeline(instancia, tarefa) {
     const el = document.getElementById('wf-exec-timeline');
     if (!el) return;
-
-    const etapas = instancia?.snapshot_etapas || [];
-    if (!etapas.length) {
-      // canvas sem snapshot: mostra apenas etapa atual
-      el.innerHTML = _wfTimelineHtml([{ id: tarefa.etapa_modelo_id, nome: tarefa.etapa_nome || tarefa.etapa_modelo_id }], 0);
-      return;
-    }
-
+    const etapas = _wfTimelineEtapasOrdenadas(instancia, tarefa);
     const idxAtual = etapas.findIndex(e => e.id === tarefa.etapa_modelo_id);
     el.innerHTML = _wfTimelineHtml(etapas, idxAtual);
   }
