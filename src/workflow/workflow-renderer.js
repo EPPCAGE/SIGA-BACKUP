@@ -5,23 +5,36 @@
     return typeof esc === 'function' ? esc(value) : String(value ?? '');
   }
 
+  const _NOTIF_ICONE = {
+    tarefa_criada:   { icon: '📋', cor: '#3b82f6' },
+    tarefa_concluida:{ icon: '✅', cor: '#10b981' },
+    tarefa_delegada: { icon: '🔁', cor: '#f59e0b' },
+    tarefa_vencida:  { icon: '⚠️', cor: '#ef4444' },
+    prazo_proximo:   { icon: '⏰', cor: '#f97316' },
+  };
+
   function renderNotificacoes(notifs, esc) {
     if (!notifs.length) {
       return '<div style="color:var(--ink3);font-size:14px;padding:16px 0">Nenhuma notificação.</div>';
     }
     return notifs.map(n => {
-      const ts = n._criado_em?.seconds
-        ? new Date(n._criado_em.seconds * 1000).toLocaleString('pt-BR')
-        : '-';
-      const bg = n.lida ? 'var(--bg)' : 'var(--blue-soft,#eff6ff)';
+      const meta = _NOTIF_ICONE[n.tipo] || { icon: '🔔', cor: '#6b7280' };
+      const ts = (n.criado_em?._seconds ?? n.criado_em?.seconds ?? n._criado_em?.seconds)
+        ? new Date((n.criado_em?._seconds ?? n.criado_em?.seconds ?? n._criado_em?.seconds) * 1000).toLocaleString('pt-BR')
+        : '—';
+      const bg = n.lida ? 'var(--bg)' : '#eff6ff';
+      const borderLeft = n.lida ? '3px solid var(--bdr)' : `3px solid ${meta.cor}`;
       const id = _escWith(esc, n.id);
-      const instancia = _escWith(esc, n.instancia_id || '');
+      const instanciaId = _escWith(esc, n.instancia_id || '');
       const titulo = _escWith(esc, n.titulo || '');
-      return `<div style="background:${bg};border:1px solid var(--bdr);border-radius:8px;padding:12px 14px;margin-bottom:8px;cursor:pointer"
-        onclick="wfMarcarNotifLida('${id}','${instancia}','${titulo}','${instancia}')">
-        <div style="font-weight:600;font-size:13px">${_escWith(esc, n.titulo || '')}</div>
-        <div style="font-size:12px;color:var(--ink2);margin-top:2px">${_escWith(esc, n.mensagem || '')}</div>
-        <div style="font-size:11px;color:var(--ink3);margin-top:4px">${ts}</div>
+      return `<div style="background:${bg};border:1px solid var(--bdr);border-left:${borderLeft};border-radius:8px;padding:12px 14px;margin-bottom:8px;cursor:pointer;display:flex;gap:12px;align-items:flex-start"
+        onclick="wfMarcarNotifLida('${id}','${instanciaId}','${titulo}','${instanciaId}')">
+        <div style="font-size:20px;flex-shrink:0;line-height:1.3">${meta.icon}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:${n.lida ? '400' : '700'};font-size:13px;color:var(--ink)">${_escWith(esc, n.titulo || '')}</div>
+          <div style="font-size:12px;color:var(--ink2);margin-top:3px;line-height:1.5">${_escWith(esc, n.mensagem || '')}</div>
+          <div style="font-size:11px;color:var(--ink3);margin-top:5px">${ts}${n.lida ? '' : ' · <strong style="color:' + meta.cor + '">Não lida</strong>'}</div>
+        </div>
       </div>`;
     }).join('');
   }

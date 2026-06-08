@@ -316,7 +316,7 @@
     const alvo = document.getElementById(`wf-painel-${painel}`);
     if (alvo) alvo.style.display = '';
 
-    const tabIds = ['tarefas','instancias','solicitacoes','modelagem','formularios','equipes','admin-tarefas'];
+    const tabIds = ['notificacoes','tarefas','instancias','solicitacoes','modelagem','formularios','equipes','admin-tarefas'];
     tabIds.forEach(t => {
       const btn = document.getElementById(`wf-tab-${t}`);
       if (btn) btn.style.fontWeight = t === painel ? '700' : '';
@@ -338,20 +338,27 @@
 
   // P2.1 — Badge de notificações não lidas no botão do módulo
   function _wfAplicarBadgeNotificacoes(count) {
-    const btn = document.getElementById('nb-workflow');
-    if (!btn) return;
-    let badge = btn.querySelector('.wf-notif-badge');
-    if (count > 0) {
-      if (!badge) {
-        badge = document.createElement('span');
-        badge.className = 'wf-notif-badge';
-        badge.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;margin-left:4px;vertical-align:middle';
-        btn.appendChild(badge);
+    // Badge no botão de menu lateral
+    const btnNav = document.getElementById('nb-workflow');
+    if (btnNav) {
+      let badge = btnNav.querySelector('.wf-notif-badge');
+      if (count > 0) {
+        if (!badge) {
+          badge = document.createElement('span');
+          badge.className = 'wf-notif-badge';
+          badge.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;margin-left:4px;vertical-align:middle';
+          btnNav.appendChild(badge);
+        }
+        badge.textContent = count > 99 ? '99+' : String(count);
+      } else {
+        badge?.remove();
       }
-      badge.textContent = count > 99 ? '99+' : String(count);
-      return;
     }
-    badge?.remove();
+    // Label na aba de Notificações dentro do módulo
+    const tabLabel = document.getElementById('wf-notif-tab-label');
+    if (tabLabel) {
+      tabLabel.textContent = count > 0 ? `Notificações (${count > 99 ? '99+' : count})` : 'Notificações';
+    }
   }
 
   async function _wfAtualizarBadgeNotificacoes(notificacoes = null) {

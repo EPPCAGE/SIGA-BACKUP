@@ -707,6 +707,15 @@ function makeEngine(db) {
         { acao_tomada: acaoFinal, observacao, dados_formulario, papel_responsavel: tarefaAtual.papel_responsavel || null },
       );
 
+      // Notifica: dono original se a tarefa foi concluída por outro
+      if (tarefaAtual.responsavel_uid && tarefaAtual.responsavel_uid !== usuario_uid) {
+        await notif.tarefaConcluida({ destinatario_uid: tarefaAtual.responsavel_uid, instancia, tarefa: tarefaAtual, concluida_por_nome: usuario_email }).catch(() => {});
+      }
+      // Notifica o solicitante que o processo avançou (exceto se ele mesmo concluiu)
+      if (instancia.solicitante_uid && instancia.solicitante_uid !== usuario_uid) {
+        await notif.tarefaConcluida({ destinatario_uid: instancia.solicitante_uid, instancia, tarefa: tarefaAtual }).catch(() => {});
+      }
+
       await _avancarFluxoCanvas({ ...instancia, dados_consolidados: mergedDados }, tarefaAtual, acaoFinal);
       return { ok: true };
     }
