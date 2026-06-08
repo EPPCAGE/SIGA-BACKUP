@@ -91,6 +91,21 @@ async function handleWfTarefasRoute({ req, res, user, tarefasCol, gruposCol, usu
     return;
   }
 
+  if (req.method === 'POST' && acao === 'puxar') {
+    if (user?.perfil !== 'ep') {
+      res.status(403).json({ erro: 'SEM_PERMISSAO' });
+      return;
+    }
+    const result = await engine.puxarTarefa({
+      tarefa_id: id,
+      usuario_uid: user.uid,
+      usuario_email: user.email || null,
+      usuario_perfil: user.perfil || null,
+    });
+    res.json(result);
+    return;
+  }
+
   if (req.method === 'POST' && acao === 'excluir') {
     const result = await engine.excluirTarefa({
       tarefa_id: id,

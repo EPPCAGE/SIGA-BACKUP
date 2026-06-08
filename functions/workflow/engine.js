@@ -903,6 +903,28 @@ function makeEngine(db) {
     return { ok: true };
   }
 
+  async function puxarTarefa({ tarefa_id, usuario_uid, usuario_email = null, usuario_perfil = null }) {
+    if (usuario_perfil !== 'ep') lancarErro(ERRO.SEM_PERMISSAO, 'Apenas o perfil EP pode puxar tarefas.');
+    const tarefa = await buscarDoc(col.tarefas, tarefa_id, ERRO.TAREFA_NAO_ENCONTRADA);
+    if (['concluida', 'cancelada'].includes(tarefa.status)) lancarErro(ERRO.TAREFA_JA_CONCLUIDA, 'Tarefa já encerrada.');
+    const patch = {
+      responsavel_uid: usuario_uid,
+      papel_alvo: usuario_email || usuario_uid,
+      assumida_em: agora(),
+      assumida_por_uid: usuario_uid,
+      status: tarefa.status === 'pendente' ? 'em_execucao' : tarefa.status,
+      iniciado_em: tarefa.iniciado_em || agora(),
+    };
+    await col.tarefas.doc(tarefa_id).update(patch);
+    await _registrarHistorico(
+      tarefa.instancia_id, 'tarefa_delegada', usuario_uid,
+      tarefa.etapa_modelo_id, tarefa_id,
+      `Tarefa puxada pelo administrador (EP).`,
+      { novo_responsavel_uid: usuario_uid, anterior_responsavel_uid: tarefa.responsavel_uid || null },
+    );
+    return { ok: true, tarefa_id };
+  }
+
   async function excluirTarefa({ tarefa_id, usuario_uid, usuario_email = null, usuario_perfil = null }) {
     _garantirPermissaoGestaoWorkflow({ uid: usuario_uid, email: usuario_email, perfil: usuario_perfil }, 'Usuário não pode excluir esta tarefa.');
     const tarefa = await buscarDoc(col.tarefas, tarefa_id, ERRO.TAREFA_NAO_ENCONTRADA);
@@ -976,6 +998,7 @@ function makeEngine(db) {
     iniciarTarefa,
     concluirTarefa,
     delegarTarefa,
+    puxarTarefa,
     excluirTarefa,
     cancelarInstancia,
     suspenderInstancia,
