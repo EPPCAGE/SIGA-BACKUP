@@ -316,7 +316,7 @@
     const alvo = document.getElementById(`wf-painel-${painel}`);
     if (alvo) alvo.style.display = '';
 
-    const tabIds = ['tarefas','instancias','solicitacoes','modelagem','formularios','equipes','admin-tarefas'];
+    const tabIds = ['notificacoes','tarefas','instancias','solicitacoes','modelagem','formularios','equipes','admin-tarefas'];
     tabIds.forEach(t => {
       const btn = document.getElementById(`wf-tab-${t}`);
       if (btn) btn.style.fontWeight = t === painel ? '700' : '';
@@ -338,20 +338,27 @@
 
   // P2.1 — Badge de notificações não lidas no botão do módulo
   function _wfAplicarBadgeNotificacoes(count) {
-    const btn = document.getElementById('nb-workflow');
-    if (!btn) return;
-    let badge = btn.querySelector('.wf-notif-badge');
-    if (count > 0) {
-      if (!badge) {
-        badge = document.createElement('span');
-        badge.className = 'wf-notif-badge';
-        badge.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;margin-left:4px;vertical-align:middle';
-        btn.appendChild(badge);
+    // Badge no botão de menu lateral
+    const btnNav = document.getElementById('nb-workflow');
+    if (btnNav) {
+      let badge = btnNav.querySelector('.wf-notif-badge');
+      if (count > 0) {
+        if (!badge) {
+          badge = document.createElement('span');
+          badge.className = 'wf-notif-badge';
+          badge.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;margin-left:4px;vertical-align:middle';
+          btnNav.appendChild(badge);
+        }
+        badge.textContent = count > 99 ? '99+' : String(count);
+      } else {
+        badge?.remove();
       }
-      badge.textContent = count > 99 ? '99+' : String(count);
-      return;
     }
-    badge?.remove();
+    // Label na aba de Notificações dentro do módulo
+    const tabLabel = document.getElementById('wf-notif-tab-label');
+    if (tabLabel) {
+      tabLabel.textContent = count > 0 ? `Notificações (${count > 99 ? '99+' : count})` : 'Notificações';
+    }
   }
 
   async function _wfAtualizarBadgeNotificacoes(notificacoes = null) {
@@ -3295,7 +3302,8 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       const prox = _proximoNo(canvas, atualId, acaoAtual, dados);
       if (!prox) return null;
       if (prox.tipo === 'fim') return prox;
-      if (prox.tipo !== 'aprovacao') return prox;
+      if (prox.tipo === 'tarefa' || prox.tipo === 'aprovacao') return prox;
+      // gateway ou início: continua pelo próximo nó
       atualId = prox.id;
       acaoAtual = null;
     }
@@ -4669,6 +4677,21 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     wfCarregarAdminTarefas();
   }
 
+  async function wfAdminPuxarTarefa(tarefaId, nomeAtual) {
+    const aviso = nomeAtual && nomeAtual !== '—'
+      ? `Esta tarefa está atribuída a "${nomeAtual}". Deseja reatribuí-la para você?`
+      : 'Deseja assumir esta tarefa?';
+    if (!confirm(aviso)) return;
+    try {
+      await _wfApiRequest('wfTarefas', `/${encodeURIComponent(tarefaId)}/puxar`, { method: 'POST' });
+      alert('Tarefa puxada para você. Abrindo…');
+      _st.tarefasLista = null;
+      wfAbrirTarefa(tarefaId);
+    } catch (err) {
+      alert('Erro ao puxar tarefa: ' + (err?.message || err));
+    }
+  }
+
   async function wfAdminVerTarefa(tarefaId, instanciaId) {
     if (instanciaId) {
       // Abre o histórico da instância — visão completa sem assumir a tarefa
@@ -4724,6 +4747,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
         <td style="padding:8px 10px"><span style="background:${cor};color:#fff;font-size:11px;padding:2px 7px;border-radius:10px">${_esc(lbl)}</span></td>
         <td style="padding:8px 10px;color:${vencida ? '#ef4444' : 'inherit'};font-weight:${vencida ? '600' : 'normal'}">${prazoStr}${vencida ? ' ⚠' : ''}</td>
         <td style="padding:8px 10px;white-space:nowrap">
+          <button type="button" class="btn btn-p btn-sm" onclick="wfAdminPuxarTarefa('${_esc(t.id)}','${_esc(t._responsavel_nome || '')}')">Puxar</button>
           <button type="button" class="btn btn-sm" onclick="wfAdminVerTarefa('${_esc(t.id)}','${_esc(t.instancia_id || '')}')">Ver</button>
           <button type="button" class="btn btn-r btn-sm" onclick="wfExcluirTarefa('${_esc(t.id)}')">Excluir</button>
         </td>
@@ -4810,6 +4834,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     wfCarregarAdminTarefas,
     wfAdminRecarregar,
     wfAdminFiltrar,
+    wfAdminPuxarTarefa,
     wfAdminVerTarefa,
     // Formulários
     wfCarregarFormularios,

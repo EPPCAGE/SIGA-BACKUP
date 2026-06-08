@@ -2,14 +2,6 @@
 
 const { criarNotificacao } = require('./entities');
 
-/**
- * Dispara notificações internas (coleção wf_notificacoes).
- * Integra com EmailJS via Firestore trigger (mesmo padrão do sistema existente).
- */
-
-/**
- * @param {import('firebase-admin/firestore').Firestore} db
- */
 function makeNotificacoes(db) {
   const col = db.collection('wf_notificacoes');
 
@@ -25,6 +17,18 @@ function makeNotificacoes(db) {
       titulo: `Nova tarefa: ${etapa.nome}`,
       mensagem: `Uma nova tarefa do processo "${instancia.titulo}" foi atribuída a você. Prazo: ${tarefa.prazo ? new Date(tarefa.prazo.toDate()).toLocaleString('pt-BR') : 'sem prazo definido'}.`,
       instancia_id: instancia.id,
+      tarefa_id: tarefa.id,
+    }));
+  }
+
+  async function tarefaConcluida({ destinatario_uid, instancia, tarefa, concluida_por_nome = null }) {
+    const por = concluida_por_nome ? ` por ${concluida_por_nome}` : '';
+    return _salvar(criarNotificacao({
+      destinatario_uid,
+      tipo: 'tarefa_concluida',
+      titulo: `Etapa concluída: ${tarefa.etapa_nome}`,
+      mensagem: `A etapa "${tarefa.etapa_nome}" do processo "${instancia.titulo || tarefa.processo_nome}" foi concluída${por}.`,
+      instancia_id: instancia.id || tarefa.instancia_id,
       tarefa_id: tarefa.id,
     }));
   }
@@ -82,7 +86,18 @@ function makeNotificacoes(db) {
     }));
   }
 
-  return { tarefaCriada, prazoProximo, tarefaVencida, cienciaEtapa, instanciaConcluida, tarefaDelegada };
+  async function tarefaRetirada({ destinatario_uid, tarefa, retirada_por_nome = 'o administrador' }) {
+    return _salvar(criarNotificacao({
+      destinatario_uid,
+      tipo: 'tarefa_delegada',
+      titulo: `Tarefa reatribuída: ${tarefa.etapa_nome}`,
+      mensagem: `A tarefa "${tarefa.etapa_nome}" do processo "${tarefa.processo_nome}" foi retirada da sua fila por ${retirada_por_nome} e reatribuída a outro responsável.`,
+      instancia_id: tarefa.instancia_id,
+      tarefa_id: tarefa.id,
+    }));
+  }
+
+  return { tarefaCriada, tarefaConcluida, prazoProximo, tarefaVencida, cienciaEtapa, instanciaConcluida, tarefaDelegada, tarefaRetirada };
 }
 
 module.exports = { makeNotificacoes };
