@@ -907,6 +907,10 @@ function makeEngine(db) {
     if (usuario_perfil !== 'ep') lancarErro(ERRO.SEM_PERMISSAO, 'Apenas o perfil EP pode puxar tarefas.');
     const tarefa = await buscarDoc(col.tarefas, tarefa_id, ERRO.TAREFA_NAO_ENCONTRADA);
     if (['concluida', 'cancelada'].includes(tarefa.status)) lancarErro(ERRO.TAREFA_JA_CONCLUIDA, 'Tarefa já encerrada.');
+
+    const anteriorUid = tarefa.responsavel_uid || null;
+    const adminNome = usuario_email || 'o administrador';
+
     const patch = {
       responsavel_uid: usuario_uid,
       papel_alvo: usuario_email || usuario_uid,
@@ -920,8 +924,14 @@ function makeEngine(db) {
       tarefa.instancia_id, 'tarefa_delegada', usuario_uid,
       tarefa.etapa_modelo_id, tarefa_id,
       `Tarefa puxada pelo administrador (EP).`,
-      { novo_responsavel_uid: usuario_uid, anterior_responsavel_uid: tarefa.responsavel_uid || null },
+      { novo_responsavel_uid: usuario_uid, anterior_responsavel_uid: anteriorUid },
     );
+
+    // Avisa o responsável anterior que a tarefa foi retirada
+    if (anteriorUid && anteriorUid !== usuario_uid) {
+      await notif.tarefaRetirada({ destinatario_uid: anteriorUid, tarefa, retirada_por_nome: adminNome }).catch(() => {});
+    }
+
     return { ok: true, tarefa_id };
   }
 

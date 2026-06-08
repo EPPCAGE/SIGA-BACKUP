@@ -82,7 +82,18 @@ function makeNotificacoes(db) {
     }));
   }
 
-  return { tarefaCriada, prazoProximo, tarefaVencida, cienciaEtapa, instanciaConcluida, tarefaDelegada };
+  async function tarefaRetirada({ destinatario_uid, tarefa, retirada_por_nome = 'o administrador' }) {
+    return _salvar(criarNotificacao({
+      destinatario_uid,
+      tipo: 'tarefa_delegada',
+      titulo: `Tarefa reatribuída: ${tarefa.etapa_nome}`,
+      mensagem: `A tarefa "${tarefa.etapa_nome}" do processo "${tarefa.processo_nome}" foi retirada da sua fila por ${retirada_por_nome} e reatribuída a outro responsável.`,
+      instancia_id: tarefa.instancia_id,
+      tarefa_id: tarefa.id,
+    }));
+  }
+
+  return { tarefaCriada, prazoProximo, tarefaVencida, cienciaEtapa, instanciaConcluida, tarefaDelegada, tarefaRetirada };
 }
 
 module.exports = { makeNotificacoes };
