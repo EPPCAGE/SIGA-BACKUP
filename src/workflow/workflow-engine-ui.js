@@ -3990,20 +3990,65 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     }
   }
 
-  function wfAbrirDelegacao(tarefaId) {
+  async function wfAbrirDelegacao(tarefaId) {
     _st._delegacaoTarefaId = tarefaId;
     const modal = document.getElementById('wf-modal-delegacao');
     if (!modal) return;
     const sel = document.getElementById('wf-delegacao-usuario');
-    if (sel) {
-      const usuarios = globalScope.USUARIOS || [];
-      sel.innerHTML = `<option value="">— Selecione —</option>` +
-        usuarios.filter(u => u.uid || u.id).map(u =>
-          `<option value="${_esc(u.uid || u.id)}">${_esc(u.nome || u.email || u.uid || u.id)}</option>`
-        ).join('');
-    }
     document.getElementById('wf-delegacao-motivo').value = '';
-    modal.style.display = 'flex';
+
+    if (sel) {
+      sel.innerHTML = `<option value="">Carregando…</option>`;
+      modal.style.display = 'flex';
+
+      try {
+        // Busca a tarefa para saber o grupo_id
+        const tarefa = await _wfApiRequest('wfTarefas', `/${encodeURIComponent(tarefaId)}`);
+        const grupoId = tarefa?.grupo_id;
+
+        let candidatos = [];
+
+        if (grupoId) {
+          // Lista apenas membros do grupo
+          const grupo = await _getDoc('wf_grupos', grupoId).catch(() => null);
+          const emails = grupo?.membros_email || [];
+          // Resolve emails → usuários com uid
+          const todosUsuarios = globalScope.USUARIOS || [];
+          candidatos = emails
+            .map(email => todosUsuarios.find(u => u.email === email))
+            .filter(Boolean);
+          // Se USUARIOS não carregou, tenta buscar direto do Firestore
+          if (!candidatos.length && emails.length) {
+            // Tenta ler config/usuarios direto do Firestore
+            try {
+              const doc = await _getDoc('config', 'usuarios');
+              const raw = doc?.data;
+              const lista = typeof raw === 'string' ? JSON.parse(raw) : (Array.isArray(raw) ? raw : []);
+              candidatos = emails.map(email => lista.find(u => u.email === email)).filter(Boolean);
+            } catch (_) { /* ignora */ }
+          }
+        }
+
+        // Fallback: todos os usuários (EP delegando fora do grupo)
+        if (!candidatos.length) {
+          candidatos = globalScope.USUARIOS || [];
+        }
+
+        sel.innerHTML = `<option value="">— Selecione —</option>` +
+          candidatos
+            .filter(u => u.uid || u.id)
+            .map(u => `<option value="${_esc(u.uid || u.id)}">${_esc(u.nome || u.email || u.uid)}</option>`)
+            .join('');
+
+        if (!candidatos.length) {
+          sel.innerHTML = `<option value="">Nenhum usuário disponível</option>`;
+        }
+      } catch (e) {
+        sel.innerHTML = `<option value="">Erro ao carregar usuários</option>`;
+      }
+    } else {
+      modal.style.display = 'flex';
+    }
   }
 
   function wfFecharDelegacao() {
