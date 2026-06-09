@@ -4011,8 +4011,14 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       modal.style.display = 'flex';
 
       try {
-        // Carrega lista de usuários via coleção usuarios/{uid} (legível por todos autenticados)
-        const todosUsuarios = await _wfCarregarUsersComUid();
+        // config/usuarios tem o array canônico com uid, email, nome, perfil
+        let todosUsuarios = globalScope.USUARIOS || [];
+        if (!todosUsuarios.length) {
+          const cfgDoc = await _getDoc('config', 'usuarios');
+          const raw = cfgDoc?.data;
+          if (typeof raw === 'string') todosUsuarios = JSON.parse(raw);
+          else if (Array.isArray(raw)) todosUsuarios = raw;
+        }
 
         // Busca a tarefa para saber o grupo_id
         const tarefa = await _wfApiRequest('wfTarefas', `/${encodeURIComponent(tarefaId)}`);
@@ -4040,8 +4046,8 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 
         sel.innerHTML = `<option value="">— Selecione —</option>` +
           candidatos
-            .filter(u => u.uid || u.id)
-            .map(u => `<option value="${_esc(u.uid || u.id)}">${_esc(u.nome || u.email || u.uid)}</option>`)
+            .filter(u => u.uid || u.email)
+            .map(u => `<option value="${_esc(u.uid || u.email)}">${_esc(u.nome || u.email)}</option>`)
             .join('');
 
         if (!candidatos.length) {
