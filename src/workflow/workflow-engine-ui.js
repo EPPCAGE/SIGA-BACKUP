@@ -708,7 +708,6 @@
   function _wfTimelineEtapasOrdenadas(instancia, tarefa) {
     const canvas = instancia?.canvas;
     if (canvas?.nos?.length && canvas?.arestas) {
-      // Reconstrói a ordem topológica percorrendo os arcos a partir do início
       const nos = canvas.nos;
       const arestas = canvas.arestas;
       const inicio = nos.find(n => n.tipo === 'inicio');
@@ -721,18 +720,21 @@
           if (atual.tipo === 'tarefa' || atual.tipo === 'aprovacao') {
             ordenados.push({ id: atual.id, nome: atual.nome || atual.id, tipo: atual.tipo });
           }
-          // Pega o primeiro arco de saída sem condição (caminho principal)
-          const proxAresta = arestas.find(a => a.origem === atual.id && (!a.acao || a.acao === 'avancar') && !a.condicoes?.length);
+          // Saídas do nó atual, apenas ações de avanço
+          const saidas = arestas.filter(a => a.origem === atual.id && (!a.acao || a.acao === 'avancar' || a.acao === 'aprovar'));
+          // Caminho feliz: 1) padrão explícito, 2) sem condições, 3) primeira saída
+          const proxAresta =
+            saidas.find(a => a.padrao) ||
+            saidas.find(a => !a.condicoes?.length) ||
+            saidas[0];
           const proxNo = proxAresta ? nos.find(n => n.id === proxAresta.destino) : null;
           atual = proxNo || null;
         }
         if (ordenados.length) return ordenados;
       }
     }
-    // Fallback: snapshot_etapas (pode estar fora de ordem mas melhor que nada)
     const snap = instancia?.snapshot_etapas || [];
     if (snap.length) return snap;
-    // Último fallback: só a etapa atual
     return [{ id: tarefa.etapa_modelo_id, nome: tarefa.etapa_nome || tarefa.etapa_modelo_id }];
   }
 
@@ -790,10 +792,10 @@
       </div>`;
   }
 
-  function _wfRenderProgressoExecucao(instancia, tarefa) {
-    const etapas = instancia?.snapshot_etapas || [];
-    const idxAtual = etapas.findIndex(e => e.id === tarefa.etapa_modelo_id);
-    document.getElementById('wf-exec-progresso').innerHTML = _wfHtmlProgressoExecucao(etapas, idxAtual, tarefa);
+  function _wfRenderProgressoExecucao() {
+    // Substituído pela timeline vertical lateral — não renderiza mais nada aqui
+    const el = document.getElementById('wf-exec-progresso');
+    if (el) el.style.display = 'none';
   }
 
   function _wfRenderPapelExecucao(tarefa) {
