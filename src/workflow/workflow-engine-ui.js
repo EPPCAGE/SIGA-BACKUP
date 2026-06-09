@@ -838,6 +838,7 @@
   }
 
   async function wfAbrirTarefa(tarefaId) {
+    try {
     const tarefa = await _wfApiRequest('wfTarefas', `/${encodeURIComponent(tarefaId)}`);
     if (!tarefa) { alert('Tarefa não encontrada.'); return; }
     _st.tarefaAtual = tarefa;
@@ -873,6 +874,9 @@
     wfCarregarComentarios(tarefa.id);
 
     wfNavWorkflow('executar');
+    } catch (e) {
+      alert('Erro ao abrir tarefa: ' + (e?.message || e));
+    }
   }
 
   async function wfAssumirTarefa(tarefaId) {
@@ -4002,6 +4006,13 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       modal.style.display = 'flex';
 
       try {
+        // Carrega lista de usuários do sistema (fonte canônica)
+        const cfgDoc = await _getDoc('config', 'usuarios');
+        const rawData = cfgDoc?.data;
+        const todosUsuarios = typeof rawData === 'string'
+          ? JSON.parse(rawData)
+          : (Array.isArray(rawData) ? rawData : (globalScope.USUARIOS || []));
+
         // Busca a tarefa para saber o grupo_id
         const tarefa = await _wfApiRequest('wfTarefas', `/${encodeURIComponent(tarefaId)}`);
         const grupoId = tarefa?.grupo_id;
@@ -4012,26 +4023,18 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
           // Lista apenas membros do grupo
           const grupo = await _getDoc('wf_grupos', grupoId).catch(() => null);
           const emails = grupo?.membros_email || [];
-          // Resolve emails → usuários com uid
-          const todosUsuarios = globalScope.USUARIOS || [];
           candidatos = emails
             .map(email => todosUsuarios.find(u => u.email === email))
             .filter(Boolean);
-          // Se USUARIOS não carregou, tenta buscar direto do Firestore
+          // Se não resolveu por objeto, cria entradas mínimas com email
           if (!candidatos.length && emails.length) {
-            // Tenta ler config/usuarios direto do Firestore
-            try {
-              const doc = await _getDoc('config', 'usuarios');
-              const raw = doc?.data;
-              const lista = typeof raw === 'string' ? JSON.parse(raw) : (Array.isArray(raw) ? raw : []);
-              candidatos = emails.map(email => lista.find(u => u.email === email)).filter(Boolean);
-            } catch (_) { /* ignora */ }
+            candidatos = emails.map(email => ({ uid: email, email, nome: email }));
           }
         }
 
-        // Fallback: todos os usuários (EP delegando fora do grupo)
+        // Fallback: todos os usuários (sem grupo ou EP delegando fora do grupo)
         if (!candidatos.length) {
-          candidatos = globalScope.USUARIOS || [];
+          candidatos = todosUsuarios;
         }
 
         sel.innerHTML = `<option value="">— Selecione —</option>` +
