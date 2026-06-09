@@ -848,7 +848,7 @@
     // Dados já coletados nas etapas anteriores
     const instancia = await _wfApiRequest('wfInstanciaItem', `/${encodeURIComponent(tarefa.instancia_id)}`);
     _wfRenderDadosAnterioresExecucao(instancia);
-    _wfRenderProgressoExecucao(instancia, tarefa);
+    _wfRenderProgressoExecucao();
     _wfRenderTimeline(instancia, tarefa);
     _wfRenderPapelExecucao(tarefa);
 
