@@ -792,10 +792,10 @@
       </div>`;
   }
 
-  function _wfRenderProgressoExecucao(instancia, tarefa) {
-    const etapas = instancia?.snapshot_etapas || [];
-    const idxAtual = etapas.findIndex(e => e.id === tarefa.etapa_modelo_id);
-    document.getElementById('wf-exec-progresso').innerHTML = _wfHtmlProgressoExecucao(etapas, idxAtual, tarefa);
+  function _wfRenderProgressoExecucao() {
+    // Substituído pela timeline vertical lateral — não renderiza mais nada aqui
+    const el = document.getElementById('wf-exec-progresso');
+    if (el) el.style.display = 'none';
   }
 
   function _wfRenderPapelExecucao(tarefa) {
