@@ -720,12 +720,17 @@
           if (atual.tipo === 'tarefa' || atual.tipo === 'aprovacao') {
             ordenados.push({ id: atual.id, nome: atual.nome || atual.id, tipo: atual.tipo });
           }
-          // Saídas do nó atual, apenas ações de avanço
-          const saidas = arestas.filter(a => a.origem === atual.id && (!a.acao || a.acao === 'avancar' || a.acao === 'aprovar'));
-          // Caminho feliz: 1) padrão explícito, 2) sem condições, 3) primeira saída
+          // Saídas do nó atual — exclui arcos de rejeição/devolução (caminho não-feliz)
+          const saidas = arestas.filter(a =>
+            a.origem === atual.id &&
+            a.acao !== 'rejeitar' && a.acao !== 'devolver' &&
+            (!a.acao || a.acao === 'avancar' || a.acao === 'aprovar')
+          );
+          // Caminho feliz: 1) sem condições (sempre executa), 2) padrão explícito, 3) primeira saída
           const proxAresta =
-            saidas.find(a => a.padrao) ||
+            saidas.find(a => !a.condicoes?.length && !a.padrao) ||
             saidas.find(a => !a.condicoes?.length) ||
+            saidas.find(a => a.padrao) ||
             saidas[0];
           const proxNo = proxAresta ? nos.find(n => n.id === proxAresta.destino) : null;
           atual = proxNo || null;
@@ -4006,12 +4011,8 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       modal.style.display = 'flex';
 
       try {
-        // Carrega lista de usuários do sistema (fonte canônica)
-        const cfgDoc = await _getDoc('config', 'usuarios');
-        const rawData = cfgDoc?.data;
-        const todosUsuarios = typeof rawData === 'string'
-          ? JSON.parse(rawData)
-          : (Array.isArray(rawData) ? rawData : (globalScope.USUARIOS || []));
+        // Carrega lista de usuários via coleção usuarios/{uid} (legível por todos autenticados)
+        const todosUsuarios = await _wfCarregarUsersComUid();
 
         // Busca a tarefa para saber o grupo_id
         const tarefa = await _wfApiRequest('wfTarefas', `/${encodeURIComponent(tarefaId)}`);
