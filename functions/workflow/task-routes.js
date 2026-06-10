@@ -1,6 +1,6 @@
 'use strict';
 
-async function handleWfTarefasRoute({ req, res, user, tarefasCol, gruposCol, usuariosConfigDoc, engine, listarTarefasAbertasUsuario, listarTodasTarefasAbertas }) {
+async function handleWfTarefasRoute({ req, res, user, tarefasCol, gruposCol, usuariosConfigDoc, adminAuth, engine, listarTarefasAbertasUsuario, listarTodasTarefasAbertas }) {
   const segments = req.path.split('/').filter(Boolean);
   const id = segments[0];
   const acao = segments[1];
@@ -79,12 +79,20 @@ async function handleWfTarefasRoute({ req, res, user, tarefasCol, gruposCol, usu
   }
 
   if (req.method === 'POST' && acao === 'delegar') {
+    let novoUid = req.body?.novo_responsavel_uid || null;
+    // Se o frontend enviou um email em vez de UID, resolve via Firebase Auth
+    if (novoUid && String(novoUid).includes('@') && adminAuth) {
+      try {
+        const record = await adminAuth.getUserByEmail(novoUid);
+        novoUid = record.uid;
+      } catch (_) { /* mantém email — backend aceitará como está */ }
+    }
     const result = await engine.delegarTarefa({
       tarefa_id: id,
       usuario_uid: user.uid,
       usuario_email: user.email || null,
       usuario_perfil: user.perfil || null,
-      novo_responsavel_uid: req.body?.novo_responsavel_uid || null,
+      novo_responsavel_uid: novoUid,
       motivo: req.body?.motivo || '',
     });
     res.json(result);

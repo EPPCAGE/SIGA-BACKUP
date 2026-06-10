@@ -330,6 +330,7 @@ exports.wfTarefas = onRequest({ region: 'us-central1', cors: ['https://eppcage.c
       tarefasCol: col.tarefas,
       gruposCol: col.grupos,
       usuariosConfigDoc: db.doc('config/usuarios'),
+      adminAuth: admin.auth(),
       engine,
       listarTarefasAbertasUsuario,
       listarTodasTarefasAbertas,

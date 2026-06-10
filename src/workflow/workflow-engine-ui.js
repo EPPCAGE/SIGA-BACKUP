@@ -717,7 +717,11 @@
         let atual = inicio;
         while (atual && !visitados.has(atual.id)) {
           visitados.add(atual.id);
-          if (atual.tipo === 'tarefa' || atual.tipo === 'aprovacao') {
+          // Inclui apenas etapas executáveis; exclui gateways (gateway_xor/gateway_and)
+          // e aprovacao sem papel configurado (gateways salvos com tipo errado em modelos antigos)
+          const configNo = (instancia?.config_nos || {})[atual.id] || {};
+          const eGatewayAntigO = atual.tipo === 'aprovacao' && !configNo.papel_alvo && !configNo.grupo_id;
+          if ((atual.tipo === 'tarefa' || atual.tipo === 'aprovacao') && !eGatewayAntigO) {
             ordenados.push({ id: atual.id, nome: atual.nome || atual.id, tipo: atual.tipo });
           }
           // Saídas do nó atual — exclui arcos de rejeição/devolução (caminho não-feliz)
@@ -1480,7 +1484,8 @@
   function _bpmnTipoToWf(t) {
     if (t === 'bpmn:StartEvent') return 'inicio';
     if (t === 'bpmn:EndEvent') return 'fim';
-    if (t === 'bpmn:ExclusiveGateway' || t === 'bpmn:InclusiveGateway' || t === 'bpmn:ParallelGateway') return 'aprovacao';
+    if (t === 'bpmn:ExclusiveGateway' || t === 'bpmn:InclusiveGateway') return 'gateway_xor';
+    if (t === 'bpmn:ParallelGateway') return 'gateway_and';
     return 'tarefa';
   }
 
@@ -4011,8 +4016,14 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       modal.style.display = 'flex';
 
       try {
-        // Carrega lista de usuários via coleção usuarios/{uid} (legível por todos autenticados)
-        const todosUsuarios = await _wfCarregarUsersComUid();
+        // config/usuarios tem o array canônico com uid, email, nome, perfil
+        let todosUsuarios = globalScope.USUARIOS || [];
+        if (!todosUsuarios.length) {
+          const cfgDoc = await _getDoc('config', 'usuarios');
+          const raw = cfgDoc?.data;
+          if (typeof raw === 'string') todosUsuarios = JSON.parse(raw);
+          else if (Array.isArray(raw)) todosUsuarios = raw;
+        }
 
         // Busca a tarefa para saber o grupo_id
         const tarefa = await _wfApiRequest('wfTarefas', `/${encodeURIComponent(tarefaId)}`);
@@ -4040,8 +4051,8 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 
         sel.innerHTML = `<option value="">— Selecione —</option>` +
           candidatos
-            .filter(u => u.uid || u.id)
-            .map(u => `<option value="${_esc(u.uid || u.id)}">${_esc(u.nome || u.email || u.uid)}</option>`)
+            .filter(u => u.uid || u.email)
+            .map(u => `<option value="${_esc(u.uid || u.email)}">${_esc(u.nome || u.email)}</option>`)
             .join('');
 
         if (!candidatos.length) {
