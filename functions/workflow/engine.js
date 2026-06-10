@@ -62,10 +62,19 @@ function _modeloUsaCanvas(modelo) {
   return Array.isArray(modelo?.canvas?.nos) && modelo.canvas.nos.length > 0;
 }
 
-function _etapaCanvasExecutavel(no) {
+function _etapaCanvasExecutavel(no, configNos) {
   if (!no) return false;
   if (no.tipo === 'gateway_xor' || no.tipo === 'gateway_and') return false;
-  return no.tipo === 'tarefa' || no.tipo === 'aprovacao';
+  if (no.tipo !== 'tarefa' && no.tipo !== 'aprovacao') return false;
+  // Nós 'aprovacao' salvos antes da correção do tipo do gateway eram gateways BPMN
+  // mapeados incorretamente. Sem acoes de aprovação configuradas (aprovar/rejeitar),
+  // trata como gateway (não executável) para não criar tarefa de roteamento.
+  if (no.tipo === 'aprovacao' && configNos) {
+    const cfg = configNos[no.id] || no.config || {};
+    const acoes = cfg.acoes || [];
+    if (!acoes.includes('aprovar') && !acoes.includes('rejeitar')) return false;
+  }
+  return true;
 }
 
 function _configNo(modeloOuInstancia, noId) {
@@ -327,9 +336,9 @@ function makeEngine(db) {
     return escolhida ? _noCanvasPorId(canvas, escolhida.destino) : null;
   }
 
-  function _proximoNoExecutavelCanvas(canvas, noId, acao, dados = {}) {
+  function _proximoNoExecutavelCanvas(canvas, noId, acao, dados = {}, configNos = {}) {
     let atual = _proximoNoCanvas(canvas, noId, acao, dados);
-    while (atual && !_etapaCanvasExecutavel(atual) && atual.tipo !== 'fim') {
+    while (atual && !_etapaCanvasExecutavel(atual, configNos) && atual.tipo !== 'fim') {
       atual = _proximoNoCanvas(canvas, atual.id, null, dados);
     }
     return atual;
@@ -465,11 +474,12 @@ function makeEngine(db) {
     const canvas = (modeloData && _modeloUsaCanvas(modeloData))
       ? modeloData.canvas
       : (instancia.canvas || { nos: [], arestas: [] });
+    const configNos = (modeloData?.config_nos) || instancia.config_nos || {};
 
     const noAtual = _noCanvasPorId(canvas, tarefa.etapa_modelo_id);
     if (!noAtual) lancarErro(ERRO.ETAPA_NAO_ENCONTRADA, `Nó ${tarefa.etapa_modelo_id} não encontrado no canvas.`);
 
-    const proximoNo = _proximoNoExecutavelCanvas(canvas, noAtual.id, acao, instancia.dados_consolidados || {});
+    const proximoNo = _proximoNoExecutavelCanvas(canvas, noAtual.id, acao, instancia.dados_consolidados || {}, configNos);
     if (!proximoNo || proximoNo.tipo === 'fim') {
       await col.instancias.doc(instancia.id).update({ status: 'concluido', concluido_em: agora(), no_atual_id: null, etapa_atual_id: null });
       await _registrarHistorico(instancia.id, 'instancia_concluida', null, null, null, 'Processo concluído.', {});
@@ -547,7 +557,7 @@ function makeEngine(db) {
       instanciaData.canvas = fsClean(modelo.canvas || { nos: [], arestas: [] });
       instanciaData.config_nos = fsClean(modelo.config_nos || {});
       instanciaData.snapshot_etapas = (modelo.canvas?.nos || [])
-        .filter((no) => _etapaCanvasExecutavel(no))
+        .filter((no) => _etapaCanvasExecutavel(no, modelo.config_nos || {}))
         .map((no) => ({ id: no.id, nome: no.nome || no.id, tipo: no.tipo }));
       instanciaData.no_atual_id = null;
     }
@@ -575,7 +585,7 @@ function makeEngine(db) {
     if (_modeloUsaCanvas(modelo)) {
       const inicio = (modelo.canvas?.nos || []).find((no) => no.tipo === 'inicio');
       if (!inicio) lancarErro(ERRO.ETAPA_NAO_ENCONTRADA, 'Modelo canvas sem nó de início.');
-      const primeiroNo = _proximoNoExecutavelCanvas(modelo.canvas, inicio.id, null, {});
+      const primeiroNo = _proximoNoExecutavelCanvas(modelo.canvas, inicio.id, null, {}, modelo.config_nos || {});
       if (!primeiroNo) lancarErro(ERRO.TRANSICAO_NAO_ENCONTRADA, 'Modelo canvas sem etapa executável após o início.');
       await col.instancias.doc(instancia.id).update({ etapa_atual_id: primeiroNo.id, no_atual_id: primeiroNo.id });
       instancia.etapa_atual_id = primeiroNo.id;
