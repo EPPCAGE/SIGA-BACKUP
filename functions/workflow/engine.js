@@ -250,8 +250,17 @@ function makeEngine(db) {
     }
     if (alvo === 'gestor_solicitante') {
       // Preferência: gestor informado pelo solicitante ao concluir a etapa anterior.
-      if (instancia.gestor_solicitante_uid) {
-        return { responsavel_uid: instancia.gestor_solicitante_uid, papel_alvo: alvo, grupo_id: null };
+      const informado = instancia.gestor_solicitante_uid;
+      if (informado) {
+        // O valor pode ser um e-mail (usuários de config/usuarios geralmente não
+        // têm uid). Nesse caso usamos o e-mail como papel_alvo — a fila por e-mail
+        // garante visibilidade e permissão mesmo sem uid resolvido — e resolvemos
+        // o uid em melhor esforço para notificar.
+        if (String(informado).includes('@')) {
+          const uid = await _resolverUidPorEmail(informado);
+          return { responsavel_uid: uid || null, papel_alvo: informado, grupo_id: null };
+        }
+        return { responsavel_uid: informado, papel_alvo: alvo, grupo_id: null };
       }
       const usuario = await _buscarUsuarioPorUid(instancia.solicitante_uid);
       const uid = usuario?.gestor_uid || usuario?.gestor || null;
