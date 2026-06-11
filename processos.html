@@ -9122,7 +9122,10 @@ function pularEtapa(etId){
 function salvarPOP(avancar=true){
   const p=curProc;
   if(!p.form)p.form={pop_ok:false,pop:null,apresent:'',bpmnXml:null};
-  const etapas=p.mod?.etapas_proc||[];
+  // Usa a mesma lista de etapas que popAtivCards renderiza (TO BE tem prioridade),
+  // senão os índices/IDs não batem e as descrições são salvas/lidas em IDs errados.
+  const _tobeEt=p.mod?.etapas_proc_tobe||[];
+  const etapas=_tobeEt.length?_tobeEt:(p.mod?.etapas_proc||[]);
   const ativ_detalhes={...p.form.pop?.ativ_detalhes};
   etapas.forEach((e,i)=>{
     const descEl=document.getElementById(`pop-at-desc-${i}`);
@@ -10874,7 +10877,9 @@ function visPopPreview(){
     const el=document.getElementById(id);
     if(el){const key=id.replaceAll('pp-','');prev[key]=el.value;}
   });
-  const etapas=p.mod?.etapas_proc||[];
+  // Mesma lista de etapas que popAtivCards (TO BE tem prioridade) para os IDs baterem.
+  const _tobeEtPv=p.mod?.etapas_proc_tobe||[];
+  const etapas=_tobeEtPv.length?_tobeEtPv:(p.mod?.etapas_proc||[]);
   const ativ_detalhes={...prev.ativ_detalhes};
   etapas.forEach((e,i)=>{
     const descEl=document.getElementById(`pop-at-desc-${i}`);
