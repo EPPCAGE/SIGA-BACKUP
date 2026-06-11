@@ -670,6 +670,9 @@
     document.getElementById('wf-exec-titulo').textContent = tarefa.etapa_nome || tarefa.etapa_modelo_id;
     document.getElementById('wf-exec-obs').value = '';
     document.getElementById('wf-exec-formulario').innerHTML = '';
+    // Limpa seleção de gestor de uma tarefa anterior
+    const gestorSel = document.getElementById('wf-exec-gestor');
+    if (gestorSel) gestorSel.value = '';
     const instrDiv = document.getElementById('wf-exec-instrucoes');
     if (!tarefa.etapa_desc) {
       instrDiv.style.display = 'none';
@@ -1057,6 +1060,63 @@
     devolver: 'Retorna à etapa anterior. Informe o que precisa ser ajustado.',
   };
 
+  function _wfNoExecutorPapel(instancia, noId) {
+    const cfg = (instancia?.config_nos || {})[noId]
+      || (instancia?.canvas?.nos || []).find(n => n.id === noId)?.config
+      || {};
+    return cfg.papeis?.executor || cfg.responsavel_papel || '';
+  }
+
+  // Verifica se avançar leva a uma etapa executada pelo "gestor do solicitante".
+  function _wfProximaEtapaPedeGestor(instancia, tarefa, dadosParciais = {}) {
+    if (!instancia?.canvas) return false;
+    const dados = { ...instancia.dados_consolidados, ...dadosParciais };
+    const prox = _proximoNoExecutavel(instancia.canvas, tarefa.etapa_modelo_id, 'avancar', dados);
+    if (!prox || prox.tipo === 'fim') return false;
+    return _wfNoExecutorPapel(instancia, prox.id) === 'gestor_solicitante';
+  }
+
+  async function _wfUsuariosParaSelecao() {
+    if (_st._usuariosSelecao) return _st._usuariosSelecao;
+    let lista = globalScope.USUARIOS || [];
+    if (!lista.length) {
+      const cfgDoc = await _getDoc('config', 'usuarios').catch(() => null);
+      const raw = cfgDoc?.data;
+      if (typeof raw === 'string') { try { lista = JSON.parse(raw); } catch (_) { lista = []; } }
+      else if (Array.isArray(raw)) lista = raw;
+    }
+    _st._usuariosSelecao = lista;
+    return lista;
+  }
+
+  // Insere/atualiza o campo obrigatório "informe seu gestor" antes dos botões.
+  async function _wfRenderCampoGestorSolicitante(precisa, acoesEl) {
+    let wrap = document.getElementById('wf-exec-gestor-wrap');
+    if (!precisa) { if (wrap) wrap.style.display = 'none'; return; }
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.id = 'wf-exec-gestor-wrap';
+      wrap.style.cssText = 'margin-top:10px';
+      wrap.innerHTML = `<label class="lbl">Quem é o seu gestor? <span style="color:var(--red)">*</span>
+        <div style="font-size:12px;color:var(--ink3);font-weight:400;margin:2px 0 4px">Ele será o responsável pela próxima etapa do fluxo.</div></label>
+        <select id="wf-exec-gestor" class="fi" style="width:100%"><option value="">Carregando…</option></select>`;
+      acoesEl.parentElement.insertBefore(wrap, acoesEl);
+    }
+    wrap.style.display = '';
+    const sel = wrap.querySelector('#wf-exec-gestor');
+    if (sel && sel.dataset.carregado !== '1') {
+      const usuarios = await _wfUsuariosParaSelecao();
+      const meuUid = _uid();
+      const opts = usuarios
+        .filter(u => (u.uid || u.email) && u.uid !== meuUid)
+        .sort((a, b) => (a.nome || a.email || '').localeCompare(b.nome || b.email || ''))
+        .map(u => `<option value="${_esc(u.uid || u.email)}">${_esc(u.nome || u.email)}</option>`)
+        .join('');
+      sel.innerHTML = `<option value="">— Selecione —</option>${opts}`;
+      sel.dataset.carregado = '1';
+    }
+  }
+
   function _wfRenderAcoesExecucao(instancia, tarefa, dadosParciais) {
     const acoesEl = document.getElementById('wf-exec-acoes');
     if (!acoesEl) return;
@@ -1082,6 +1142,11 @@
       acoesEl.parentElement.insertBefore(motivoEl, acoesEl);
     }
     motivoEl.style.display = acoes.includes('devolver') ? '' : 'none';
+
+    // Campo obrigatório de gestor, se avançar levar a etapa do "gestor do solicitante"
+    const pedeGestor = acoes.includes('avancar')
+      && _wfProximaEtapaPedeGestor(instancia, tarefa, dadosParciais);
+    _wfRenderCampoGestorSolicitante(pedeGestor, acoesEl);
   }
 
   function _wfValidarConclusaoTarefa(tarefa, acao, obs) {
@@ -1115,6 +1180,19 @@
       return;
     }
     if (!_wfValidarConclusaoTarefa(tarefa, acao, obs)) return;
+
+    // Gestor do solicitante: obrigatório quando avançar leva a essa etapa.
+    let gestorSolicitanteUid;
+    const gestorWrap = document.getElementById('wf-exec-gestor-wrap');
+    if (acao === 'avancar' && gestorWrap && gestorWrap.style.display !== 'none') {
+      gestorSolicitanteUid = (document.getElementById('wf-exec-gestor')?.value || '').trim();
+      if (!gestorSolicitanteUid) {
+        alert('Informe quem é o seu gestor antes de concluir.');
+        document.getElementById('wf-exec-gestor')?.focus();
+        return;
+      }
+    }
+
     const dadosForm = _wfColetarDadosConclusaoTarefa(tarefa, acao);
     if (dadosForm == null) return;
 
@@ -1127,6 +1205,7 @@
           motivo_devolucao: motivoDevolucao || undefined,
           dados_formulario: dadosForm,
           anexos: _st._anexosTarefa || [],
+          gestor_solicitante_uid: gestorSolicitanteUid || undefined,
         },
       });
 

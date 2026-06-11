@@ -70,6 +70,14 @@ async function handleWfTarefasRoute({ req, res, user, tarefasCol, gruposCol, usu
 
   if (req.method === 'POST' && acao === 'concluir') {
     const { acao: acaoTarefa, observacao, dados_formulario, anexos } = req.body || {};
+    let gestorSolicitanteUid = req.body?.gestor_solicitante_uid || null;
+    // Aceita email no campo e resolve para UID via Firebase Auth.
+    if (gestorSolicitanteUid && String(gestorSolicitanteUid).includes('@') && adminAuth) {
+      try {
+        const record = await adminAuth.getUserByEmail(gestorSolicitanteUid);
+        gestorSolicitanteUid = record.uid;
+      } catch (_) { /* mantém valor original */ }
+    }
     const result = await engine.concluirTarefa({
       tarefa_id: id,
       usuario_uid: user.uid,
@@ -79,6 +87,7 @@ async function handleWfTarefasRoute({ req, res, user, tarefasCol, gruposCol, usu
       observacao,
       dados_formulario: dados_formulario || {},
       anexos: Array.isArray(anexos) ? anexos : [],
+      gestor_solicitante_uid: gestorSolicitanteUid,
     });
     res.json(result);
     return;
