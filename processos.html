@@ -1314,9 +1314,6 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
         <button type="button" class="hub-chip" onclick="filtUsr('dono',this)">Executor</button>
         <button type="button" class="hub-chip" onclick="filtUsr('gestor',this)">Gestor</button>
         <button type="button" class="hub-chip" onclick="filtUsr('gerente_projeto',this)">Projetos</button>
-        <button type="button" class="btn btn-p" onclick="migrarCustomClaims()" style="margin-left:auto;padding:6px 12px;font-size:12px" title="Migrar perfis para Custom Claims (Fase 1 Segurança)">
-          🔐 Migrar Claims
-        </button>
       </div>
       <input class="hub-srch" id="srch-usr" placeholder="Buscar..." oninput="renderAdmin()">
     </div>
@@ -17215,91 +17212,6 @@ async function deletarUsr(){
 }
 
 // ── MIGRAÇÃO DE CUSTOM CLAIMS (FASE 1 SEGURANÇA) ────────────────────────────
-/**
- * Migra perfis de TODOS os usuários para Custom Claims do Firebase Auth.
- * Deve ser executada UMA VEZ após deploy das Cloud Functions da Fase 1.
- * Requer perfil EP para executar.
- * 
- * USO: Chame migrarCustomClaims() no console do navegador (logado como EP).
- */
-async function migrarCustomClaims() {
-  if (!isEP()) {
-    toast('Apenas usuários EP podem executar migração de claims', 'var(--red)');
-    return;
-  }
-
-  if (!confirm('Confirma migração de Custom Claims para TODOS os usuários?\n\nIsso irá setar o perfil de cada usuário no Firebase Authentication.\n\nNão há risco de perda de dados — o sistema continuará funcionando normalmente.')) {
-    return;
-  }
-
-  toast('Iniciando migração de Custom Claims...', 'var(--blue)');
-
-  try {
-    // Usar instâncias globais do Firebase que já estão inicializadas
-    const { functions, httpsCallable, auth } = fb();
-    
-    if (!functions) {
-      toast('Firebase Functions não inicializado. Recarregue a página.', 'var(--red)');
-      return;
-    }
-
-    const migrate = httpsCallable(functions, 'migrateAllUserClaims');
-
-    // Verificar se usuário está autenticado
-    const user = auth.currentUser;
-    if (!user) {
-      toast('Usuário não autenticado', 'var(--red)');
-      return;
-    }
-
-    // Chamar Cloud Function - o Firebase SDK envia o token automaticamente
-    const result = await migrate({});
-    
-    console.log('Resultado da migração:', result.data);
-
-    const { resultados } = result.data;
-    
-    if (resultados.erros === 0) {
-      toast(`✅ Migração concluída com sucesso! ${resultados.sucesso}/${resultados.total} usuários migrados.`, 'var(--green)', 5000);
-      console.log('✅ Todos os usuários foram migrados com sucesso!');
-    } else {
-      toast(`⚠️ Migração concluída com avisos: ${resultados.sucesso} sucessos, ${resultados.erros} erros. Veja o console.`, 'var(--amber)', 5000);
-      console.warn('Detalhes dos erros:', resultados.detalhes);
-    }
-
-    // Mostrar resumo detalhado
-    console.log('═══════════════════════════════════════');
-    console.log('RESUMO DA MIGRAÇÃO DE CUSTOM CLAIMS');
-    console.log('═══════════════════════════════════════');
-    console.log(`Total de usuários: ${resultados.total}`);
-    console.log(`Migrados com sucesso: ${resultados.sucesso}`);
-    console.log(`Erros: ${resultados.erros}`);
-    if (resultados.detalhes && resultados.detalhes.length > 0) {
-      console.log('\nDetalhes dos erros:');
-      console.table(resultados.detalhes);
-    }
-    console.log('═══════════════════════════════════════');
-
-    // Instruções pós-migração
-    if (resultados.erros === 0) {
-      console.log('\n📋 PRÓXIMOS PASSOS:\n');
-      console.log('1. Peça para 2-3 usuários de perfis diferentes fazerem logout/login');
-      console.log('2. Após login, peça para executarem no console:');
-      console.log('   const user = auth.currentUser;');
-      console.log('   const token = await user.getIdTokenResult();');
-      console.log('   console.log("Meu perfil:", token.claims.perfil);');
-      console.log('\n3. Validar que o perfil está correto para cada usuário');
-      console.log('4. Aguardar 1-2 semanas antes de aplicar Fase 2 (regras Firestore)');
-    }
-
-  } catch (error) {
-    console.error('Erro ao migrar claims:', error);
-    toast('Erro ao migrar claims: ' + error.message, 'var(--red)', 5000);
-  }
-}
-
-// Expor globalmente para fácil acesso via console
-globalThis.migrarCustomClaims = migrarCustomClaims;
 
 // ── VERIFICAR CUSTOM CLAIMS (DEBUG) ──────────────────────────────────────────
 /**

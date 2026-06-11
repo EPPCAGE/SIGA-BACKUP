@@ -1,7 +1,7 @@
 (function initAppConstants(globalScope){
   globalScope.PERFIL_LABELS = {
     ep: globalScope.ORG_CONFIG.epProfileLabel,
-    dono: 'Dono do Processo',
+    dono: 'Processos',
     gestor: 'Gestor / Adjunto',
     gerente_projeto: 'Projetos',
     solicitante: 'Solicitante',
