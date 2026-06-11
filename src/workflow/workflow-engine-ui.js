@@ -2167,14 +2167,34 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     const fixosHtml = Object.entries(fixos).map(([valor, label]) =>
       `<option value="${valor}"${(sel || '') === valor ? ' selected' : ''}>${_esc(label)}</option>`
     ).join('');
+
     const grupos = _st.grupos || [];
-    const gruposOptions = grupos.map(g => {
-      const val = `grupo:${g.id}`;
-      return `<option value="${_esc(val)}"${(sel || '') === val ? ' selected' : ''}>${_esc(g.nome || g.id)}</option>`;
+    const usuarios = globalScope.USUARIOS || [];
+    const emailNome = {};
+    usuarios.forEach(u => { if (u.email) emailNome[u.email] = u.nome || u.email; });
+
+    const gruposHtml = grupos.map(g => {
+      const gid = g.id;
+      const valFila  = `grupo:${gid}`;
+      const valChefe = `grupo_chefe:${gid}`;
+      const s = sel || '';
+
+      let opts = `<option value="${_esc(valFila)}"${s === valFila ? ' selected' : ''}>Qualquer membro da equipe</option>`;
+
+      if (g.chefe_email) {
+        const chefeNome = emailNome[g.chefe_email] || g.chefe_email;
+        opts += `<option value="${_esc(valChefe)}"${s === valChefe ? ' selected' : ''}>${_esc(chefeNome)} (chefe)</option>`;
+      }
+
+      (g.membros_email || []).forEach(email => {
+        const valMembro = `grupo_membro:${gid}:${email}`;
+        const nome = emailNome[email] || email;
+        opts += `<option value="${_esc(valMembro)}"${s === valMembro ? ' selected' : ''}>${_esc(nome)}</option>`;
+      });
+
+      return `<optgroup label="Equipe: ${_esc(g.nome || gid)}">${opts}</optgroup>`;
     }).join('');
-    const gruposHtml = grupos.length
-      ? `<optgroup label="Equipe (fila)">${gruposOptions}</optgroup>`
-      : '';
+
     return fixosHtml + gruposHtml;
   }
 
@@ -4293,9 +4313,13 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
         const emails = g.membros_email || [];
         const membros = _wfMembrosGrupoTexto(g, usuarios);
         const acoes = _wfAcoesGrupoHtml(g, isEp);
+        const chefeNome = g.chefe_email
+          ? (usuarios.find(u => u.email === g.chefe_email)?.nome || g.chefe_email)
+          : null;
         return `<div style="background:var(--surf2);border-radius:10px;padding:16px">
           <div style="font-weight:600;font-size:14px;margin-bottom:4px">${_esc(g.nome || '(sem nome)')}</div>
           ${g.descricao ? `<div style="font-size:12px;color:var(--ink3);margin-bottom:8px">${_esc(g.descricao)}</div>` : ''}
+          ${chefeNome ? `<div style="font-size:12px;color:var(--ink3);margin-bottom:4px">Chefe: <strong>${_esc(chefeNome)}</strong></div>` : ''}
           <div style="font-size:12px;color:var(--ink3)"><strong>${emails.length} membro(s):</strong> ${membros}</div>
           ${acoes}
         </div>`;
@@ -4307,6 +4331,21 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 
   // ── Grupos: modal criar/editar ───────────────────────────────────────────────
 
+  function _wfAtualizarSelectChefe() {
+    const chefeEl = document.getElementById('wf-grupo-chefe');
+    if (!chefeEl) return;
+    const atual = chefeEl.value;
+    const usuarios = globalScope.USUARIOS || [];
+    const emailNome = {};
+    usuarios.forEach(u => { if (u.email) emailNome[u.email] = u.nome || u.email; });
+    const marcados = [...document.querySelectorAll('.wf-grupo-membro-cb:checked')].map(cb => cb.value);
+    chefeEl.innerHTML = '<option value="">— Nenhum —</option>' +
+      marcados.map(email => {
+        const nome = emailNome[email] || email;
+        return `<option value="${_esc(email)}"${atual === email ? ' selected' : ''}>${_esc(nome)}</option>`;
+      }).join('');
+  }
+
   async function wfAbrirModalGrupo(grupoId) {
     _st._grupoEditandoId = grupoId || null;
     const modal = document.getElementById('wf-modal-grupo');
@@ -4314,6 +4353,8 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     document.getElementById('wf-modal-grupo-titulo').textContent = grupoId ? 'Editar grupo' : 'Novo grupo';
     document.getElementById('wf-grupo-nome').value = '';
     document.getElementById('wf-grupo-descricao').value = '';
+    const chefeEl = document.getElementById('wf-grupo-chefe');
+    if (chefeEl) chefeEl.innerHTML = '<option value="">— Nenhum —</option>';
     modal.style.display = 'flex';
 
     // USUARIOS é a fonte correta — identificados por email (não uid)
@@ -4331,7 +4372,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
         const nome = _esc(u.nome || u.email);
         const perfil = u.perfil ? `<span class="wf-member-chip-perfil">${_esc(PERFIL_LABEL[u.perfil] || u.perfil)}</span>` : '';
         return `<label class="wf-member-chip">
-          <input type="checkbox" class="wf-grupo-membro-cb" value="${email}">
+          <input type="checkbox" class="wf-grupo-membro-cb" value="${email}" onchange="_wfAtualizarSelectChefe()">
           <span class="wf-member-chip-name">${nome}</span>
           ${perfil}
         </label>`;
@@ -4349,6 +4390,9 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
           const cb = membrosEl.querySelector(`input[value="${CSS.escape(val)}"]`);
           if (cb) cb.checked = true;
         });
+        _wfAtualizarSelectChefe();
+        // Restore chefe selection after options are populated
+        if (g.chefe_email && chefeEl) chefeEl.value = g.chefe_email;
       }
     }
   }
@@ -4364,7 +4408,8 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     if (!nome) { alert('Informe o nome do grupo.'); return; }
     const descricao = document.getElementById('wf-grupo-descricao')?.value?.trim() || '';
     const membros_email = [...document.querySelectorAll('.wf-grupo-membro-cb:checked')].map(cb => cb.value);
-    const payload = { nome, descricao, membros_email };
+    const chefe_email = document.getElementById('wf-grupo-chefe')?.value || null;
+    const payload = { nome, descricao, membros_email, chefe_email: chefe_email || null };
     try {
       const id = _st._grupoEditandoId;
       if (id) {
@@ -5089,6 +5134,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     wfFecharModalGrupo,
     wfSalvarGrupo,
     wfExcluirGrupo,
+    _wfAtualizarSelectChefe,
     wfCarregarEquipesUsuarios,
     // Admin
     wfCarregarAdminTarefas,

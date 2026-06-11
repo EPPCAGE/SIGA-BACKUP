@@ -245,6 +245,26 @@ function makeEngine(db) {
     if (alvo.startsWith('grupo:')) {
       return { responsavel_uid: null, papel_alvo: alvo, grupo_id: alvo.slice(6) || null };
     }
+    if (alvo.startsWith('grupo_chefe:')) {
+      const grupoId = alvo.slice(12);
+      const grupoSnap = await col.grupos.doc(grupoId).get();
+      const chefeEmail = grupoSnap.exists ? (grupoSnap.data()?.chefe_email || null) : null;
+      if (!chefeEmail) {
+        // Sem chefe definido: cai na fila da equipe
+        return { responsavel_uid: null, papel_alvo: `grupo:${grupoId}`, grupo_id: grupoId };
+      }
+      const uid = await _resolverUidPorEmail(chefeEmail);
+      return { responsavel_uid: uid || null, papel_alvo: chefeEmail, grupo_id: grupoId };
+    }
+    if (alvo.startsWith('grupo_membro:')) {
+      const rest = alvo.slice(13);
+      const sep = rest.indexOf(':');
+      const grupoId = sep > -1 ? rest.slice(0, sep) : rest;
+      const email = sep > -1 ? rest.slice(sep + 1) : null;
+      if (!email) return { responsavel_uid: null, papel_alvo: `grupo:${grupoId}`, grupo_id: grupoId };
+      const uid = await _resolverUidPorEmail(email);
+      return { responsavel_uid: uid || null, papel_alvo: email, grupo_id: grupoId };
+    }
     if (['ep', 'gestor', 'dono'].includes(alvo)) {
       return { responsavel_uid: null, papel_alvo: alvo, grupo_id: null };
     }

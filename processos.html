@@ -1204,11 +1204,10 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
     </div>
     <div class="fg"><label class="fl" for="usr-area">Área</label><select class="fi" id="usr-area"><option value="">Selecione a área...</option></select></div>
     <div class="fg"><label class="fl" for="usr-email">E-mail<span>*</span></label><input class="fi" id="usr-email" type="email"></div>
-    <div class="fg"><label class="fl" for="usr-gestor">Gestor imediato</label><select class="fi" id="usr-gestor"><option value="">— Nenhum —</option></select><small style="color:var(--tx2);font-size:11px;margin-top:3px;display:block">Usado para direcionar tarefas de workflow ao "Gestor do solicitante".</small></div>
     <div class="fg"><label class="fl" for="usr-perfil">Perfil<span>*</span></label>
       <select class="fi" id="usr-perfil" onchange="onUsrPerfilChg()">
         <option value="ep">EPP</option>
-        <option value="dono">Executor de Processo</option>
+        <option value="dono">Processos</option>
         <option value="gestor">Gestor / Adjunto</option>
         <option value="gerente_projeto">Projetos</option>
       </select>
@@ -1282,7 +1281,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
         </label>
         <div id="aviso-perfis-ind" style="display:flex;flex-direction:column;gap:6px;padding-left:1.2rem;opacity:.4;pointer-events:none">
           <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="aviso-perfil-ep"> EPP</label>
-          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="aviso-perfil-dono"> Executor de Processo</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="aviso-perfil-dono"> Processos</label>
         </div>
       </div>
     </div>
@@ -2563,6 +2562,13 @@ Não responda este e-mail.</pre>
         </div>
         <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);margin-bottom:8px">Membros</div>
         <div id="wf-grupo-membros-lista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px"></div>
+        <div style="margin-top:14px">
+          <label class="lbl" style="font-size:11px" for="wf-grupo-chefe">Chefe da equipe (opcional)</label>
+          <select class="fi" id="wf-grupo-chefe" style="margin-top:4px">
+            <option value="">— Nenhum —</option>
+          </select>
+          <div style="font-size:11px;color:var(--ink3);margin-top:3px">O chefe pode ser selecionado como responsável direto ao configurar etapas do workflow.</div>
+        </div>
       </div>
       <div class="modal-ft">
         <button type="button" class="btn btn-p" onclick="wfSalvarGrupo()">Salvar grupo</button>
@@ -16886,8 +16892,6 @@ function _abrirModalUsrEdicao(idx, delBtn, blockBtn){
   document.getElementById('usr-nome').value = u.nome;
   document.getElementById('usr-ini').value = u.iniciais;
   document.getElementById('usr-email').value = u.email;
-  const gestorSelEd = document.getElementById('usr-gestor');
-  if(gestorSelEd) gestorSelEd.value = u.gestor_uid || '';
   const areaSel = document.getElementById('usr-area');
   if(areaSel){
     if(u.area && ![...areaSel.options].some(o=>o.value===u.area)){
@@ -17155,13 +17159,11 @@ function _salvarUsrPerfis(perfil){
   return [perfil];
 }
 function _salvarUsrBuildPayload({email, nome, area, perfil, perfisArr, ini, vinculos, projetosVinculados, trocarSenha=false}){
-  const gestorUid = document.getElementById('usr-gestor')?.value || null;
   return {
     email, nome, area, perfil, perfis:perfisArr, iniciais:ini,
     macroprocessos_vinculados:vinculos,
     processos_vinculados:[],
     projetos_vinculados:projetosVinculados,
-    gestor_uid: gestorUid || null,
     ...(trocarSenha ? {trocar_senha:true} : {})
   };
 }
