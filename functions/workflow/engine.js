@@ -83,6 +83,11 @@ function _configNo(modeloOuInstancia, noId) {
     || {};
 }
 
+function _executorDoNo(modeloOuInstancia, noId) {
+  const cfg = _configNo(modeloOuInstancia, noId);
+  return cfg?.papeis?.executor || cfg?.responsavel_papel || '';
+}
+
 function _noCanvasPorId(canvas, noId) {
   return (canvas?.nos || []).find((no) => no.id === noId) || null;
 }
@@ -244,6 +249,10 @@ function makeEngine(db) {
       return { responsavel_uid: null, papel_alvo: alvo, grupo_id: null };
     }
     if (alvo === 'gestor_solicitante') {
+      // Preferência: gestor informado pelo solicitante ao concluir a etapa anterior.
+      if (instancia.gestor_solicitante_uid) {
+        return { responsavel_uid: instancia.gestor_solicitante_uid, papel_alvo: alvo, grupo_id: null };
+      }
       const usuario = await _buscarUsuarioPorUid(instancia.solicitante_uid);
       const uid = usuario?.gestor_uid || usuario?.gestor || null;
       // If gestor not configured, fall back to generic 'gestor' queue so the task is visible
@@ -674,7 +683,7 @@ function makeEngine(db) {
     return _ACAO_NORMALIZAR[acao] || acao || 'avancar';
   }
 
-  async function concluirTarefa({ tarefa_id, usuario_uid, usuario_email = null, usuario_perfil = null, acao, observacao = '', dados_formulario = {}, anexos = [] }) {
+  async function concluirTarefa({ tarefa_id, usuario_uid, usuario_email = null, usuario_perfil = null, acao, observacao = '', dados_formulario = {}, anexos = [], gestor_solicitante_uid = null }) {
     const tarefa = await buscarDoc(col.tarefas, tarefa_id, ERRO.TAREFA_NAO_ENCONTRADA);
     const usuario = { uid: usuario_uid, email: usuario_email, perfil: usuario_perfil };
     const tarefaAtual = await _atribuirTarefaSeNecessario(tarefa, usuario);
@@ -695,6 +704,18 @@ function makeEngine(db) {
         lancarErro(ERRO.CAMPO_OBRIGATORIO, 'É obrigatório informar um parecer/justificativa para esta ação.');
       }
       await _validarFormularioTarefaCanvas(instancia, tarefaAtual, dados_formulario);
+
+      // Se a próxima etapa for executada pelo "gestor do solicitante", o gestor
+      // deve ser informado por quem conclui esta etapa (obrigatório), salvo se já
+      // houver sido informado em uma etapa anterior desta instância.
+      const proxNoCanvas = _proximoNoExecutavelCanvas(
+        instancia.canvas, tarefaAtual.etapa_modelo_id, acaoFinal,
+        dadosMesclados, instancia.config_nos || {});
+      const proxExecutor = proxNoCanvas ? _executorDoNo(instancia, proxNoCanvas.id) : null;
+      if (proxExecutor === 'gestor_solicitante'
+        && !gestor_solicitante_uid && !instancia.gestor_solicitante_uid) {
+        lancarErro(ERRO.CAMPO_OBRIGATORIO, 'Informe quem é o gestor responsável pela próxima etapa antes de concluir.');
+      }
       await col.tarefas.doc(tarefa_id).update(fsClean({
         status: 'concluida',
         acao_tomada: acaoFinal,
@@ -706,11 +727,15 @@ function makeEngine(db) {
       }));
 
       const mergedDados = dadosMesclados;
+      const gestorSolicitanteUid = gestor_solicitante_uid || instancia.gestor_solicitante_uid || null;
       const patchInstancia = { dados_consolidados: mergedDados };
       if (tarefaAtual.papel_responsavel === 'executor') {
         patchInstancia.ultimo_executor_uid = usuario_uid;
       }
-      await col.instancias.doc(instancia.id).update(patchInstancia);
+      if (gestor_solicitante_uid) {
+        patchInstancia.gestor_solicitante_uid = gestor_solicitante_uid;
+      }
+      await col.instancias.doc(instancia.id).update(fsClean(patchInstancia));
 
       await _registrarHistorico(
         instancia.id, 'tarefa_concluida', usuario_uid,
@@ -728,7 +753,7 @@ function makeEngine(db) {
         await notif.tarefaConcluida({ destinatario_uid: instancia.solicitante_uid, instancia, tarefa: tarefaAtual }).catch(() => {});
       }
 
-      await _avancarFluxoCanvas({ ...instancia, dados_consolidados: mergedDados }, tarefaAtual, acaoFinal);
+      await _avancarFluxoCanvas({ ...instancia, dados_consolidados: mergedDados, gestor_solicitante_uid: gestorSolicitanteUid }, tarefaAtual, acaoFinal);
       return { ok: true };
     }
 
