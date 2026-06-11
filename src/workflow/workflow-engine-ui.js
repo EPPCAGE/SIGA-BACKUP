@@ -4039,9 +4039,18 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
           else if (Array.isArray(raw)) todosUsuarios = raw;
         }
 
-        // Busca a tarefa para saber o grupo_id
+        // Busca a tarefa para saber o grupo_id e papel_alvo
         const tarefa = await _wfApiRequest('wfTarefas', `/${encodeURIComponent(tarefaId)}`);
-        const grupoId = tarefa?.grupo_id;
+
+        // Determina o grupo responsável: 1) grupo da tarefa, 2) grupo:ID em papel_alvo, 3) grupo da instância
+        let grupoId = tarefa?.grupo_id || null;
+        if (!grupoId && String(tarefa?.papel_alvo || '').startsWith('grupo:')) {
+          grupoId = tarefa.papel_alvo.slice(6);
+        }
+        if (!grupoId && tarefa?.instancia_id) {
+          const instancia = await _wfApiRequest('wfInstanciaItem', `/${encodeURIComponent(tarefa.instancia_id)}`).catch(() => null);
+          grupoId = instancia?.grupo_id || null;
+        }
 
         let candidatos = [];
 
