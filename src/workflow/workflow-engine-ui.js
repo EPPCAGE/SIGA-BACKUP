@@ -2074,9 +2074,14 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       _wfModeler = null;
     }
     if (canvasEl) canvasEl.style.display = 'none';
+    const _maxBtn = document.getElementById('wf-bpmn-maximizar');
+    if (_maxBtn) _maxBtn.style.display = 'none';
+    // Ensure any previous maximize state is cleared
+    const _card = document.getElementById('wf-bpmn-card');
+    if (_card && _card.dataset.maximizado === '1') wfToggleCanvasMaximize();
     if (loadingEl) { loadingEl.style.display = ''; loadingEl.innerHTML = '<div class="spin"></div><span>Carregando editor…</span>'; }
 
-    _wfModeler = new BpmnJS({ container: '#wf-bpmn-canvas' });
+    _wfModeler = new BpmnJS({ container: '#wf-bpmn-canvas', keyboard: { bindTo: document } });
 
     _wfModeler.on('commandStack.changed', () => {
       // Apenas sinaliza que há alterações — NÃO agenda autosave,
@@ -2094,10 +2099,48 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     _wfModeler.importXML(xml).then(() => {
       if (loadingEl) loadingEl.style.display = 'none';
       if (canvasEl) canvasEl.style.display = '';
+      const maxBtn = document.getElementById('wf-bpmn-maximizar');
+      if (maxBtn) maxBtn.style.display = '';
       _wfModeler.get('canvas').zoom('fit-viewport');
     }).catch(err => {
       if (loadingEl) loadingEl.innerHTML = `<div style="color:var(--red);padding:1rem;font-size:13px">Erro: ${_esc(err.message || String(err))}</div>`;
     });
+  }
+
+  function wfToggleCanvasMaximize() {
+    const card = document.getElementById('wf-bpmn-card');
+    const canvas = document.getElementById('wf-bpmn-canvas');
+    const btn = document.getElementById('wf-bpmn-maximizar');
+    if (!card || !canvas) return;
+
+    const isMax = card.dataset.maximizado === '1';
+    if (isMax) {
+      // Restore
+      card.dataset.maximizado = '';
+      card.style.cssText = 'padding:0;margin-bottom:12px;overflow:hidden;position:relative';
+      canvas.style.height = '420px';
+      if (btn) btn.textContent = '⛶';
+      if (btn) btn.title = 'Maximizar canvas';
+      document.body.style.overflow = '';
+    } else {
+      // Maximize — fixed overlay covering the viewport
+      card.dataset.maximizado = '1';
+      card.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9000;border-radius:0;margin:0;overflow:hidden;background:#fff';
+      canvas.style.height = '100%';
+      if (btn) btn.textContent = '✕';
+      if (btn) btn.title = 'Restaurar canvas';
+      document.body.style.overflow = 'hidden';
+    }
+
+    // Resize the BPMN.js canvas to fit the new container dimensions
+    if (_wfModeler) {
+      setTimeout(() => {
+        try {
+          _wfModeler.get('canvas').resized();
+          if (!isMax) _wfModeler.get('canvas').zoom('fit-viewport');
+        } catch (_) {}
+      }, 50);
+    }
   }
 
   function _wfTipoConfigElemento(tipo) {
@@ -4993,6 +5036,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     wfConfirmarAtribuicao,
     wfCancelarAtribuicao,
     // Designer
+    wfToggleCanvasMaximize,
     wfImportarMapeamento,
     wfAbrirDesigner,
     wfDesignerSetMode,
@@ -5086,7 +5130,15 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     _st,
   });
 
-  // Tecla Delete remove o nó/aresta selecionado no designer
+  // Tecla Escape fecha o maximize do canvas BPMN
+  document.addEventListener('keydown', (evt) => {
+    if (evt.key === 'Escape') {
+      const card = document.getElementById('wf-bpmn-card');
+      if (card && card.dataset.maximizado === '1') wfToggleCanvasMaximize();
+    }
+  });
+
+  // Tecla Delete remove o nó/aresta selecionado no designer legado
   document.addEventListener('keydown', (evt) => {
     if (_st.painelAtual !== 'config-modelo' && _st.painelAtual !== 'designer') return;
     if (evt.key !== 'Delete' && evt.key !== 'Backspace') return;
