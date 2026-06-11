@@ -735,18 +735,20 @@
           if (_wfNoEhEtapa(atual, configNos)) {
             ordenados.push({ id: atual.id, nome: atual.nome || atual.id, tipo: atual.tipo });
           }
-          // Saídas — exclui arcos de rejeição (caminho não-feliz), segue avancar/aprovar
-          const saidas = arestas.filter(a =>
-            a.origem === atual.id &&
-            a.acao !== 'rejeitar' && a.acao !== 'devolver' &&
-            (!a.acao || a.acao === 'avancar' || a.acao === 'aprovar')
-          );
-          // Caminho feliz: arco sem condições > padrao > primeiro disponível
+          // Todas as saídas do nó. Não filtramos por `acao` porque, no canvas
+          // extraído do BPMN, `acao` carrega o rótulo do arco (ex.: texto da
+          // condição) — filtrar por isso descartaria o caminho de avanço.
+          const saidas = arestas.filter(a => a.origem === atual.id);
+          // Evita arcos de rejeição/retrabalho que voltam para etapas já
+          // percorridas; prefere seguir adiante no fluxo.
+          const adiante = saidas.filter(a => !visitados.has(a.destino));
+          const pool = adiante.length ? adiante : saidas;
+          // Caminho feliz: o arco padrão (marcado "quando nenhuma regra bater")
+          // é a rota principal; senão o sem condições; senão o primeiro.
           const proxAresta =
-            saidas.find(a => !a.condicoes?.length && !a.padrao) ||
-            saidas.find(a => !a.condicoes?.length) ||
-            saidas.find(a => a.padrao) ||
-            saidas[0];
+            pool.find(a => a.padrao) ||
+            pool.find(a => !a.condicoes?.length) ||
+            pool[0];
           atual = proxAresta ? (nos.find(n => n.id === proxAresta.destino) || null) : null;
         }
         if (ordenados.length) return ordenados;
