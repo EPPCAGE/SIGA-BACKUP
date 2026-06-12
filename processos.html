@@ -6430,21 +6430,24 @@ function _salvarDonoPOP(p){
     if(!descEl) return;
     const pd=ativ_detalhes[e.id]||{};
     const fb=(e.tipo==='Decisao'||e.tipo==='Decisão')?'Decisão':(e.tipo||'Atividade');
+    const tEl=document.getElementById(`pop-at-tipo-${i}`);
+    const rEl=document.getElementById(`pop-at-resp-${i}`);
     ativ_detalhes[e.id]={
-      tipo:document.getElementById(`pop-at-tipo-${i}`)?.value||pd.tipo||fb,
-      desc:descEl.value||pd.desc||'',
-      resp:document.getElementById(`pop-at-resp-${i}`)?.value||pd.resp||'',
+      tipo:tEl!=null?tEl.value:(pd.tipo||fb),
+      desc:descEl.value,
+      resp:rEl!=null?rEl.value:(pd.resp??''),
     };
   });
+  const _r=id=>document.getElementById(id);
   p.form.pop={
-    area:document.getElementById('pp-area')?.value||prev.area||'',
-    ger:document.getElementById('pp-ger')?.value||prev.ger||'',
-    mac:document.getElementById('pp-mac')?.value||prev.mac||'',
-    obj:document.getElementById('pp-obj')?.value||prev.obj||'',
-    def:document.getElementById('pp-def')?.value||prev.def||'',
-    ent:document.getElementById('pp-ent')?.value||prev.ent||'',
-    sai:document.getElementById('pp-sai')?.value||prev.sai||'',
-    docs:document.getElementById('pp-docs')?.value||prev.docs||'',
+    area:_r('pp-area')!=null?_r('pp-area').value:(prev.area??''),
+    ger: _r('pp-ger') !=null?_r('pp-ger').value: (prev.ger??''),
+    mac: _r('pp-mac') !=null?_r('pp-mac').value: (prev.mac??''),
+    obj: _r('pp-obj') !=null?_r('pp-obj').value: (prev.obj??''),
+    def: _r('pp-def') !=null?_r('pp-def').value: (prev.def??''),
+    ent: _r('pp-ent') !=null?_r('pp-ent').value: (prev.ent??''),
+    sai: _r('pp-sai') !=null?_r('pp-sai').value: (prev.sai??''),
+    docs:_r('pp-docs')!=null?_r('pp-docs').value:(prev.docs??''),
     ativ_detalhes,
   };
   p.form.pop_ok=true;
@@ -7914,21 +7917,27 @@ function _rsPOP(p){
     const descEl=document.getElementById(`pop-at-desc-${i}`);
     if(!descEl)return;
     const prev=ativ_detalhes[e.id]||{};
-    const t=document.getElementById(`pop-at-tipo-${i}`)?.value;
-    const r=document.getElementById(`pop-at-resp-${i}`)?.value;
+    const tEl=document.getElementById(`pop-at-tipo-${i}`);
+    const rEl=document.getElementById(`pop-at-resp-${i}`);
     const fallbackTipo=(e.tipo==='Decisao'||e.tipo==='Decisão')?'Decisão':(e.tipo||'Atividade');
-    ativ_detalhes[e.id]={tipo:t||prev.tipo||fallbackTipo,desc:descEl.value||prev.desc||'',resp:r||prev.resp||''};
+    // Usa ?? para preservar string vazia; || só como fallback quando o elemento não existe
+    ativ_detalhes[e.id]={
+      tipo:tEl!=null?tEl.value:(prev.tipo||fallbackTipo),
+      desc:descEl.value,
+      resp:rEl!=null?rEl.value:(prev.resp??''),
+    };
   });
   const prev=p.form.pop||{};
+  const _r=id=>document.getElementById(id);
   p.form.pop={
-    area:document.getElementById('pp-area')?.value||prev.area||'',
-    ger:document.getElementById('pp-ger')?.value||prev.ger||'',
-    mac:document.getElementById('pp-mac')?.value||prev.mac||'',
-    obj:document.getElementById('pp-obj')?.value||prev.obj||'',
-    def:document.getElementById('pp-def')?.value||prev.def||'',
-    ent:document.getElementById('pp-ent')?.value||prev.ent||'',
-    sai:document.getElementById('pp-sai')?.value||prev.sai||'',
-    docs:document.getElementById('pp-docs')?.value||prev.docs||'',
+    area:_r('pp-area')!=null?_r('pp-area').value:(prev.area??''),
+    ger: _r('pp-ger') !=null?_r('pp-ger').value: (prev.ger??''),
+    mac: _r('pp-mac') !=null?_r('pp-mac').value: (prev.mac??''),
+    obj: _r('pp-obj') !=null?_r('pp-obj').value: (prev.obj??''),
+    def: _r('pp-def') !=null?_r('pp-def').value: (prev.def??''),
+    ent: _r('pp-ent') !=null?_r('pp-ent').value: (prev.ent??''),
+    sai: _r('pp-sai') !=null?_r('pp-sai').value: (prev.sai??''),
+    docs:_r('pp-docs')!=null?_r('pp-docs').value:(prev.docs??''),
     ativ_detalhes,
   };
   // Campos de complementação (migrados da etapa complement)
@@ -9202,30 +9211,32 @@ function salvarPOP(avancar=true){
     const descEl=document.getElementById(`pop-at-desc-${i}`);
     if(!descEl)return; // aba Atividades não renderizada, preserva valor anterior
     const prev=ativ_detalhes[e.id]||{};
+    const tEl=document.getElementById(`pop-at-tipo-${i}`);
+    const rEl=document.getElementById(`pop-at-resp-${i}`);
     const fallbackTipo=(e.tipo==='Decisao'||e.tipo==='Decisão')?'Decisão':(e.tipo||'Atividade');
     ativ_detalhes[e.id]={
-      tipo:document.getElementById(`pop-at-tipo-${i}`)?.value||prev.tipo||fallbackTipo,
-      desc:descEl.value||prev.desc||'',
-      resp:document.getElementById(`pop-at-resp-${i}`)?.value||prev.resp||'',
+      tipo:tEl!=null?tEl.value:(prev.tipo||fallbackTipo),
+      desc:descEl.value,
+      resp:rEl!=null?rEl.value:(prev.resp??''),
     };
   });
   p.form.pop={
-    area:document.getElementById('pp-area')?.value||'',
-    ger:document.getElementById('pp-ger')?.value||'',
-    mac:document.getElementById('pp-mac')?.value||'',
-    obj:document.getElementById('pp-obj')?.value||'',
-    def:document.getElementById('pp-def')?.value||'',
-    ent:document.getElementById('pp-ent')?.value||'',
-    sai:document.getElementById('pp-sai')?.value||'',
-    docs:document.getElementById('pp-docs')?.value||'',
+    area:document.getElementById('pp-area')?.value??'',
+    ger:document.getElementById('pp-ger')?.value??'',
+    mac:document.getElementById('pp-mac')?.value??'',
+    obj:document.getElementById('pp-obj')?.value??'',
+    def:document.getElementById('pp-def')?.value??'',
+    ent:document.getElementById('pp-ent')?.value??'',
+    sai:document.getElementById('pp-sai')?.value??'',
+    docs:document.getElementById('pp-docs')?.value??'',
     ativ_detalhes,
   };
   p.form.pop_ok=true;
   // Campos de complementação (migrados da etapa complement)
-  p.form.faq=document.getElementById('afaq')?.value||p.form.faq||'';
-  p.form.excecoes=document.getElementById('a-excecoes')?.value||p.form.excecoes||'';
-  p.form.contatos=document.getElementById('a-contatos')?.value||p.form.contatos||'';
-  p.form.forms=document.getElementById('aforms')?.value||p.form.forms||'';
+  p.form.faq=document.getElementById('afaq')?.value??p.form.faq??'';
+  p.form.excecoes=document.getElementById('a-excecoes')?.value??p.form.excecoes??'';
+  p.form.contatos=document.getElementById('a-contatos')?.value??p.form.contatos??'';
+  p.form.forms=document.getElementById('aforms')?.value??p.form.forms??'';
   const obsPopSv=document.getElementById('aobs-pop')?.value||'';
   if(obsPopSv) p.form.obs_complement=obsPopSv;
   if(avancar){av('pop','EP','POP construído no padrão CAGE');fbAutoSave('salvarPOP');}
