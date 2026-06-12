@@ -6419,10 +6419,47 @@ function _salvarDonoValidToBe(p){
   const ata=document.getElementById('vtb-ata')?.value||'';
   if(dt||part||ata) p.mod.reuniao_valid_tobe={data:dt,participantes:part,ata};
 }
+function _salvarDonoPOP(p){
+  if(!p.form) p.form={};
+  const prev=p.form.pop||{};
+  const _tobeEt=p.mod?.etapas_proc_tobe||[];
+  const etapas=_tobeEt.length?_tobeEt:(p.mod?.etapas_proc||[]);
+  const ativ_detalhes={...prev.ativ_detalhes};
+  etapas.forEach((e,i)=>{
+    const descEl=document.getElementById(`pop-at-desc-${i}`);
+    if(!descEl) return;
+    const pd=ativ_detalhes[e.id]||{};
+    const fb=(e.tipo==='Decisao'||e.tipo==='Decisão')?'Decisão':(e.tipo||'Atividade');
+    ativ_detalhes[e.id]={
+      tipo:document.getElementById(`pop-at-tipo-${i}`)?.value||pd.tipo||fb,
+      desc:descEl.value||pd.desc||'',
+      resp:document.getElementById(`pop-at-resp-${i}`)?.value||pd.resp||'',
+    };
+  });
+  p.form.pop={
+    area:document.getElementById('pp-area')?.value||prev.area||'',
+    ger:document.getElementById('pp-ger')?.value||prev.ger||'',
+    mac:document.getElementById('pp-mac')?.value||prev.mac||'',
+    obj:document.getElementById('pp-obj')?.value||prev.obj||'',
+    def:document.getElementById('pp-def')?.value||prev.def||'',
+    ent:document.getElementById('pp-ent')?.value||prev.ent||'',
+    sai:document.getElementById('pp-sai')?.value||prev.sai||'',
+    docs:document.getElementById('pp-docs')?.value||prev.docs||'',
+    ativ_detalhes,
+  };
+  p.form.pop_ok=true;
+  p.form.faq=document.getElementById('afaq')?.value||p.form.faq||'';
+  p.form.excecoes=document.getElementById('a-excecoes')?.value||p.form.excecoes||'';
+  p.form.contatos=document.getElementById('a-contatos')?.value||p.form.contatos||'';
+  p.form.forms=document.getElementById('aforms')?.value||p.form.forms||'';
+  const _obs=document.getElementById('aobs-pop')?.value||'';
+  if(_obs) p.form.obs_complement=_obs;
+}
 const _SALVAR_DONO_HANDLERS={
   questionario:_salvarDonoQuestionario,
   det_valid_asis:_salvarDonoValidAsIs,
   det_valid_tobe:_salvarDonoValidToBe,
+  pop:_salvarDonoPOP,
 };
 function _salvarDadosDono(){
   const p=curProc;
