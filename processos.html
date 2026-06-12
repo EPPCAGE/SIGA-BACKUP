@@ -20091,9 +20091,13 @@ async function iaAnalisarIndicadores(){
         if(r===0&&m===0){ return false; } if(m<=0){ return false; }
         return pol==='Menor é melhor'?r>m:r<m;
       });
+      const hasMeta = last.meta !== null && last.meta !== undefined && last.meta !== '';
       return {
-        area:last.area, nome:last.nome, meta:last.meta,
+        area:last.area, nome:last.nome,
+        ...(hasMeta ? {meta:last.meta} : {sem_meta:true}),
         realizado:last.realizado, pct:last.pct_realizado, periodo:last.periodo,
+        polaridade:pol,
+        ...(last.unidade ? {unidade:last.unidade} : {}),
         ...(variacao?{variacao_periodo:variacao}:{}),
         ...(alerta3?{alerta:'3 períodos consecutivos abaixo da meta'}:{}),
       };
