@@ -465,7 +465,20 @@ function makeEngine(db) {
     );
 
     if (destino.responsavel_uid) {
-      await notif.tarefaCriada({ destinatario_uid: destino.responsavel_uid, instancia, tarefa, etapa: { id: no.id, nome: no.nome || no.id } });
+      const tituloNotif = cfg.titulo_notificacao
+        ? _interpolarMensagem(cfg.titulo_notificacao, instancia, null)
+        : null;
+      const mensagemNotif = cfg.mensagem_notificacao
+        ? _interpolarMensagem(cfg.mensagem_notificacao, instancia, null)
+        : null;
+      await notif.tarefaCriada({
+        destinatario_uid: destino.responsavel_uid,
+        instancia,
+        tarefa,
+        etapa: { id: no.id, nome: no.nome || no.id },
+        titulo_custom: tituloNotif,
+        mensagem_custom: mensagemNotif,
+      });
     }
 
     return tarefa;
@@ -518,6 +531,40 @@ function makeEngine(db) {
     }
   }
 
+  function _interpolarMensagem(template, instancia, solicitante) {
+    if (!template) return '';
+    return template
+      .replace(/\{\{processo\.titulo\}\}/g, instancia.titulo || '')
+      .replace(/\{\{solicitante\.nome\}\}/g, solicitante?.nome || solicitante?.email || '')
+      .replace(/\{\{solicitante\.email\}\}/g, solicitante?.email || '');
+  }
+
+  async function _notificarFimInstancia(instancia, cfgFim) {
+    const solicitante = await _buscarUsuarioPorUid(instancia.solicitante_uid).catch(() => null);
+    const mensagem = _interpolarMensagem(cfgFim.mensagem_fim, instancia, solicitante)
+      || `O processo "${instancia.titulo}" foi concluído com sucesso.`;
+    const titulo = `Processo concluído: ${instancia.titulo}`;
+
+    const notificados = new Set();
+    const _enviar = async (uid) => {
+      if (!uid || notificados.has(uid)) return;
+      notificados.add(uid);
+      await notif.instanciaConcluida({ instancia, mensagem, titulo, destinatario_uid: uid }).catch(() => {});
+    };
+
+    await _enviar(instancia.solicitante_uid);
+
+    const extra = cfgFim.notificar_fim || '';
+    if (extra === 'ep' || extra === 'todos') {
+      await _enviar(_uidAtribuido(instancia, 'ep'));
+    }
+    if (extra === 'gestor' || extra === 'todos') {
+      const uidGestor = await _resolverUidNotificacaoCanvas('gestor_solicitante', instancia).catch(() => null);
+      await _enviar(uidGestor);
+      await _enviar(instancia.gestor_solicitante_uid);
+    }
+  }
+
   async function _avancarFluxoCanvas(instancia, tarefa, acao) {
     // Usa o canvas do modelo publicado atual, não o snapshot da instância,
     // pois o snapshot pode estar desatualizado se o modelo foi editado após o início.
@@ -533,9 +580,12 @@ function makeEngine(db) {
 
     const proximoNo = _proximoNoExecutavelCanvas(canvas, noAtual.id, acao, instancia.dados_consolidados || {}, configNos);
     if (!proximoNo || proximoNo.tipo === 'fim') {
-      await col.instancias.doc(instancia.id).update({ status: 'concluido', concluido_em: agora(), no_atual_id: null, etapa_atual_id: null });
-      await _registrarHistorico(instancia.id, 'instancia_concluida', null, null, null, 'Processo concluído.', {});
-      await notif.instanciaConcluida({ instancia: { ...instancia, id: instancia.id } });
+      const cfgFim = proximoNo ? (_configNo({ config_nos: configNos }, proximoNo.id) || {}) : {};
+      const tipoFim = cfgFim.tipo_fim || 'normal';
+      const statusFinal = tipoFim === 'cancelado' ? 'cancelado' : 'concluido';
+      await col.instancias.doc(instancia.id).update({ status: statusFinal, concluido_em: agora(), no_atual_id: null, etapa_atual_id: null });
+      await _registrarHistorico(instancia.id, 'instancia_concluida', null, null, null, 'Processo concluído.', { tipo_fim: tipoFim });
+      await _notificarFimInstancia({ ...instancia, id: instancia.id }, cfgFim);
       return;
     }
 
@@ -644,6 +694,15 @@ function makeEngine(db) {
       await col.instancias.doc(instancia.id).update({ etapa_atual_id: primeiroNo.id, no_atual_id: primeiroNo.id });
       instancia.etapa_atual_id = primeiroNo.id;
       instancia.no_atual_id = primeiroNo.id;
+
+      // Notificação de início configurada no nó de início
+      const cfgInicio = (modelo.config_nos || {})[inicio.id] || {};
+      if (cfgInicio.descricao && solicitante_uid) {
+        const solicitante = await _buscarUsuarioPorUid(solicitante_uid).catch(() => null);
+        const mensagemInicio = _interpolarMensagem(cfgInicio.descricao, instancia, solicitante);
+        await notif.instanciaIniciada({ instancia, mensagem: mensagemInicio, destinatario_uid: solicitante_uid }).catch(() => {});
+      }
+
       await _notificarCientesCanvas(instancia, primeiroNo);
       await _criarTarefaCanvas(instancia, modelo, primeiroNo);
       return instancia;
