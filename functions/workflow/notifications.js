@@ -10,12 +10,18 @@ function makeNotificacoes(db) {
     return doc.id;
   }
 
-  async function tarefaCriada({ destinatario_uid, instancia, tarefa, etapa }) {
+  async function tarefaCriada({ destinatario_uid, instancia, tarefa, etapa, titulo_custom, mensagem_custom }) {
+    const prazoStr = tarefa.prazo
+      ? (typeof tarefa.prazo.toDate === 'function'
+          ? tarefa.prazo.toDate()
+          : new Date(tarefa.prazo._seconds * 1000)
+        ).toLocaleString('pt-BR')
+      : 'sem prazo definido';
     return _salvar(criarNotificacao({
       destinatario_uid,
       tipo: 'tarefa_criada',
-      titulo: `Nova tarefa: ${etapa.nome}`,
-      mensagem: `Uma nova tarefa do processo "${instancia.titulo}" foi atribuída a você. Prazo: ${tarefa.prazo ? new Date(tarefa.prazo.toDate()).toLocaleString('pt-BR') : 'sem prazo definido'}.`,
+      titulo: titulo_custom || `Nova tarefa: ${etapa.nome}`,
+      mensagem: mensagem_custom || `Uma nova tarefa do processo "${instancia.titulo}" foi atribuída a você. Prazo: ${prazoStr}.`,
       instancia_id: instancia.id,
       tarefa_id: tarefa.id,
     }));
@@ -65,12 +71,22 @@ function makeNotificacoes(db) {
     }));
   }
 
-  async function instanciaConcluida({ instancia }) {
+  async function instanciaIniciada({ instancia, mensagem, destinatario_uid }) {
     return _salvar(criarNotificacao({
-      destinatario_uid: instancia.solicitante_uid,
+      destinatario_uid: destinatario_uid || instancia.solicitante_uid,
+      tipo: 'tarefa_criada',
+      titulo: `Processo iniciado: ${instancia.titulo}`,
+      mensagem: mensagem || `O processo "${instancia.titulo}" foi iniciado com sucesso.`,
+      instancia_id: instancia.id,
+    }));
+  }
+
+  async function instanciaConcluida({ instancia, mensagem, titulo, destinatario_uid }) {
+    return _salvar(criarNotificacao({
+      destinatario_uid: destinatario_uid || instancia.solicitante_uid,
       tipo: 'tarefa_concluida',
-      titulo: `Processo concluído`,
-      mensagem: `O processo "${instancia.titulo}" foi concluído com sucesso.`,
+      titulo: titulo || `Processo concluído: ${instancia.titulo}`,
+      mensagem: mensagem || `O processo "${instancia.titulo}" foi concluído com sucesso.`,
       instancia_id: instancia.id,
     }));
   }
@@ -97,7 +113,7 @@ function makeNotificacoes(db) {
     }));
   }
 
-  return { tarefaCriada, tarefaConcluida, prazoProximo, tarefaVencida, cienciaEtapa, instanciaConcluida, tarefaDelegada, tarefaRetirada };
+  return { tarefaCriada, tarefaConcluida, prazoProximo, tarefaVencida, cienciaEtapa, instanciaIniciada, instanciaConcluida, tarefaDelegada, tarefaRetirada };
 }
 
 module.exports = { makeNotificacoes };
