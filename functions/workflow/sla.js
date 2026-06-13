@@ -98,7 +98,11 @@ function calcularPrazo(criado_em, sla_horas) {
   if (!sla_horas || sla_horas <= 0) return null;
 
   const { Timestamp } = require('firebase-admin/firestore');
-  const base = criado_em instanceof Date ? criado_em : criado_em.toDate();
+  const base = criado_em instanceof Date
+    ? criado_em
+    : (typeof criado_em.toDate === 'function'
+      ? criado_em.toDate()
+      : new Date(criado_em._seconds * 1000));
   const prazo = adicionarHorasUteis(base, sla_horas);
   return Timestamp.fromDate(prazo);
 }
@@ -112,7 +116,12 @@ function calcularStatusSla(tarefa) {
   if (!tarefa.prazo) return 'sem_sla';
 
   const agora = new Date();
-  const prazo = tarefa.prazo instanceof Date ? tarefa.prazo : tarefa.prazo.toDate();
+  const prazoRaw = tarefa.prazo;
+  const prazo = prazoRaw instanceof Date
+    ? prazoRaw
+    : (typeof prazoRaw.toDate === 'function'
+      ? prazoRaw.toDate()
+      : new Date(prazoRaw._seconds * 1000));
   const alertaMs = ALERTA_HORAS_ANTES * 60 * 60 * 1000;
 
   if (agora > prazo) return 'vencido';
