@@ -702,6 +702,30 @@
     instrDiv.style.display = '';
   }
 
+  // Exibe a "orientação ao solicitante" do nó de início apenas na primeira etapa do fluxo.
+  function _wfRenderOrientacaoInicio(instancia, tarefa) {
+    const wrap = document.getElementById('wf-exec-orientacao-inicio');
+    const txt = document.getElementById('wf-exec-orientacao-inicio-txt');
+    if (!wrap || !txt) return;
+    let orientacao = '';
+    const canvas = instancia?.canvas;
+    const configNos = instancia?.config_nos || {};
+    if (canvas?.nos?.length && _wfPrimeiraEtapa(canvas, tarefa.etapa_modelo_id)) {
+      const inicio = canvas.nos.find(n => n.tipo === 'inicio');
+      if (inicio) {
+        const cfgInicio = configNos[inicio.id] || inicio.config || {};
+        orientacao = String(cfgInicio.descricao || '').trim();
+      }
+    }
+    if (orientacao) {
+      txt.textContent = orientacao;
+      wrap.style.display = '';
+    } else {
+      txt.textContent = '';
+      wrap.style.display = 'none';
+    }
+  }
+
   function _wfRenderDadosAnterioresExecucao(instancia) {
     const dadosAntEl = document.getElementById('wf-exec-dados-anteriores');
     const dadosAntConteudo = document.getElementById('wf-exec-dados-anteriores-conteudo');
@@ -894,6 +918,7 @@
 
     // Dados já coletados nas etapas anteriores
     const instancia = await _wfApiRequest('wfInstanciaItem', `/${encodeURIComponent(tarefa.instancia_id)}`);
+    _wfRenderOrientacaoInicio(instancia, tarefa);
     _wfRenderDadosAnterioresExecucao(instancia);
     _wfRenderProgressoExecucao();
     _wfRenderTimeline(instancia, tarefa);
@@ -3482,24 +3507,11 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
   // — Coleta perfis que precisam de atribuição explícita ao iniciar —
   // Retorna array de strings únicas, ex: ['ep', 'gestor']
   // Abre modal de vinculação de equipe; chama callback({ grupo_id, grupo_nome }) ou null se cancelado
-  async function _wfAbrirModalAtribuicao(nomeModelo, callback, orientacao = '') {
+  async function _wfAbrirModalAtribuicao(nomeModelo, callback) {
     const el = document.getElementById('wf-modal-atribuicao');
     if (!el) { callback({}); return; }
     const titulo = document.getElementById('wf-modal-atrib-titulo');
     if (titulo) titulo.textContent = `Vincular equipe — ${_esc(nomeModelo)}`;
-
-    const orientWrap = document.getElementById('wf-atrib-orientacao');
-    const orientTxt = document.getElementById('wf-atrib-orientacao-txt');
-    const orientacaoStr = String(orientacao || '').trim();
-    if (orientWrap && orientTxt) {
-      if (orientacaoStr) {
-        orientTxt.textContent = orientacaoStr;
-        orientWrap.style.display = '';
-      } else {
-        orientTxt.textContent = '';
-        orientWrap.style.display = 'none';
-      }
-    }
 
     const sel = document.getElementById('wf-atrib-sel-equipe');
     const membrosDiv = document.getElementById('wf-atrib-equipe-membros');
@@ -3612,7 +3624,6 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     const cfgInicio = (modelo.config_nos || {})[inicio.id] || {};
     const tipoDisparo = cfgInicio.tipo_disparo || 'manual';
     const agendadoPadrao = cfgInicio.agendado_padrao || '';
-    const orientacaoInicio = cfgInicio.descricao || '';
 
     _wfAbrirModalAtribuicao(modelo.nome, async (vinculo) => {
       if (vinculo === null) return;
@@ -3644,7 +3655,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       } catch (e) {
         alert('Erro ao iniciar: ' + e.message);
       }
-    }, orientacaoInicio);
+    });
   }
 
   // ── Motor de Regras ───────────────────────────────────────────────────────
