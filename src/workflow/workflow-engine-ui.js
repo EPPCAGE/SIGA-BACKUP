@@ -673,6 +673,9 @@
     // Limpa seleção de gestor de uma tarefa anterior
     const gestorSel = document.getElementById('wf-exec-gestor');
     if (gestorSel) gestorSel.value = '';
+    // Limpa o texto de "o que precisa ser ajustado" digitado em outra tarefa
+    const motivoTxt = document.getElementById('wf-exec-motivo-devolucao-txt');
+    if (motivoTxt) motivoTxt.value = '';
     // Motivo de devolução (tarefa foi devolvida por etapa posterior)
     let motivoEl = document.getElementById('wf-exec-motivo-devolvido');
     if (!motivoEl) {

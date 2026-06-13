@@ -128,6 +128,15 @@ function _normalizarConfigNo(config = {}) {
     condicoes: Array.isArray(config.condicoes) ? config.condicoes.map(_normalizarCondicao) : [],
     operador_logico: config.operador_logico === 'OR' ? 'OR' : 'AND',
     padrao: Boolean(config.padrao),
+    destino_devolucao: _stringOuNull(config.destino_devolucao),
+    // Campos do nó de início
+    tipo_disparo: _stringOuNull(config.tipo_disparo),
+    agendado_padrao: _stringOuNull(config.agendado_padrao),
+    descricao: String(config.descricao || '').trim(),
+    // Campos do nó de fim
+    tipo_fim: _stringOuNull(config.tipo_fim),
+    mensagem_fim: String(config.mensagem_fim || '').trim(),
+    notificar_fim: _stringOuNull(config.notificar_fim),
   });
 }
 
