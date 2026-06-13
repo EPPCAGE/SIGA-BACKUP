@@ -3516,7 +3516,7 @@ function rAuditoria(){
   const el=document.getElementById('aud-list');
   if(!el)return;
   const lista=processos.filter(p=>{
-    if(filtAudMode==='andamento') return p.etapa==='auditoria';
+    if(filtAudMode==='andamento') return p.etapa==='auditoria'&&p.auditoria?.concluida!==true;
     if(filtAudMode==='concluida') return p.auditoria?.concluida===true;
     return p.etapa==='auditoria'||p.auditoria?.concluida===true;
   });
