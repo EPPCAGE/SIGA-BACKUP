@@ -69,7 +69,7 @@ async function handleWfTarefasRoute({ req, res, user, tarefasCol, gruposCol, usu
   }
 
   if (req.method === 'POST' && acao === 'concluir') {
-    const { acao: acaoTarefa, observacao, dados_formulario, anexos } = req.body || {};
+    const { acao: acaoTarefa, observacao, motivo_devolucao, dados_formulario, anexos } = req.body || {};
     let gestorSolicitanteUid = req.body?.gestor_solicitante_uid || null;
     // Aceita email no campo e resolve para UID via Firebase Auth.
     if (gestorSolicitanteUid && String(gestorSolicitanteUid).includes('@') && adminAuth) {
@@ -85,6 +85,7 @@ async function handleWfTarefasRoute({ req, res, user, tarefasCol, gruposCol, usu
       usuario_perfil: user.perfil || null,
       acao: acaoTarefa,
       observacao,
+      motivo_devolucao: motivo_devolucao || '',
       dados_formulario: dados_formulario || {},
       anexos: Array.isArray(anexos) ? anexos : [],
       gestor_solicitante_uid: gestorSolicitanteUid,

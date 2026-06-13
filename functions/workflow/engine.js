@@ -382,19 +382,33 @@ function makeEngine(db) {
     return atual;
   }
 
+  // Retorna true se o nó é a primeira etapa executável (só há nós 'inicio' antes dele)
+  function _primeiraEtapaCanvas(canvas, noId) {
+    const origens = (canvas?.arestas || []).filter(a => a.destino === noId);
+    if (!origens.length) return true;
+    return origens.every(a => {
+      const n = _noCanvasPorId(canvas, a.origem);
+      return !n || n.tipo === 'inicio';
+    });
+  }
+
   function _acaoPermitidaNoCanvas(instancia, tarefa, acao, dados = {}) {
-    const base = (Array.isArray(tarefa.acoes_disponiveis) && tarefa.acoes_disponiveis.length
-      ? tarefa.acoes_disponiveis
-      : ['avancar']).map(_normalizarAcao);
-    if (!base.includes(_normalizarAcao(acao))) return false;
-    if (acao === 'devolver' || acao === 'rejeitar') {
+    const acaoNorm = _normalizarAcao(acao);
+
+    // 'devolver' é permitido nativamente em qualquer etapa que não seja a primeira
+    if (acaoNorm === 'devolver') {
+      if (_primeiraEtapaCanvas(instancia.canvas, tarefa.etapa_modelo_id)) return false;
       const arestas = (instancia.canvas?.arestas || []).filter((aresta) => aresta.origem === tarefa.etapa_modelo_id);
-      const regrasAresta = arestas.filter((aresta) => aresta.acao === acao);
+      const regrasAresta = arestas.filter((aresta) => aresta.acao === 'devolver' || aresta.acao === 'rejeitar');
       if (!regrasAresta.length) return true;
       return regrasAresta.some((aresta) => _avaliarCondicoesCanvas(aresta.condicoes, aresta.operador_logico, dados))
         || regrasAresta.some((aresta) => aresta.padrao);
     }
-    return true;
+
+    const base = (Array.isArray(tarefa.acoes_disponiveis) && tarefa.acoes_disponiveis.length
+      ? tarefa.acoes_disponiveis
+      : ['avancar']).map(_normalizarAcao);
+    return base.includes(acaoNorm);
   }
 
   function _acoesPorPapelCanvas(cfg = {}, papel = 'executor') {
@@ -408,7 +422,7 @@ function makeEngine(db) {
   }
 
 
-  async function _criarTarefaCanvas(instancia, modelo, no) {
+  async function _criarTarefaCanvas(instancia, modelo, no, dadosIniciais = {}) {
     const cfg = _configNo(modelo, no.id);
     const papelAlvo = cfg.papeis?.executor || 'solicitante';
     const destino = await _resolverDestinoTarefaCanvas(papelAlvo, instancia);
@@ -429,7 +443,7 @@ function makeEngine(db) {
       criado_em: agora(),
       iniciado_em: null,
       concluido_em: null,
-      dados_formulario: {},
+      dados_formulario: dadosIniciais || {},
       acao_tomada: null,
       observacao: null,
       parecer: null,
@@ -528,7 +542,9 @@ function makeEngine(db) {
     await col.instancias.doc(instancia.id).update({ no_atual_id: proximoNo.id, etapa_atual_id: proximoNo.id });
     await _registrarHistorico(instancia.id, 'etapa_avancada', null, proximoNo.id, null, `Fluxo avançou para "${proximoNo.nome || proximoNo.id}".`, { de: noAtual.id, para: proximoNo.id, acao: acao || null });
     const modeloParaConfig = modeloData || instancia;
-    await _criarTarefaCanvas({ ...instancia, etapa_atual_id: proximoNo.id }, modeloParaConfig, proximoNo);
+    // Ao devolver, pré-carrega o formulário com os dados já consolidados da instância
+    const dadosIniciais = (acao === 'devolver' || acao === 'rejeitar') ? (instancia.dados_consolidados || {}) : {};
+    await _criarTarefaCanvas({ ...instancia, etapa_atual_id: proximoNo.id }, modeloParaConfig, proximoNo, dadosIniciais);
   }
 
   async function _criarTarefa(instancia, etapa) {
@@ -712,7 +728,11 @@ function makeEngine(db) {
     return _ACAO_NORMALIZAR[acao] || acao || 'avancar';
   }
 
-  async function concluirTarefa({ tarefa_id, usuario_uid, usuario_email = null, usuario_perfil = null, acao, observacao = '', dados_formulario = {}, anexos = [], gestor_solicitante_uid = null }) {
+  async function concluirTarefa({ tarefa_id, usuario_uid, usuario_email = null, usuario_perfil = null, acao, observacao = '', motivo_devolucao = '', dados_formulario = {}, anexos = [], gestor_solicitante_uid = null }) {
+    // Motivo da devolução substitui a observação quando devolvendo
+    if ((acao === 'devolver' || acao === 'rejeitar') && motivo_devolucao) {
+      observacao = motivo_devolucao;
+    }
     const tarefa = await buscarDoc(col.tarefas, tarefa_id, ERRO.TAREFA_NAO_ENCONTRADA);
     const usuario = { uid: usuario_uid, email: usuario_email, perfil: usuario_perfil };
     const tarefaAtual = await _atribuirTarefaSeNecessario(tarefa, usuario);
