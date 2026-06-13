@@ -664,7 +664,7 @@ function makeEngine(db) {
       await col.instancias.doc(instancia.id).update({ status: statusFinal, concluido_em: agora(), no_atual_id: null, etapa_atual_id: null });
       await _registrarHistorico(instancia.id, 'instancia_concluida', null, null, null, 'Processo concluído.', { tipo_fim: tipoFim });
       await _notificarFimInstancia({ ...instancia, id: instancia.id }, cfgFim);
-      return;
+      return { instancia_concluida: true, mensagem_fim: String(cfgFim.mensagem_fim || '').trim() };
     }
 
     await col.instancias.doc(instancia.id).update({ no_atual_id: proximoNo.id, etapa_atual_id: proximoNo.id });
@@ -952,8 +952,8 @@ function makeEngine(db) {
       }
 
       const anexosConsolidados = Array.isArray(anexos) ? anexos : [];
-      await _avancarFluxoCanvas({ ...instancia, dados_consolidados: mergedDados, gestor_solicitante_uid: gestorSolicitanteUid, anexos_consolidados: anexosConsolidados }, tarefaAtual, acaoFinal, observacao || null);
-      return { ok: true };
+      const resultadoCanvas = await _avancarFluxoCanvas({ ...instancia, dados_consolidados: mergedDados, gestor_solicitante_uid: gestorSolicitanteUid, anexos_consolidados: anexosConsolidados }, tarefaAtual, acaoFinal, observacao || null);
+      return { ok: true, ...(resultadoCanvas || {}) };
     }
 
     const etapa = await buscarDoc(col.etapas, tarefaAtual.etapa_modelo_id, ERRO.ETAPA_NAO_ENCONTRADA);
