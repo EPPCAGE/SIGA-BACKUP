@@ -1902,6 +1902,14 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       operador_logico: config?.operador_logico === 'OR' ? 'OR' : 'AND',
       padrao: !!config?.padrao,
       destino_devolucao: _wfStringOuNull(config?.destino_devolucao),
+      // Campos do nó de início
+      tipo_disparo: _wfStringOuNull(config?.tipo_disparo),
+      agendado_padrao: _wfStringOuNull(config?.agendado_padrao),
+      descricao: String(config?.descricao || '').trim(),
+      // Campos do nó de fim
+      tipo_fim: _wfStringOuNull(config?.tipo_fim),
+      mensagem_fim: String(config?.mensagem_fim || '').trim(),
+      notificar_fim: _wfStringOuNull(config?.notificar_fim),
     };
   }
 
