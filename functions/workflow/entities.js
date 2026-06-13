@@ -21,9 +21,21 @@ function _requerido(obj, campo) {
   }
 }
 
-// Remove prototype pollution e valores indefinidos
+// Remove prototype pollution e valores indefinidos, preservando Timestamps e FieldValues
 function fsClean(obj) {
-  return structuredClone(obj);
+  if (obj === null || obj === undefined) return obj;
+  if (obj instanceof Timestamp) return obj;
+  // FieldValue sentinels (serverTimestamp, arrayUnion, etc.)
+  if (obj && typeof obj === 'object' && typeof obj.isEqual === 'function' && obj.constructor && obj.constructor.name !== 'Object') return obj;
+  if (Array.isArray(obj)) return obj.map(fsClean);
+  if (obj && typeof obj === 'object' && obj.constructor === Object) {
+    const out = {};
+    for (const k of Object.keys(obj)) {
+      if (obj[k] !== undefined) out[k] = fsClean(obj[k]);
+    }
+    return out;
+  }
+  return obj;
 }
 
 // ---------------------------------------------------------------------------
