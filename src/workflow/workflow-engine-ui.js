@@ -1228,7 +1228,23 @@
     const formContainer = document.querySelector('#wf-exec-formulario .wf-form');
     if (!(formContainer && _st.tarefaAtual._campos && acao !== 'rejeitar')) return dadosForm;
     const resultado = globalScope.wfColetarDadosFormulario(formContainer, _st.tarefaAtual._campos);
-    if (!resultado.valido) return null;
+    if (!resultado.valido) {
+      const mensagens = Object.values(resultado.erros || {}).filter(Boolean);
+      const texto = mensagens.length
+        ? 'Preencha os campos obrigatórios antes de avançar:\n\n• ' + mensagens.join('\n• ')
+        : 'Preencha os campos obrigatórios antes de avançar.';
+      alert(texto);
+      // Foca/rola até o primeiro campo com erro
+      const primeiroErroId = Object.keys(resultado.erros || {})[0];
+      if (primeiroErroId) {
+        const campoEl = formContainer.querySelector(`#wf-campo-${primeiroErroId}`);
+        if (campoEl) {
+          campoEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          campoEl.focus({ preventScroll: true });
+        }
+      }
+      return null;
+    }
     Object.assign(dadosForm, resultado.dados);
     return dadosForm;
   }
