@@ -703,13 +703,13 @@
   }
 
   // Exibe a "orientação ao solicitante" do nó de início apenas na primeira etapa do fluxo.
-  function _wfRenderOrientacaoInicio(instancia, tarefa) {
+  function _wfRenderOrientacaoInicio(instancia, tarefa, modelo = null) {
     const wrap = document.getElementById('wf-exec-orientacao-inicio');
     const txt = document.getElementById('wf-exec-orientacao-inicio-txt');
     if (!wrap || !txt) return;
     let orientacao = '';
-    const canvas = instancia?.canvas;
-    const configNos = instancia?.config_nos || {};
+    const canvas = modelo?.canvas || instancia?.canvas;
+    const configNos = modelo?.config_nos || instancia?.config_nos || {};
     if (canvas?.nos?.length && _wfPrimeiraEtapa(canvas, tarefa.etapa_modelo_id)) {
       const inicio = canvas.nos.find(n => n.tipo === 'inicio');
       if (inicio) {
@@ -918,7 +918,10 @@
 
     // Dados já coletados nas etapas anteriores
     const instancia = await _wfApiRequest('wfInstanciaItem', `/${encodeURIComponent(tarefa.instancia_id)}`);
-    _wfRenderOrientacaoInicio(instancia, tarefa);
+    const _modeloOrientacao = instancia?.processo_modelo_id
+      ? await _getDoc('wf_processo_modelos', instancia.processo_modelo_id).catch(() => null)
+      : null;
+    _wfRenderOrientacaoInicio(instancia, tarefa, _modeloOrientacao);
     _wfRenderDadosAnterioresExecucao(instancia);
     _wfRenderProgressoExecucao();
     _wfRenderTimeline(instancia, tarefa);
@@ -1277,6 +1280,21 @@
         const msg = String(resultado.mensagem_fim || '').trim()
           || 'O processo foi concluído com sucesso.';
         _wfMostrarModalFim(msg);
+      } else if (resultado?.ok) {
+        // Caminho legado não retorna instancia_concluida; verifica status da instância.
+        try {
+          const instAtual = await _wfApiRequest('wfInstanciaItem', `/${encodeURIComponent(tarefa.instancia_id)}`);
+          if (instAtual?.status === 'concluido') {
+            const modeloFim = instAtual.processo_modelo_id
+              ? await _getDoc('wf_processo_modelos', instAtual.processo_modelo_id).catch(() => null)
+              : null;
+            const canvasFim = modeloFim?.canvas || instAtual?.canvas;
+            const noFim = canvasFim?.nos?.find(n => n.tipo === 'fim');
+            const cfgFim = noFim ? ((modeloFim?.config_nos || instAtual?.config_nos || {})[noFim.id] || {}) : {};
+            const msg = String(cfgFim.mensagem_fim || '').trim() || 'O processo foi concluído com sucesso.';
+            _wfMostrarModalFim(msg);
+          }
+        } catch (_) {}
       }
     } catch (e) {
       alert('Erro ao concluir tarefa: ' + e.message);
