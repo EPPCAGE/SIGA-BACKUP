@@ -3607,24 +3607,28 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
   }
 
   // Exibe modal com seletor de data/hora para workflows agendados. Retorna ISO string ou null se cancelado.
+  // Todas as datas são tratadas como horário de Brasília (UTC-3) — independente do fuso do navegador.
   function _wfPedirDataAgendamento(valorPadrao) {
     return new Promise((resolve) => {
       const overlay = document.createElement('div');
       overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10000;display:flex;align-items:center;justify-content:center';
+
+      // Converte Date UTC para string "YYYY-MM-DDTHH:mm" no horário de Brasília (UTC-3)
+      const BRASILIA_OFFSET_MS = -3 * 60 * 60 * 1000;
+      const toBrasilLocal = (d) => new Date(d.getTime() + BRASILIA_OFFSET_MS).toISOString().slice(0, 16);
+
       const agora = new Date();
       agora.setSeconds(0, 0);
+      const minBrasil = toBrasilLocal(agora);
       // Valor padrão: template do modelo ou +1 hora
-      let defaultVal = valorPadrao || '';
-      if (!defaultVal) {
-        const d = new Date(agora.getTime() + 3600000);
-        defaultVal = d.toISOString().slice(0, 16);
-      }
+      const defaultVal = valorPadrao || toBrasilLocal(new Date(agora.getTime() + 3600000));
+
       overlay.innerHTML = `
         <div style="background:#fff;border-radius:12px;padding:28px 24px;width:340px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
           <div style="font-weight:700;font-size:16px;margin-bottom:4px">Agendar início do workflow</div>
           <div style="font-size:13px;color:var(--ink3);margin-bottom:18px">Selecione a data e hora em que o processo deve iniciar automaticamente.</div>
-          <label class="lbl">Data e hora de início <span style="color:var(--red)">*</span></label>
-          <input id="_wf-agend-dt" type="datetime-local" class="fi" style="margin-top:4px;margin-bottom:20px" value="${_esc(defaultVal)}" min="${agora.toISOString().slice(0,16)}">
+          <label class="lbl">Data e hora de início <span style="color:var(--red)">*</span> <span style="font-size:11px;color:var(--ink3)">(horário de Brasília)</span></label>
+          <input id="_wf-agend-dt" type="datetime-local" class="fi" style="margin-top:4px;margin-bottom:20px" value="${_esc(defaultVal)}" min="${_esc(minBrasil)}">
           <div style="display:flex;gap:8px;justify-content:flex-end">
             <button type="button" class="btn" id="_wf-agend-cancel">Cancelar</button>
             <button type="button" class="btn btn-p" id="_wf-agend-ok">Confirmar</button>
@@ -3635,9 +3639,12 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       overlay.querySelector('#_wf-agend-ok').onclick = () => {
         const val = overlay.querySelector('#_wf-agend-dt').value;
         if (!val) { alert('Selecione uma data e hora.'); return; }
-        if (new Date(val) <= new Date()) { alert('A data deve ser no futuro.'); return; }
+        // Interpreta o valor como horário de Brasília (UTC-3) explicitamente,
+        // sem depender do fuso configurado no navegador do usuário.
+        const utcDate = new Date(val + ':00-03:00');
+        if (utcDate <= new Date()) { alert('A data deve ser no futuro.'); return; }
         overlay.remove();
-        resolve(new Date(val).toISOString());
+        resolve(utcDate.toISOString());
       };
     });
   }
