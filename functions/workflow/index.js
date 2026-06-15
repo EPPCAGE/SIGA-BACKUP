@@ -374,11 +374,10 @@ exports.wfAgendadorJob = onScheduleV2({
   region: 'us-central1',
   timeZone: 'America/Sao_Paulo',
 }, async () => {
-  const [agendados, recorrencias] = await Promise.all([
-    engine.processarAgendados(),
-    engine.processarRecorrencias(),
-  ]);
-  console.log('[wfAgendadorJob]', { agendados, recorrencias });
+  const resultado = await engine.processarAgendados();
+  console.log('[wfAgendadorJob]', resultado);
+  const resultadoRec = await engine.processarRecorrencias();
+  console.log('[wfAgendadorJob:recorrencias]', resultadoRec);
 });
 
 /**
@@ -403,6 +402,9 @@ exports.wfAdminJobs = onRequest({ region: 'us-central1', cors: ['https://eppcage
     const path = (req.path || '').replace(/^\//, '');
     if (path === 'agendados') {
       const resultado = await engine.processarAgendados();
+      res.json({ ok: true, ...resultado });
+    } else if (path === 'recorrencias') {
+      const resultado = await engine.processarRecorrencias();
       res.json({ ok: true, ...resultado });
     } else if (path === 'sla') {
       const resultado = await engine.processarSla();

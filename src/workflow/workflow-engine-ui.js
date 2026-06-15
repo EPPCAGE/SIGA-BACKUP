@@ -2450,50 +2450,78 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     _wfAplicarModoPainel();
   }
 
+  function _wfRecorrenciaPreview(rec) {
+    if (!rec?.tipo) return '';
+    const dias = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+    const meses = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const h = `${String(rec.hora ?? 0).padStart(2,'0')}h`;
+    switch (rec.tipo) {
+      case 'diario':              return `Todo dia às ${h}`;
+      case 'semanal':             return `Toda ${dias[rec.dia_semana ?? 0]} às ${h}`;
+      case 'mensal_dia_fixo':     return `Todo dia ${rec.dia_mes ?? 1} do mês às ${h}`;
+      case 'mensal_dia_util':     return `Todo ${rec.numero_dia_util ?? 1}º dia útil do mês às ${h}`;
+      case 'mensal_ultimo_dia':   return `Todo último dia do mês às ${h}`;
+      case 'mensal_ultimo_dia_util': return `Todo último dia útil do mês às ${h}`;
+      case 'trimestral':          return `Todo início de trimestre (1º jan/abr/jul/out) às ${h}`;
+      case 'anual':               return `Todo dia ${rec.dia_mes ?? 1} de ${meses[rec.mes ?? 1]} às ${h}`;
+      default: return '';
+    }
+  }
+
   function _wfRenderPainelInicio(painel, id, nome) {
     if (!_wfConfigNos[id]) _wfConfigNos[id] = {};
     const cfg = _wfConfigNos[id];
     const tipoDisparo = cfg.tipo_disparo || 'manual';
+    const rec = cfg.recorrencia || {};
+
     const agendadoHtml = tipoDisparo === 'agendado' ? `
       <label class="lbl" style="font-size:11px;margin-top:8px">Data/hora padrão de início <span style="font-size:10px;color:var(--ink3)">(o usuário pode ajustar ao iniciar)</span></label>
       <input type="datetime-local" class="fi" style="margin-top:2px;margin-bottom:10px" value="${_esc(cfg.agendado_padrao || '')}" oninput="wfDesignerCampoCfg('${_esc(id)}','agendado_padrao',this.value)">` : '';
-    const rec = cfg.recorrencia || {};
-    const recTipo = rec.tipo || 'diario';
-    function _recSel(v) { return rec.tipo === v ? 'selected' : ''; }
-    const diasSemana = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
-    const recorrenteHtml = tipoDisparo === 'recorrente' ? `
-      <div style="margin-top:8px;padding:10px;background:var(--surf2);border-radius:8px;border:1px solid var(--bdr)">
-        <label class="lbl" style="font-size:11px">Tipo de recorrência</label>
-        <select class="fi" style="margin-top:2px;margin-bottom:8px" onchange="wfDesignerCampoCfg('${_esc(id)}','recorrencia',{...(_wfConfigNos['${_esc(id)}'].recorrencia||{}),tipo:this.value});_wfRenderPainelInicio(document.getElementById('wf-designer-config'),'${_esc(id)}','${_esc(nome)}')">
-          <option value="diario" ${_recSel('diario')}>Diário</option>
-          <option value="semanal" ${_recSel('semanal')}>Semanal</option>
-          <option value="mensal_dia_fixo" ${_recSel('mensal_dia_fixo')}>Mensal — dia fixo</option>
-          <option value="mensal_dia_util" ${_recSel('mensal_dia_util')}>Mensal — N.º dia útil</option>
-          <option value="mensal_ultimo_dia" ${_recSel('mensal_ultimo_dia')}>Mensal — último dia</option>
-          <option value="mensal_ultimo_dia_util" ${_recSel('mensal_ultimo_dia_util')}>Mensal — último dia útil</option>
-          <option value="trimestral" ${_recSel('trimestral')}>Trimestral (1.º dia de jan/abr/jul/out)</option>
-          <option value="anual" ${_recSel('anual')}>Anual</option>
-        </select>
-        <div style="display:flex;gap:8px;margin-bottom:8px">
-          <div style="flex:1"><label class="lbl" style="font-size:11px">Hora (0–23)</label>
-          <input type="number" class="fi" min="0" max="23" style="margin-top:2px" value="${_esc(String(rec.hora ?? 8))}" oninput="wfDesignerCampoCfg('${_esc(id)}','recorrencia',{...(_wfConfigNos['${_esc(id)}'].recorrencia||{}),hora:Number(this.value)||0})"></div>
-          <div style="flex:1"><label class="lbl" style="font-size:11px">Minuto (0–59)</label>
-          <input type="number" class="fi" min="0" max="59" style="margin-top:2px" value="${_esc(String(rec.minuto ?? 0))}" oninput="wfDesignerCampoCfg('${_esc(id)}','recorrencia',{...(_wfConfigNos['${_esc(id)}'].recorrencia||{}),minuto:Number(this.value)||0})"></div>
-        </div>
-        ${recTipo === 'semanal' ? `<label class="lbl" style="font-size:11px">Dia da semana</label>
-        <select class="fi" style="margin-top:2px;margin-bottom:8px" onchange="wfDesignerCampoCfg('${_esc(id)}','recorrencia',{...(_wfConfigNos['${_esc(id)}'].recorrencia||{}),dia_semana:Number(this.value)})">
-          ${diasSemana.map((d, i) => `<option value="${i}" ${rec.dia_semana === i ? 'selected' : ''}>${_esc(d)}</option>`).join('')}
-        </select>` : ''}
-        ${recTipo === 'mensal_dia_fixo' || recTipo === 'anual' ? `<label class="lbl" style="font-size:11px">Dia do mês (1–31)</label>
-        <input type="number" class="fi" min="1" max="31" style="margin-top:2px;margin-bottom:8px" value="${_esc(String(rec.dia_mes || 1))}" oninput="wfDesignerCampoCfg('${_esc(id)}','recorrencia',{...(_wfConfigNos['${_esc(id)}'].recorrencia||{}),dia_mes:Number(this.value)||1})">` : ''}
-        ${recTipo === 'mensal_dia_util' ? `<label class="lbl" style="font-size:11px">N.º do dia útil no mês (1–20)</label>
-        <input type="number" class="fi" min="1" max="20" style="margin-top:2px;margin-bottom:8px" value="${_esc(String(rec.numero_dia_util || 1))}" oninput="wfDesignerCampoCfg('${_esc(id)}','recorrencia',{...(_wfConfigNos['${_esc(id)}'].recorrencia||{}),numero_dia_util:Number(this.value)||1})">` : ''}
-        ${recTipo === 'anual' ? `<label class="lbl" style="font-size:11px">Mês (1–12)</label>
-        <input type="number" class="fi" min="1" max="12" style="margin-top:2px;margin-bottom:8px" value="${_esc(String(rec.mes || 1))}" oninput="wfDesignerCampoCfg('${_esc(id)}','recorrencia',{...(_wfConfigNos['${_esc(id)}'].recorrencia||{}),mes:Number(this.value)||1})">` : ''}
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;margin-top:4px">
-          <input type="checkbox" ${rec.ativo ? 'checked' : ''} onchange="wfDesignerCampoCfg('${_esc(id)}','recorrencia',{...(_wfConfigNos['${_esc(id)}'].recorrencia||{}),ativo:this.checked})"> Recorrência ativa
-        </label>
-      </div>` : '';
+
+    const recHoraInput = `<label class="lbl" style="font-size:11px;margin-top:8px">Hora de disparo</label>
+      <input type="number" class="fi" min="0" max="23" style="margin-top:2px;margin-bottom:8px;width:80px" value="${rec.hora ?? 8}" oninput="wfDesignerRecorrencia('${_esc(id)}','hora',+this.value)">`;
+
+    const recCamposExtra = (() => {
+      switch (rec.tipo || 'diario') {
+        case 'semanal': return `<label class="lbl" style="font-size:11px">Dia da semana</label>
+          <select class="fi" style="margin-top:2px;margin-bottom:8px" onchange="wfDesignerRecorrencia('${_esc(id)}','dia_semana',+this.value)">
+            ${['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'].map((d,i) => `<option value="${i}" ${(rec.dia_semana??1)===i?'selected':''}>${d}</option>`).join('')}
+          </select>`;
+        case 'mensal_dia_fixo': return `<label class="lbl" style="font-size:11px">Dia do mês</label>
+          <input type="number" class="fi" min="1" max="31" style="margin-top:2px;margin-bottom:8px;width:80px" value="${rec.dia_mes ?? 1}" oninput="wfDesignerRecorrencia('${_esc(id)}','dia_mes',+this.value)">`;
+        case 'mensal_dia_util': return `<label class="lbl" style="font-size:11px">Número do dia útil</label>
+          <input type="number" class="fi" min="1" max="23" style="margin-top:2px;margin-bottom:8px;width:80px" value="${rec.numero_dia_util ?? 1}" oninput="wfDesignerRecorrencia('${_esc(id)}','numero_dia_util',+this.value)">`;
+        case 'anual': return `<label class="lbl" style="font-size:11px">Mês</label>
+          <select class="fi" style="margin-top:2px;margin-bottom:8px" onchange="wfDesignerRecorrencia('${_esc(id)}','mes',+this.value)">
+            ${['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'].map((m,i) => `<option value="${i+1}" ${(rec.mes??1)===i+1?'selected':''}>${m}</option>`).join('')}
+          </select>
+          <label class="lbl" style="font-size:11px">Dia do mês</label>
+          <input type="number" class="fi" min="1" max="31" style="margin-top:2px;margin-bottom:8px;width:80px" value="${rec.dia_mes ?? 1}" oninput="wfDesignerRecorrencia('${_esc(id)}','dia_mes',+this.value)">`;
+        default: return '';
+      }
+    })();
+
+    const preview = _wfRecorrenciaPreview({ ...rec, tipo: rec.tipo || 'diario' });
+    const recHtml = tipoDisparo === 'recorrente' ? `
+      <label class="lbl" style="font-size:11px;margin-top:8px">Padrão de recorrência</label>
+      <select class="fi" style="margin-top:2px;margin-bottom:8px" onchange="wfDesignerRecorrencia('${_esc(id)}','tipo',this.value)">
+        <option value="diario" ${(rec.tipo||'diario')==='diario'?'selected':''}>Todo dia</option>
+        <option value="semanal" ${rec.tipo==='semanal'?'selected':''}>Todo dia da semana</option>
+        <option value="mensal_dia_fixo" ${rec.tipo==='mensal_dia_fixo'?'selected':''}>Todo dia fixo do mês</option>
+        <option value="mensal_dia_util" ${rec.tipo==='mensal_dia_util'?'selected':''}>Todo N-ésimo dia útil do mês</option>
+        <option value="mensal_ultimo_dia" ${rec.tipo==='mensal_ultimo_dia'?'selected':''}>Todo último dia do mês</option>
+        <option value="mensal_ultimo_dia_util" ${rec.tipo==='mensal_ultimo_dia_util'?'selected':''}>Todo último dia útil do mês</option>
+        <option value="trimestral" ${rec.tipo==='trimestral'?'selected':''}>Todo início de trimestre</option>
+        <option value="anual" ${rec.tipo==='anual'?'selected':''}>Todo ano em data fixa</option>
+      </select>
+      ${recCamposExtra}
+      ${recHoraInput}
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:8px;cursor:pointer">
+        <input type="checkbox" ${rec.ativo!==false?'checked':''} onchange="wfDesignerRecorrencia('${_esc(id)}','ativo',this.checked)">
+        Recorrência ativa
+      </label>
+      ${preview ? `<div style="font-size:12px;color:#3b82f6;background:#eff6ff;border-radius:6px;padding:8px 10px;margin-bottom:8px">🔁 ${_esc(preview)}</div>` : ''}` : '';
+
     painel.innerHTML = `
       <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);margin-bottom:8px">Evento de Início</div>
       <label class="lbl" style="font-size:11px">Nome</label>
@@ -2502,15 +2530,26 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       <select class="fi" style="margin-top:2px;margin-bottom:10px" onchange="wfDesignerCampoCfg('${_esc(id)}','tipo_disparo',this.value);_wfRenderPainelInicio(document.getElementById('wf-designer-config'),'${_esc(id)}','${_esc(nome)}')">
         <option value="manual" ${tipoDisparo === 'manual' ? 'selected' : ''}>Manual — usuário inicia pelo sistema</option>
         <option value="agendado" ${tipoDisparo === 'agendado' ? 'selected' : ''}>Agendado — inicia em data/hora definida</option>
-        <option value="recorrente" ${tipoDisparo === 'recorrente' ? 'selected' : ''}>Recorrente — inicia automaticamente por calendário</option>
+        <option value="recorrente" ${tipoDisparo === 'recorrente' ? 'selected' : ''}>Recorrente — dispara automaticamente por padrão de data</option>
         <option value="evento" ${tipoDisparo === 'evento' ? 'selected' : ''}>Evento — gerado por outro processo</option>
       </select>
       ${agendadoHtml}
-      ${recorrenteHtml}
+      ${recHtml}
       <label class="lbl" style="font-size:11px">Descrição / orientação ao solicitante</label>
       <textarea class="fi" rows="3" style="margin-top:2px;resize:vertical" placeholder="Descreva quando e como este processo deve ser iniciado…" oninput="wfDesignerCampoCfg('${_esc(id)}','descricao',this.value)">${_esc(cfg.descricao || '')}</textarea>
       ${_wfPainelSalvarHtml('Salve para manter as regras deste evento de início no modelo.')}`;
     _wfAplicarModoPainel();
+  }
+
+  function wfDesignerRecorrencia(noId, campo, valor) {
+    if (!_wfConfigNos[noId]) _wfConfigNos[noId] = {};
+    if (!_wfConfigNos[noId].recorrencia) _wfConfigNos[noId].recorrencia = { ativo: true, tipo: 'diario', hora: 8 };
+    _wfConfigNos[noId].recorrencia[campo] = valor;
+    // Re-renderiza apenas o preview e campos extras sem perder o foco
+    const noEl = _wfModeloAtual?.canvas?.nos?.find(n => n.id === noId);
+    const nomeNo = noEl?.nome || noId;
+    const painel = document.getElementById('wf-designer-config');
+    if (painel) _wfRenderPainelInicio(painel, noId, nomeNo);
   }
 
   function _wfRenderPainelFim(painel, id, nome) {
@@ -5420,6 +5459,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     wfDesignerAplicarPreset,
     wfDesignerRemoverArestaSel,
     wfDesignerCampoCfg,
+    wfDesignerRecorrencia,
     wfDesignerPapel,
     wfDesignerToggleAcao,
     wfDesignerSetDestinoDevolucao,
