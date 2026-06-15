@@ -54,7 +54,7 @@ const FLUXO_ORIGEM = new Set(['asis', 'tobe']);
 const ACAO_WORKFLOW = ['avancar', 'concluir', 'aprovar', 'rejeitar', 'devolver', 'solicitar_ajuste'];
 const PAPEL_WORKFLOW = ['executor', 'revisor', 'aprovador'];
 const TIPO_EVENTO = [
-  'instancia_criada', 'tarefa_criada', 'tarefa_assumida', 'tarefa_iniciada', 'tarefa_concluida',
+  'instancia_criada', 'instancia_ativada', 'tarefa_criada', 'tarefa_assumida', 'tarefa_iniciada', 'tarefa_concluida',
   'tarefa_delegada', 'tarefa_excluida', 'etapa_avancada', 'instancia_concluida', 'instancia_cancelada',
   'instancia_excluida_logica', 'sla_alerta', 'sla_vencido',
 ];
