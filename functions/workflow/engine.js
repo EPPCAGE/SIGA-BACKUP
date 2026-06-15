@@ -275,11 +275,11 @@ function makeEngine(db) {
         templateParams: {
           to_email: email,
           to_name: email,
-          from_name: 'EP·CAGE',
+          from_name: 'Escritório de Processos das CAGE',
           subject: `Workflow iniciado: ${instancia.titulo}`,
           message: `O processo "${instancia.titulo}" foi iniciado automaticamente e aguarda sua ação.\n\nEtapa: ${etapa.nome}${instrucoes}`,
           prazo: prazoStr,
-          link: 'https://sigaepp.web.app/',
+          link: 'eppcage.com.br',
         },
       }));
   }
