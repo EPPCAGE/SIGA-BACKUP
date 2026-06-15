@@ -72,7 +72,7 @@
   }
 
   function renderInstanciasCards(instanciasFiltradas, opts) {
-    const { esc, badge, podeGerenciar, statusLabels, statusCores } = opts;
+    const { esc, badge, podeGerenciar, isEp, statusLabels, statusCores } = opts;
     return instanciasFiltradas.map(i => {
       const etapas = i.snapshot_etapas || [];
       const idxAtual = etapas.findIndex(e => e.id === i.etapa_atual_id);
@@ -85,11 +85,21 @@
       const id = _escWith(esc, i.id);
       const titulo = _escWith(esc, i.titulo);
       const status = _escWith(esc, i.status);
+      const agendadoPara = i.agendado_para
+        ? (typeof i.agendado_para.toDate === 'function' ? i.agendado_para.toDate() : new Date(i.agendado_para._seconds * 1000))
+        : null;
+      const agendadoHtml = agendadoPara
+        ? `<div style="font-size:12px;color:#8b5cf6;margin-top:4px;margin-bottom:4px">🗓 Agendado para: <strong>${agendadoPara.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</strong></div>`
+        : '';
+      const btnAtivar = i.status === 'agendado' && isEp
+        ? `<button type="button" class="btn btn-sm" onclick="wfAtivarInstanciaAgora('${id}')" style="background:var(--violet,#8b5cf6);color:#fff;border-color:transparent">▶ Ativar agora</button>`
+        : '';
 
       return `<div class="card" style="padding:16px">
         <div style="font-weight:600;font-size:14px;margin-bottom:4px">${titulo}</div>
         ${i.etapa_atual_id && i.status === 'em_andamento' ? `<div style="font-size:12px;color:var(--ink3);margin-bottom:6px">Etapa atual: <strong>${_escWith(esc, etapas.find(e => e.id === i.etapa_atual_id)?.nome || i.etapa_atual_id)}</strong></div>` : ''}
         ${badge(statusLabels[i.status] || i.status, statusCores[i.status] || '#6b7280')}
+        ${agendadoHtml}
         ${etapas.length > 1 && i.status === 'em_andamento' ? `
         <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:10px;align-items:center">
           ${etapas.map((e, idx) => {
@@ -103,11 +113,12 @@
         </div>
         <div style="font-size:11px;color:var(--ink3);margin-top:4px">${pct}% concluido</div>` : ''}
         <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
-          <button type="button" class="btn btn-sm" onclick="wfAbrirHistorico('${id}','${titulo}','${status}')">Ver historico</button>
+          <button type="button" class="btn btn-sm" onclick="wfAbrirHistorico('${id}','${titulo}','${status}')">Ver histórico</button>
+          ${btnAtivar}
           ${i.status === 'em_andamento' && podeGerenciar ? `<button type="button" class="btn btn-sm" onclick="wfSuspenderInstancia('${id}')">Suspender</button>` : ''}
           ${i.status === 'suspenso' && podeGerenciar ? `<button type="button" class="btn btn-p btn-sm" onclick="wfRetomarInstancia('${id}')">Retomar</button>` : ''}
-          ${i.status === 'em_andamento' && podeGerenciar ? `<button type="button" class="btn btn-r btn-sm" onclick="wfConfirmarCancelar('${id}')">Cancelar</button>` : ''}
-          ${i.status === 'cancelado' && podeGerenciar ? `<button type="button" class="btn btn-r btn-sm" onclick="wfExcluirInstancia('${id}')">🗑 Excluir</button>` : ''}
+          ${(i.status === 'em_andamento' || i.status === 'agendado') && podeGerenciar ? `<button type="button" class="btn btn-r btn-sm" onclick="wfConfirmarCancelar('${id}')">Cancelar</button>` : ''}
+          ${(i.status === 'cancelado' && podeGerenciar) || isEp ? `<button type="button" class="btn btn-r btn-sm" onclick="wfExcluirInstancia('${id}')">🗑 Excluir</button>` : ''}
         </div>
       </div>`;
     }).join('');

@@ -1383,6 +1383,7 @@
           esc: _esc,
           badge: _badge,
           podeGerenciar,
+          isEp,
           statusLabels,
           statusCores,
         })
