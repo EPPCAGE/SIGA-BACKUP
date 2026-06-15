@@ -1223,7 +1223,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
         <input type="checkbox" id="usr-proc-also-chk" style="width:15px;height:15px;cursor:pointer" onchange="_onUsrProcAlsoChg()">
         <span>Também acessa o <strong>SIGA Processos</strong> como:</span>
       </label>
-      <select class="fi" id="usr-proc-also-sel" style="margin-top:.4rem;display:none" onchange="_onUsrProcAlsoSelChg()">
+      <select class="fi" id="usr-proc-also-sel" aria-label="Perfil adicional no SIGA Processos" style="margin-top:.4rem;display:none" onchange="_onUsrProcAlsoSelChg()">
         <option value="dono">Dono de Processo</option>
         <option value="gestor">Gestor / Adjunto</option>
       </select>
@@ -1236,7 +1236,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
         Ele terá acesso rápido a todos os processos e subprocessos desse macroprocesso em Meus Processos, Indicadores e tarefas.
       </div>
       <div style="display:flex;gap:8px;margin-bottom:.6rem;flex-wrap:wrap">
-        <select class="fi" id="usr-proc-add-sel" style="flex:1;max-width:420px">
+        <select class="fi" id="usr-proc-add-sel" aria-label="Macroprocesso para vincular" style="flex:1;max-width:420px">
           <option value="">Selecione um macroprocesso para vincular...</option>
         </select>
         <button type="button" class="btn btn-p" style="font-size:12px" onclick="addVinculoProc()">+ Vincular macro</button>
@@ -1250,7 +1250,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
         O perfil Projetos tem visualização geral no SIGA Projetos. O vínculo identifica os projetos sob sua responsabilidade e libera edição apenas do cronograma.
       </div>
       <div style="display:flex;gap:8px;margin-bottom:.6rem;flex-wrap:wrap">
-        <select class="fi" id="usr-proj-add-sel" style="flex:1;max-width:420px">
+        <select class="fi" id="usr-proj-add-sel" aria-label="Projeto para vincular" style="flex:1;max-width:420px">
           <option value="">Selecione um projeto para vincular...</option>
         </select>
         <button type="button" class="btn btn-p" style="font-size:12px" onclick="addVinculoProj()">+ Vincular</button>
@@ -1315,7 +1315,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
         <button type="button" class="hub-chip" onclick="filtUsr('gestor',this)">Gestor</button>
         <button type="button" class="hub-chip" onclick="filtUsr('gerente_projeto',this)">Projetos</button>
       </div>
-      <input class="hub-srch" id="srch-usr" placeholder="Buscar..." oninput="renderAdmin()">
+      <input class="hub-srch" id="srch-usr" aria-label="Buscar usuários" placeholder="Buscar..." oninput="renderAdmin()">
     </div>
     <div class="hub-tbl-wrap">
       <table class="hub-tbl"><thead><tr><th></th><th>Nome</th><th>Área</th><th>E-mail</th><th>Perfil</th><th>Vínculos</th></tr></thead>
@@ -1409,7 +1409,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
         <svg viewBox="0 0 16 16" fill="none" style="width:11px;height:11px;flex-shrink:0;color:var(--ink3)"><path d="M8 1a3 3 0 110 6A3 3 0 018 1zM2 13c0-2.21 2.686-4 6-4s6 1.79 6 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M13 6l1.5 1.5L16 6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span style="font-size:10px;color:var(--ink3)">Simular perfil</span>
       </div>
-      <select id="ep-perfil-select" onchange="simularPerfil(this.value)" style="width:100%;font-size:11px;padding:3px 6px;border:1px solid var(--bdr);border-radius:var(--r);background:var(--bg2);color:var(--ink);cursor:pointer;font-family:var(--f)">
+      <select id="ep-perfil-select" aria-label="Simular perfil de usuário" onchange="simularPerfil(this.value)" style="width:100%;font-size:11px;padding:3px 6px;border:1px solid var(--bdr);border-radius:var(--r);background:var(--bg2);color:var(--ink);cursor:pointer;font-family:var(--f)">
         <option value="ep">EP CAGE (real)</option>
         <option value="gestor">Gestor</option>
         <option value="dono">Dono de Processo</option>
@@ -1481,10 +1481,10 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
       <button type="button" class="chip" onclick="filtFase('Formalizacao',this)">Formalização</button>
       <button type="button" class="chip" onclick="filtFase('Concluidos',this)" style="border-color:var(--green-b,#bbf7d0);color:var(--green,#16a34a)">✓ Concluídos</button>
     </div>
-    <input class="srch" id="srch-p" placeholder="Buscar..." oninput="renderProcs()">
-    <select class="fi" id="filt-ep" onchange="renderProcs()" style="max-width:160px;font-size:12px"></select>
-    <select class="fi" id="filt-dono" onchange="renderProcs()" style="max-width:160px;font-size:12px"></select>
-    <select class="fi" id="filt-produto" onchange="renderProcs()" style="max-width:140px;font-size:12px">
+    <input class="srch" id="srch-p" aria-label="Buscar processos" placeholder="Buscar..." oninput="renderProcs()">
+    <select class="fi" id="filt-ep" aria-label="Filtrar por EP responsável" onchange="renderProcs()" style="max-width:160px;font-size:12px"></select>
+    <select class="fi" id="filt-dono" aria-label="Filtrar por dono do processo" onchange="renderProcs()" style="max-width:160px;font-size:12px"></select>
+    <select class="fi" id="filt-produto" aria-label="Filtrar por produto" onchange="renderProcs()" style="max-width:140px;font-size:12px">
       <option value="">Produto: Todos</option>
       <option>AS IS</option><option>TO BE</option><option>AS IS + TO BE</option>
     </select>
@@ -1579,8 +1579,8 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
   <!-- Barra de busca -->
   <div class="fbar" style="margin-bottom:1.2rem">
     <span class="fbar-l">🔍 Buscar</span>
-    <input class="srch" id="faq-srch" placeholder="Digite palavras-chave..." oninput="rFaq()" style="flex:1;max-width:480px">
-    <select class="fi" id="faq-f-macro" onchange="rFaq()" style="max-width:220px"><option value="">Todos os macroprocessos</option></select>
+    <input class="srch" id="faq-srch" aria-label="Buscar na base de FAQs" placeholder="Digite palavras-chave..." oninput="rFaq()" style="flex:1;max-width:480px">
+    <select class="fi" id="faq-f-macro" aria-label="Filtrar FAQ por macroprocesso" onchange="rFaq()" style="max-width:220px"><option value="">Todos os macroprocessos</option></select>
     <button type="button" class="btn" style="font-size:11px;padding:4px 10px" onclick="document.getElementById('faq-srch').value='';document.getElementById('faq-f-macro').value='';rFaq()">Limpar</button>
     <span id="faq-result-cnt" style="font-size:11px;color:var(--ink3)"></span>
   </div>
@@ -1596,7 +1596,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
   <div class="fbar" style="flex-direction:column;align-items:stretch;gap:10px;margin-bottom:.9rem">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span class="fbar-l">Buscar</span>
-      <input class="srch" id="arq-srch" placeholder="Nome do processo, dono, área..." oninput="rArq()" style="flex:1;max-width:380px">
+      <input class="srch" id="arq-srch" aria-label="Buscar na arquitetura de processos" placeholder="Nome do processo, dono, área..." oninput="rArq()" style="flex:1;max-width:380px">
       <button type="button" class="btn" style="font-size:11px;padding:4px 10px" onclick="limparFiltrosArq()">Limpar filtros</button>
       <span id="arq-result-cnt" style="font-size:11px;color:var(--ink3)"></span>
     </div>
@@ -1627,9 +1627,9 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
         <option value="nao">Não</option>
       </select>
       <span class="fbar-l">Dono</span>
-      <select class="fi" id="arq-f-dono" onchange="rArq()" style="max-width:200px"><option value="">Todos</option></select>
+      <select class="fi" id="arq-f-dono" aria-label="Filtrar por dono do processo" onchange="rArq()" style="max-width:200px"><option value="">Todos</option></select>
       <span class="fbar-l">Maturidade</span>
-      <select class="fi" id="arq-f-mat" onchange="rArq()" style="max-width:150px">
+      <select class="fi" id="arq-f-mat" aria-label="Filtrar por maturidade" onchange="rArq()" style="max-width:150px">
         <option value="">Todas</option>
         <option value="0">Não avaliada</option>
         <option value="1">1 — Inicial</option>
@@ -1677,29 +1677,29 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
   </div>
   <div id="ind-gsheets-sec" class="ep-only" style="display:none;margin-bottom:.75rem;padding:.55rem .8rem;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);gap:8px;align-items:center;flex-wrap:wrap">
     <span style="font-size:12px;font-weight:600;color:var(--ink3);white-space:nowrap">Google Sheets (CSV publicado)</span>
-    <input class="fi" id="ind-gsheets-url" placeholder="https://docs.google.com/spreadsheets/..." style="flex:1;min-width:220px;font-size:12px" oninput="salvarGSheetsUrl()">
+    <input class="fi" id="ind-gsheets-url" aria-label="URL do Google Sheets CSV publicado" placeholder="https://docs.google.com/spreadsheets/..." style="flex:1;min-width:220px;font-size:12px" oninput="salvarGSheetsUrl()">
     <button type="button" class="btn btn-p" onclick="sincronizarGSheets()" style="font-size:12px;white-space:nowrap">↻ Sincronizar</button>
     <span id="ind-gsheets-status" style="font-size:11px;color:var(--ink3)"></span>
   </div>
   <div class="fbar" style="align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:.75rem">
     <span class="fbar-l">Indicador</span>
-    <select class="fi" id="ind-nome-sel" onchange="rInd()" style="max-width:220px"><option value="">Todos</option></select>
+    <select class="fi" id="ind-nome-sel" aria-label="Filtrar por indicador" onchange="rInd()" style="max-width:220px"><option value="">Todos</option></select>
     <span class="fbar-l ind-filtros-avancados">Macroprocesso</span>
-    <select class="fi ind-filtros-avancados" id="ind-macro-sel" onchange="_indMacroChange()" style="max-width:200px"><option value="">Todos</option></select>
+    <select class="fi ind-filtros-avancados" id="ind-macro-sel" aria-label="Filtrar por macroprocesso" onchange="_indMacroChange()" style="max-width:200px"><option value="">Todos</option></select>
     <span class="fbar-l ind-filtros-avancados">Processo</span>
-    <select class="fi ind-filtros-avancados" id="ind-proc-sel" onchange="rInd()" style="max-width:200px"><option value="">Todos</option></select>
+    <select class="fi ind-filtros-avancados" id="ind-proc-sel" aria-label="Filtrar por processo" onchange="rInd()" style="max-width:200px"><option value="">Todos</option></select>
     <span class="fbar-l ind-filtros-avancados">Área</span>
-    <select class="fi ind-filtros-avancados" id="ind-area-sel" onchange="rInd()" style="max-width:160px"><option value="">Todas</option></select>
+    <select class="fi ind-filtros-avancados" id="ind-area-sel" aria-label="Filtrar por área" onchange="rInd()" style="max-width:160px"><option value="">Todas</option></select>
     <span class="fbar-l ind-filtros-avancados">PPE?</span>
-    <select class="fi ind-filtros-avancados" id="ind-ppe-sel" onchange="rInd()" style="max-width:90px">
+    <select class="fi ind-filtros-avancados" id="ind-ppe-sel" aria-label="Filtrar por PPE" onchange="rInd()" style="max-width:90px">
       <option value="">Todos</option><option>Sim</option><option>Não</option>
     </select>
     <span class="fbar-l ind-filtros-avancados">Ciclo</span>
-    <select class="fi ind-filtros-avancados" id="ind-ciclo-sel" onchange="rInd()" style="max-width:150px"><option value="">Todos</option></select>
+    <select class="fi ind-filtros-avancados" id="ind-ciclo-sel" aria-label="Filtrar por ciclo" onchange="rInd()" style="max-width:150px"><option value="">Todos</option></select>
     <span class="fbar-l ind-filtros-avancados">Período</span>
-    <select class="fi ind-filtros-avancados" id="ind-periodo-sel" onchange="rInd()" style="max-width:140px"><option value="">Todos</option></select>
+    <select class="fi ind-filtros-avancados" id="ind-periodo-sel" aria-label="Filtrar por período" onchange="rInd()" style="max-width:140px"><option value="">Todos</option></select>
     <span class="fbar-l ind-filtros-avancados">Intervalo</span>
-    <select class="fi ind-filtros-avancados" id="ind-intervalo-sel" onchange="rInd()" style="max-width:150px">
+    <select class="fi ind-filtros-avancados" id="ind-intervalo-sel" aria-label="Filtrar por intervalo" onchange="rInd()" style="max-width:150px">
       <option value="">Todos</option>
     </select>
   </div>
@@ -1715,7 +1715,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
       <!-- Period navigation bar (shown only when editing multi-period indicator) -->
       <div id="kpi-nav-periodos" style="display:none;margin-bottom:1rem;padding:.4rem .6rem;background:var(--bg2);border-radius:var(--r);align-items:center;gap:6px">
         <button type="button" class="btn" style="padding:2px 9px;font-size:14px;flex-shrink:0" onclick="_kpiNavStep(-1)" aria-label="Período anterior">←</button>
-        <select class="fi" id="kpi-nav-sel" onchange="_kpiNavGoto()" style="flex:1;font-size:12px"></select>
+        <select class="fi" id="kpi-nav-sel" aria-label="Navegar entre períodos do indicador" onchange="_kpiNavGoto()" style="flex:1;font-size:12px"></select>
         <button type="button" class="btn" style="padding:2px 9px;font-size:14px;flex-shrink:0" onclick="_kpiNavStep(1)" aria-label="Próximo período">→</button>
         <span id="kpi-nav-info" style="font-size:11px;color:var(--ink3);white-space:nowrap"></span>
       </div>
@@ -1836,26 +1836,26 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
   <div id="plano-dash" style="margin-bottom:1.2rem"></div>
   <div id="plano-metas" style="margin-bottom:1.2rem"></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;align-items:center">
-    <select class="fi plano-filtros-avancados" id="plano-filt-tri" onchange="rPlano()" style="width:100px">
+    <select class="fi plano-filtros-avancados" id="plano-filt-tri" aria-label="Filtrar por trimestre" onchange="rPlano()" style="width:100px">
       <option value="">Todos</option>
       <option value="Anual">Anual</option>
       <option value="T1">T1</option><option value="T2">T2</option>
       <option value="T3">T3</option><option value="T4">T4</option>
     </select>
-    <select class="fi plano-filtros-avancados" id="plano-filt-status" onchange="rPlano()" style="width:140px">
+    <select class="fi plano-filtros-avancados" id="plano-filt-status" aria-label="Filtrar por status" onchange="rPlano()" style="width:140px">
       <option value="">Todos os status</option>
       <option value="planejado">Planejado</option>
       <option value="em_execucao">Em execução</option>
       <option value="em_atraso">Em atraso</option>
       <option value="concluida">Concluída</option>
     </select>
-    <select class="fi plano-filtros-avancados" id="plano-filt-prio" onchange="rPlano()" style="width:120px">
+    <select class="fi plano-filtros-avancados" id="plano-filt-prio" aria-label="Filtrar por prioridade" onchange="rPlano()" style="width:120px">
       <option value="">Todas prioridades</option>
       <option value="alta">Alta</option>
       <option value="media">Média</option>
       <option value="baixa">Baixa</option>
     </select>
-    <select class="fi plano-filtros-avancados" id="plano-filt-cat" onchange="rPlano()" style="width:130px">
+    <select class="fi plano-filtros-avancados" id="plano-filt-cat" aria-label="Filtrar por categoria" onchange="rPlano()" style="width:130px">
       <option value="">Todas categorias</option>
       <option value="auditoria">Análise de Aderência</option>
       <option value="mapeamento">Mapeamento</option>
@@ -2170,13 +2170,13 @@ Não responda este e-mail.</pre>
   <!-- Painel: Minhas Tarefas -->
   <div id="wf-painel-tarefas">
     <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-      <select id="wf-filtro-tarefa-status" class="fi" onchange="wfCarregarTarefas()" style="max-width:180px">
+      <select id="wf-filtro-tarefa-status" aria-label="Filtrar tarefas por status" class="fi" onchange="wfCarregarTarefas()" style="max-width:180px">
         <option value="">Todos os status</option>
         <option value="pendente">Pendente</option>
         <option value="em_execucao">Em Execução</option>
         <option value="vencida">Vencida</option>
       </select>
-      <input type="text" id="wf-filtro-tarefa-texto" class="fi" placeholder="Filtrar por processo/etapa" oninput="wfCarregarTarefas()" style="max-width:260px">
+      <input type="text" id="wf-filtro-tarefa-texto" aria-label="Filtrar tarefas por processo ou etapa" class="fi" placeholder="Filtrar por processo/etapa" oninput="wfCarregarTarefas()" style="max-width:260px">
     </div>
     <div id="wf-lista-tarefas" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
       <div style="color:var(--ink3);font-size:14px">Carregando tarefas…</div>
@@ -2186,7 +2186,7 @@ Não responda este e-mail.</pre>
   <!-- Painel: Processos Ativos -->
   <div id="wf-painel-instancias" style="display:none">
     <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-      <select id="wf-filtro-inst-status" class="fi" onchange="wfCarregarInstancias()" style="max-width:180px">
+      <select id="wf-filtro-inst-status" aria-label="Filtrar instâncias por status" class="fi" onchange="wfCarregarInstancias()" style="max-width:180px">
         <option value="">Todos os status</option>
         <option value="agendado">Agendado</option>
         <option value="em_andamento">Em andamento</option>
@@ -2194,7 +2194,7 @@ Não responda este e-mail.</pre>
         <option value="concluido">Concluído</option>
         <option value="cancelado">Cancelado</option>
       </select>
-      <input type="text" id="wf-filtro-inst-texto" class="fi" placeholder="Filtrar por título" oninput="wfCarregarInstancias()" style="max-width:260px">
+      <input type="text" id="wf-filtro-inst-texto" aria-label="Filtrar instâncias por título" class="fi" placeholder="Filtrar por título" oninput="wfCarregarInstancias()" style="max-width:260px">
     </div>
     <div id="wf-lista-instancias" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
       <div style="color:var(--ink3);font-size:14px">Carregando…</div>
@@ -2371,12 +2371,12 @@ Não responda este e-mail.</pre>
       <button type="button" class="btn" onclick="wfAdminRecarregar()">↻ Atualizar</button>
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
-      <select id="wf-admin-filtro-status" class="fi" onchange="wfAdminRecarregar()" style="max-width:180px">
+      <select id="wf-admin-filtro-status" aria-label="Filtrar tarefas por status" class="fi" onchange="wfAdminRecarregar()" style="max-width:180px">
         <option value="">Todos os status</option>
         <option value="pendente">Pendente</option>
         <option value="em_execucao">Em Execução</option>
       </select>
-      <input type="text" id="wf-admin-filtro-texto" class="fi" placeholder="Filtrar processo, etapa ou responsável…" oninput="wfAdminFiltrar()" style="max-width:320px">
+      <input type="text" id="wf-admin-filtro-texto" aria-label="Filtrar por processo, etapa ou responsável" class="fi" placeholder="Filtrar processo, etapa ou responsável…" oninput="wfAdminFiltrar()" style="max-width:320px">
       <span id="wf-admin-contador" style="font-size:12px;color:var(--ink3);margin-left:4px"></span>
     </div>
     <div style="overflow-x:auto">
@@ -2463,7 +2463,7 @@ Não responda este e-mail.</pre>
         <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3)">Parecer / Observação</span>
         <span id="wf-exec-parecer-hint" style="display:none;font-size:11px;color:var(--red);font-weight:600">● obrigatório</span>
       </div>
-      <textarea id="wf-exec-obs" class="fi" rows="3" placeholder="Descreva a decisão tomada, justificativas ou observações relevantes para esta etapa…" style="resize:vertical"></textarea>
+      <textarea id="wf-exec-obs" aria-label="Parecer ou observação" class="fi" rows="3" placeholder="Descreva a decisão tomada, justificativas ou observações relevantes para esta etapa…" style="resize:vertical"></textarea>
     </div>
 
     <!-- Ações -->
