@@ -528,8 +528,10 @@ function makeEngine(db) {
     }
 
     // Para workflows agendados: envia e-mail a todos os responsáveis pela primeira tarefa
+    console.log('[wf criarTarefa] agendado_para:', instancia.agendado_para, '| grupo_id:', destino.grupo_id, '| papel_alvo:', destino.papel_alvo);
     if (instancia.agendado_para) {
       const emailsDestinatarios = new Set();
+      console.log('[wf email agendado] destino:', JSON.stringify({ responsavel_uid: destino.responsavel_uid, grupo_id: destino.grupo_id, papel_alvo: destino.papel_alvo }));
       if (destino.responsavel_uid) {
         const u = await _buscarUsuarioPorUid(destino.responsavel_uid).catch(() => null);
         if (u?.email) emailsDestinatarios.add(u.email);
@@ -543,7 +545,7 @@ function makeEngine(db) {
           if (g.chefe_email) emailsDestinatarios.add(g.chefe_email);
         }
       }
-      // papel_alvo genérico (ep, gestor, dono) — resolve via atribuições da instância
+      // papel_alvo específico (ex: gestor_solicitante) — resolve uid único
       if (!destino.responsavel_uid && !destino.grupo_id && destino.papel_alvo) {
         const uid = await _resolverUidNotificacaoCanvas(destino.papel_alvo, instancia).catch(() => null);
         if (uid) {
@@ -551,6 +553,7 @@ function makeEngine(db) {
           if (u?.email) emailsDestinatarios.add(u.email);
         }
       }
+      console.log('[wf email agendado] destinatarios:', [...emailsDestinatarios]);
       if (emailsDestinatarios.size) {
         await _enviarEmailWorkflow({
           emails: [...emailsDestinatarios],
