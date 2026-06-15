@@ -1383,7 +1383,18 @@ function makeEngine(db) {
     excluirInstanciaLogica,
     processarSla,
     processarAgendados,
+    ativarInstancia,
   };
+
+  async function ativarInstancia(instanciaId) {
+    const snap = await col.instancias.doc(instanciaId).get();
+    if (!snap.exists) throw Object.assign(new Error('Instância não encontrada'), { code: 'NAO_ENCONTRADO', status: 404 });
+    const instancia = { id: snap.id, ...snap.data() };
+    if (instancia.status !== 'agendado') {
+      throw Object.assign(new Error(`Instância não está no status agendado (status: ${instancia.status})`), { code: 'STATUS_INVALIDO', status: 400 });
+    }
+    return _ativarInstanciaAgendada(instancia);
+  }
 }
 
 module.exports = { makeEngine };

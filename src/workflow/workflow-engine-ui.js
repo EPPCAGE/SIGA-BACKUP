@@ -1416,7 +1416,10 @@
           ? (typeof i.agendado_para.toDate === 'function' ? i.agendado_para.toDate() : new Date(i.agendado_para._seconds * 1000))
           : null;
         const agendadoHtml = agendadoPara
-          ? `<div style="font-size:12px;color:#8b5cf6;margin-top:4px;margin-bottom:4px">🗓 Inicia em: <strong>${agendadoPara.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</strong></div>`
+          ? `<div style="font-size:12px;color:#8b5cf6;margin-top:4px;margin-bottom:4px">🗓 Agendado para: <strong>${agendadoPara.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</strong></div>`
+          : '';
+        const btnAtivar = i.status === 'agendado' && isEp
+          ? `<button type="button" class="btn btn-sm" onclick="wfAtivarInstanciaAgora('${_esc(i.id)}')" style="background:var(--violet,#8b5cf6);color:#fff;border-color:transparent">▶ Ativar agora</button>`
           : '';
         return _card(`
           <div style="font-weight:600;font-size:14px;margin-bottom:4px">${_esc(i.titulo)}</div>
@@ -1426,6 +1429,7 @@
           ${progressoHtml}
           <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
             <button type="button" class="btn btn-sm" onclick="wfAbrirHistorico('${_esc(i.id)}','${_esc(i.titulo)}','${_esc(i.status)}')">Ver histórico</button>
+            ${btnAtivar}
             ${i.status === 'em_andamento' && podeGerenciar ? `<button type="button" class="btn btn-sm" onclick="wfSuspenderInstancia('${_esc(i.id)}')">Suspender</button>` : ''}
             ${i.status === 'suspenso' && podeGerenciar ? `<button type="button" class="btn btn-p btn-sm" onclick="wfRetomarInstancia('${_esc(i.id)}')">Retomar</button>` : ''}
             ${(i.status === 'em_andamento' || i.status === 'agendado') && podeGerenciar ? `<button type="button" class="btn btn-r btn-sm" onclick="wfConfirmarCancelar('${_esc(i.id)}')">Cancelar</button>` : ''}
@@ -1436,16 +1440,13 @@
 
       const temMais = _st.instanciasCursor < instanciasFiltradas.length;
       const btnMais = temMais ? `<div style="text-align:center;margin-top:12px"><button type="button" class="btn btn-sm" onclick="wfCarregarInstancias(true)">Carregar mais</button></div>` : '';
-      const btnAgendados = isEp && instanciasFiltradas.some(i => i.status === 'agendado')
-        ? `<div style="margin-bottom:12px"><button type="button" class="btn btn-sm" onclick="wfAcionarAgendados()" style="background:var(--violet,#8b5cf6);color:#fff;border-color:transparent">▶ Ativar processos agendados agora</button></div>`
-        : '';
 
       if (acrescentar) {
         const btnAnterior = el.querySelector('.wf-btn-mais');
         if (btnAnterior) btnAnterior.remove();
         el.insertAdjacentHTML('beforeend', cards + btnMais);
       } else {
-        el.innerHTML = btnAgendados + cards + btnMais;
+        el.innerHTML = cards + btnMais;
       }
     } catch (e) {
       el.innerHTML = `<div style="color:var(--red);font-size:14px">${_esc(e.message)}</div>`;
@@ -4460,12 +4461,10 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 
   // ── Acionamento manual do scheduler (EP only) ────────────────────────────
 
-  async function wfAcionarAgendados() {
+  async function wfAtivarInstanciaAgora(instanciaId) {
     try {
-      const res = await _wfApiRequest('wfAdminJobs', '/agendados', { method: 'POST' });
-      const partes = [];
-      if (res.ativadas > 0) partes.push(`✅ ${res.ativadas} instância(s) ativada(s).`);
-      else partes.push('Nenhuma instância agendada com horário vencido no momento.');
+      const res = await _wfApiRequest('wfAdminJobs', `/ativar/${encodeURIComponent(instanciaId)}`, { method: 'POST' });
+      const partes = [`✅ Processo ativado.`];
       if (res.emailsEnviados?.length) partes.push(`📧 E-mail enviado para: ${res.emailsEnviados.join(', ')}.`);
       if (res.emailsErro?.length) partes.push(`⚠️ Erro ao enviar e-mail para: ${res.emailsErro.join(', ')}.`);
       const msg = partes.join(' ');
@@ -4475,7 +4474,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       _st.instanciasLista = null;
       wfCarregarInstancias();
     } catch (e) {
-      alert('Erro ao acionar agendados: ' + e.message);
+      alert('Erro ao ativar processo: ' + e.message);
     }
   }
 
@@ -5380,7 +5379,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     wfAbrirDelegacao,
     wfFecharDelegacao,
     wfConfirmarDelegacao,
-    wfAcionarAgendados,
+    wfAtivarInstanciaAgora,
     wfSuspenderInstancia,
     wfRetomarInstancia,
     wfCarregarEquipes,
