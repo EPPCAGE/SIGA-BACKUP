@@ -250,15 +250,6 @@ function makeEngine(db) {
     grupos: db.collection('wf_grupos'),
   };
 
-  // Cache de config EmailJS (lido uma vez por execução da função)
-  let _ejsConfigCache = null;
-  async function _carregarEjsConfig() {
-    if (_ejsConfigCache) return _ejsConfigCache;
-    const doc = await db.doc('config/ejs').get().catch(() => null);
-    _ejsConfigCache = doc?.exists ? doc.data() : null;
-    return _ejsConfigCache;
-  }
-
   async function _prepararEmailsWorkflow({ emails, instancia, tarefa, etapa }) {
     let prazoStr = 'sem prazo definido';
     if (tarefa.prazo) {
@@ -267,7 +258,7 @@ function makeEngine(db) {
         : new Date(tarefa.prazo._seconds * 1000);
       prazoStr = prazoDate.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
     }
-    const instrucoes = tarefa.instrucoes ? `\n\nOrientação: ${tarefa.instrucoes}` : '';
+    const instrucoes = tarefa.instrucoes || '';
     return emails
       .filter(e => e && typeof e === 'string')
       .map(email => ({
@@ -275,9 +266,11 @@ function makeEngine(db) {
         templateParams: {
           to_email: email,
           to_name: email,
-          from_name: 'EP·CAGE',
-          subject: `Workflow iniciado: ${instancia.titulo}`,
-          message: `O processo "${instancia.titulo}" foi iniciado automaticamente e aguarda sua ação.\n\nEtapa: ${etapa.nome}${instrucoes}`,
+          from_name: 'Escritório de Processos das CAGE',
+          workflow: instancia.titulo,
+          processo_titulo: instancia.titulo,
+          etapa_nome: etapa.nome,
+          instrucoes,
           prazo: prazoStr,
           link: 'https://sigaepp.web.app/',
         },
@@ -295,13 +288,16 @@ function makeEngine(db) {
   }
 
   let _usuariosCache = null;
+  let _usuariosCacheTs = 0;
+  const _USUARIOS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
 
   async function _carregarUsuariosConfig() {
-    if (_usuariosCache) return _usuariosCache;
+    if (_usuariosCache && (Date.now() - _usuariosCacheTs) < _USUARIOS_CACHE_TTL_MS) return _usuariosCache;
     const snap = await col.usuariosConfig.get();
     const raw = snap.exists ? snap.data()?.data : [];
     if (typeof raw === 'string') _usuariosCache = JSON.parse(raw);
     else _usuariosCache = Array.isArray(raw) ? raw : [];
+    _usuariosCacheTs = Date.now();
     return _usuariosCache;
   }
 
@@ -430,6 +426,7 @@ function makeEngine(db) {
     if (alvo === 'solicitante') return instancia.solicitante_uid || null;
     if (['ep', 'gestor', 'dono'].includes(alvo)) return _uidAtribuido(instancia, alvo);
     if (alvo === 'gestor_solicitante') {
+      if (instancia.gestor_solicitante_uid) return instancia.gestor_solicitante_uid;
       const usuario = await _buscarUsuarioPorUid(instancia.solicitante_uid);
       return usuario?.gestor_uid || usuario?.gestor || null;
     }
@@ -542,24 +539,23 @@ function makeEngine(db) {
       });
     }
 
-    // Para workflows agendados: envia e-mail a todos os responsáveis pela primeira tarefa
+    // Para workflows agendados: envia e-mail ao(s) responsável(is) pela primeira tarefa
     if (instancia.agendado_para) {
       const emailsDestinatarios = new Set();
       if (destino.responsavel_uid) {
+        // Responsável individual tem prioridade — notifica só ele
         const u = await _buscarUsuarioPorUid(destino.responsavel_uid).catch(() => null);
         if (u?.email) emailsDestinatarios.add(u.email);
-      }
-      // Se atribuído a grupo, envia para todos os membros da equipe
-      if (destino.grupo_id) {
+      } else if (destino.grupo_id) {
+        // Sem responsável fixo: notifica todos os membros do grupo
         const grupoSnap = await col.grupos.doc(destino.grupo_id).get().catch(() => null);
         if (grupoSnap?.exists) {
           const g = grupoSnap.data();
           (g.membros_email || []).forEach(e => { if (e) emailsDestinatarios.add(e); });
           if (g.chefe_email) emailsDestinatarios.add(g.chefe_email);
         }
-      }
-      // papel_alvo específico (ex: gestor_solicitante) — resolve uid único
-      if (!destino.responsavel_uid && !destino.grupo_id && destino.papel_alvo) {
+      } else if (destino.papel_alvo) {
+        // Papel específico (ex: gestor_solicitante) — resolve uid único
         const uid = await _resolverUidNotificacaoCanvas(destino.papel_alvo, instancia).catch(() => null);
         if (uid) {
           const u = await _buscarUsuarioPorUid(uid).catch(() => null);
@@ -929,8 +925,8 @@ function makeEngine(db) {
       if (tarefaAtual.responsavel_uid && tarefaAtual.responsavel_uid !== usuario_uid) {
         await notif.tarefaConcluida({ destinatario_uid: tarefaAtual.responsavel_uid, instancia, tarefa: tarefaAtual, concluida_por_nome: usuario_email }).catch(() => {});
       }
-      // Notifica o solicitante que o processo avançou (exceto se ele mesmo concluiu)
-      if (instancia.solicitante_uid && instancia.solicitante_uid !== usuario_uid) {
+      // Notifica o solicitante que o processo avançou — apenas se não for o mesmo que o responsável já notificado
+      if (instancia.solicitante_uid && instancia.solicitante_uid !== usuario_uid && instancia.solicitante_uid !== tarefaAtual.responsavel_uid) {
         await notif.tarefaConcluida({ destinatario_uid: instancia.solicitante_uid, instancia, tarefa: tarefaAtual }).catch(() => {});
       }
 
@@ -1018,7 +1014,7 @@ function makeEngine(db) {
         proxEtapa.id, null,
         `Processo concluído.`, {},
       );
-      await notif.instanciaConcluida({ instancia: { ...instancia, id: instancia.id } });
+      await notif.instanciaConcluida({ instancia: { ...instancia, id: instancia.id }, destinatario_uid: instancia.solicitante_uid || null });
     } else {
       const instanciaAtualizada = { ...instancia, etapa_atual_id: proxEtapa.id };
       await _criarTarefa(instanciaAtualizada, proxEtapa);
@@ -1285,17 +1281,23 @@ function makeEngine(db) {
     });
 
     let ativadas = 0;
-    const emailsPendentes = [];
+    const notificacoesPendentes = [];
     for (const doc of vencidas) {
       try {
         const res = await _ativarInstanciaAgendada({ id: doc.id, ...doc.data() });
         ativadas++;
-        (res?.emailsPendentes || []).forEach(e => emailsPendentes.push(e));
+        // emailsPendentes não podem ser enviados server-side (EmailJS requer browser).
+        // Registra destinatários no log para rastreabilidade.
+        const emails = (res?.emailsPendentes || []).map(e => e.email);
+        if (emails.length) {
+          notificacoesPendentes.push({ instancia_id: doc.id, emails });
+          console.info(`[processarAgendados] Instância ${doc.id} ativada. E-mails pendentes (requerem envio manual): ${emails.join(', ')}`);
+        }
       } catch (e) {
         console.error(`[processarAgendados] Erro ao ativar ${doc.id}:`, e.message);
       }
     }
-    return { ativadas, total: vencidas.length, emailsPendentes };
+    return { ativadas, total: vencidas.length, notificacoesPendentes };
   }
 
   /**
@@ -1314,6 +1316,7 @@ function makeEngine(db) {
 
     for (const doc of alertaSnap.docs) {
       const tarefa = { id: doc.id, ...doc.data() };
+      if (!tarefa.responsavel_uid) continue;
       const instancia = await col.instancias.doc(tarefa.instancia_id).get();
       const etapa = await col.etapas.doc(tarefa.etapa_modelo_id).get();
       if (!instancia.exists || !etapa.exists) continue;
@@ -1334,6 +1337,7 @@ function makeEngine(db) {
       const tarefa = { id: doc.id, ...doc.data() };
       await doc.ref.update({ status: 'vencida' });
 
+      if (!tarefa.responsavel_uid) continue;
       const instancia = await col.instancias.doc(tarefa.instancia_id).get();
       const etapa = await col.etapas.doc(tarefa.etapa_modelo_id).get();
       if (!instancia.exists || !etapa.exists) continue;
@@ -1364,6 +1368,7 @@ function makeEngine(db) {
     processarSla,
     processarAgendados,
     ativarInstancia,
+    previewAtivarInstancia,
   };
 
   async function ativarInstancia(instanciaId) {
@@ -1374,6 +1379,47 @@ function makeEngine(db) {
       throw Object.assign(new Error(`Instância não está no status agendado (status: ${instancia.status})`), { code: 'STATUS_INVALIDO', status: 400 });
     }
     return _ativarInstanciaAgendada(instancia);
+  }
+
+  async function previewAtivarInstancia(instanciaId) {
+    const snap = await col.instancias.doc(instanciaId).get();
+    if (!snap.exists) throw Object.assign(new Error('Instância não encontrada'), { code: 'NAO_ENCONTRADO', status: 404 });
+    const instancia = { id: snap.id, ...snap.data() };
+    if (instancia.status !== 'agendado') {
+      throw Object.assign(new Error(`Instância não está no status agendado (status: ${instancia.status})`), { code: 'STATUS_INVALIDO', status: 400 });
+    }
+
+    const modeloSnap = await col.modelos.doc(instancia.processo_modelo_id).get().catch(() => null);
+    const modeloData = modeloSnap?.exists ? { id: modeloSnap.id, ...modeloSnap.data() } : null;
+    if (!modeloData) return { destinatarios: [], tipo: null };
+
+    // Mesma navegação usada em _ativarInstanciaAgendada
+    const inicio = (modeloData.canvas?.nos || []).find(n => n.tipo === 'inicio');
+    if (!inicio) return { destinatarios: [], tipo: null };
+    const primeiroNo = _proximoNoExecutavelCanvas(modeloData.canvas, inicio.id, null, {}, modeloData.config_nos || {});
+    if (!primeiroNo) return { destinatarios: [], tipo: null };
+
+    const cfg = _configNo(modeloData, primeiroNo.id);
+    const papelAlvo = cfg.papeis?.executor || 'solicitante';
+    const destino = await _resolverDestinoTarefaCanvas(papelAlvo, instancia);
+
+    if (destino.responsavel_uid) {
+      const u = await _buscarUsuarioPorUid(destino.responsavel_uid).catch(() => null);
+      return { tipo: 'usuario', destinatarios: u ? [{ nome: u.nome || u.email, email: u.email }] : [] };
+    }
+    if (destino.grupo_id) {
+      const grupoSnap = await col.grupos.doc(destino.grupo_id).get().catch(() => null);
+      if (grupoSnap?.exists) {
+        const g = grupoSnap.data();
+        const emails = [...(g.membros_email || [])];
+        if (g.chefe_email && !emails.includes(g.chefe_email)) emails.push(g.chefe_email);
+        return { tipo: 'grupo', nome_grupo: g.nome || destino.grupo_id, destinatarios: emails.filter(Boolean).map(e => ({ email: e, nome: e })) };
+      }
+    }
+    if (destino.papel_alvo) {
+      return { tipo: 'papel', papel: destino.papel_alvo, destinatarios: [] };
+    }
+    return { destinatarios: [], tipo: null };
   }
 }
 

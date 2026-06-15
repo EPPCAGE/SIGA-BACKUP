@@ -75,7 +75,7 @@ function makeNotificacoes(db) {
   async function instanciaIniciada({ instancia, mensagem, destinatario_uid }) {
     return _salvar(criarNotificacao({
       destinatario_uid: destinatario_uid || instancia.solicitante_uid,
-      tipo: 'tarefa_criada',
+      tipo: 'instancia_iniciada',
       titulo: `Processo iniciado: ${instancia.titulo}`,
       mensagem: mensagem || `O processo "${instancia.titulo}" foi iniciado com sucesso.`,
       instancia_id: instancia.id,

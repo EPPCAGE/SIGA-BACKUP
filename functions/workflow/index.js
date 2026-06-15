@@ -405,10 +405,18 @@ exports.wfAdminJobs = onRequest({ region: 'us-central1', cors: ['https://eppcage
       const resultado = await engine.processarSla();
       res.json({ ok: true, ...resultado });
     } else if (path.startsWith('ativar/')) {
-      const instanciaId = decodeURIComponent(path.slice('ativar/'.length));
-      if (!instanciaId) { res.status(400).json({ erro: 'instanciaId obrigatório' }); return; }
-      const resultado = await engine.ativarInstancia(instanciaId);
-      res.json({ ok: true, ...resultado });
+      const restante = path.slice('ativar/'.length);
+      if (restante.endsWith('/preview')) {
+        const instanciaId = decodeURIComponent(restante.slice(0, -'/preview'.length));
+        if (!instanciaId) { res.status(400).json({ erro: 'instanciaId obrigatório' }); return; }
+        const preview = await engine.previewAtivarInstancia(instanciaId);
+        res.json({ ok: true, ...preview });
+      } else {
+        const instanciaId = decodeURIComponent(restante);
+        if (!instanciaId) { res.status(400).json({ erro: 'instanciaId obrigatório' }); return; }
+        const resultado = await engine.ativarInstancia(instanciaId);
+        res.json({ ok: true, ...resultado });
+      }
     } else {
       res.status(404).json({ erro: 'Job desconhecido. Use: agendados | sla | ativar/:id' });
     }
