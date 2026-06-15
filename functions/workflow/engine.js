@@ -1411,6 +1411,126 @@ function makeEngine(db) {
     return { alertas: alertaSnap.size, vencidas: vencidasSnap.size };
   }
 
+  function _getSPDateParts(date) {
+    const partes = new Intl.DateTimeFormat('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      hour12: false,
+    }).formatToParts(date);
+    const get = (type) => Number(partes.find((p) => p.type === type)?.value || '0');
+    const ano = get('year');
+    const mes = get('month');
+    const dia = get('day');
+    const hora = get('hour') % 24;
+    const weekdayStr = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Sao_Paulo',
+      weekday: 'short',
+    }).format(date).toLowerCase();
+    const weekdayMap = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+    const diaSemana = weekdayMap[weekdayStr.slice(0, 3)] ?? -1;
+    return { ano, mes, dia, hora, diaSemana };
+  }
+
+  function _avaliarRecorrencia(rec, agora_) {
+    if (!rec || rec.ativo !== true) return false;
+    const { ano, mes, dia, hora, diaSemana } = _getSPDateParts(agora_);
+    if (rec.hora !== hora) return false;
+
+    if (rec.ultima_execucao) {
+      const ue = typeof rec.ultima_execucao.toDate === 'function'
+        ? rec.ultima_execucao.toDate()
+        : new Date(rec.ultima_execucao);
+      const uePartes = _getSPDateParts(ue);
+      if (
+        uePartes.ano === ano &&
+        uePartes.mes === mes &&
+        uePartes.dia === dia &&
+        uePartes.hora === hora
+      ) return false;
+    }
+
+    const tipo = rec.tipo;
+
+    if (tipo === 'diario') return true;
+
+    if (tipo === 'semanal') return rec.dia_semana === diaSemana;
+
+    if (tipo === 'mensal_dia_fixo') return rec.dia_mes === dia;
+
+    if (tipo === 'mensal_dia_util') {
+      let contagem = 0;
+      for (let d = 1; d <= dia; d++) {
+        const dow = new Date(ano, mes - 1, d).getDay();
+        if (dow !== 0 && dow !== 6) contagem++;
+      }
+      return contagem === rec.numero_dia_util;
+    }
+
+    if (tipo === 'mensal_ultimo_dia') {
+      const ultimoDia = new Date(ano, mes, 0).getDate();
+      return dia === ultimoDia;
+    }
+
+    if (tipo === 'mensal_ultimo_dia_util') {
+      const ultimoDia = new Date(ano, mes, 0).getDate();
+      for (let d = ultimoDia; d >= 1; d--) {
+        const dow = new Date(ano, mes - 1, d).getDay();
+        if (dow !== 0 && dow !== 6) return dia === d;
+      }
+      return false;
+    }
+
+    if (tipo === 'trimestral') return [1, 4, 7, 10].includes(mes) && dia === 1;
+
+    if (tipo === 'anual') return rec.mes === mes && rec.dia_mes === dia;
+
+    return false;
+  }
+
+  async function processarRecorrencias() {
+    const snap = await col.modelos.where('status', '==', 'publicado').get();
+    const agora_ = new Date();
+    let criadas = 0;
+    const emailsEnviados = [];
+    const emailsErro = [];
+
+    for (const doc of snap.docs) {
+      const modelo = { id: doc.id, ...doc.data() };
+      const configNos = modelo.config_nos || {};
+      const nosCanvas = modelo.canvas?.nos || [];
+      const noInicio = nosCanvas.find((n) => n.tipo === 'inicio');
+      if (!noInicio) continue;
+      const cfgInicio = configNos[noInicio.id] || {};
+      const rec = cfgInicio.recorrencia;
+      if (!rec || !_avaliarRecorrencia(rec, agora_)) continue;
+
+      try {
+        const titulo = `${modelo.nome} — recorrente ${agora_.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`;
+        const instancia = await iniciarInstancia({
+          processo_modelo_id: modelo.id,
+          titulo,
+          solicitante_uid: 'sistema',
+          agendado_para: null,
+        });
+        criadas++;
+
+        await col.modelos.doc(modelo.id).update({
+          [`config_nos.${noInicio.id}.recorrencia.ultima_execucao`]: agora(),
+        });
+
+        (instancia?.emailsEnviados || []).forEach((e) => emailsEnviados.push(e));
+        (instancia?.emailsErro || []).forEach((e) => emailsErro.push(e));
+      } catch (e) {
+        console.error(`[processarRecorrencias] Erro ao criar instância para modelo ${modelo.id}:`, e.message);
+      }
+    }
+
+    return { criadas, total: snap.size, emailsEnviados, emailsErro };
+  }
+
   return {
     iniciarInstancia,
     iniciarInstanciaMapeada,
@@ -1427,6 +1547,7 @@ function makeEngine(db) {
     excluirInstanciaLogica,
     processarSla,
     processarAgendados,
+    processarRecorrencias,
     ativarInstancia,
     previewAtivarInstancia,
     previewConcluirTarefa,

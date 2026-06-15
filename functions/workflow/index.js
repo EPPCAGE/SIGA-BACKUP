@@ -374,8 +374,11 @@ exports.wfAgendadorJob = onScheduleV2({
   region: 'us-central1',
   timeZone: 'America/Sao_Paulo',
 }, async () => {
-  const resultado = await engine.processarAgendados();
-  console.log('[wfAgendadorJob]', resultado);
+  const [agendados, recorrencias] = await Promise.all([
+    engine.processarAgendados(),
+    engine.processarRecorrencias(),
+  ]);
+  console.log('[wfAgendadorJob]', { agendados, recorrencias });
 });
 
 /**
