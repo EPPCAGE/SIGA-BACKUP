@@ -1228,7 +1228,23 @@
     const formContainer = document.querySelector('#wf-exec-formulario .wf-form');
     if (!(formContainer && _st.tarefaAtual._campos && acao !== 'rejeitar')) return dadosForm;
     const resultado = globalScope.wfColetarDadosFormulario(formContainer, _st.tarefaAtual._campos);
-    if (!resultado.valido) return null;
+    if (!resultado.valido) {
+      const mensagens = Object.values(resultado.erros || {}).filter(Boolean);
+      const texto = mensagens.length
+        ? 'Preencha os campos obrigatórios antes de avançar:\n\n• ' + mensagens.join('\n• ')
+        : 'Preencha os campos obrigatórios antes de avançar.';
+      alert(texto);
+      // Foca/rola até o primeiro campo com erro
+      const primeiroErroId = Object.keys(resultado.erros || {})[0];
+      if (primeiroErroId) {
+        const campoEl = formContainer.querySelector(`#wf-campo-${primeiroErroId}`);
+        if (campoEl) {
+          campoEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          campoEl.focus({ preventScroll: true });
+        }
+      }
+      return null;
+    }
     Object.assign(dadosForm, resultado.dados);
     return dadosForm;
   }
@@ -2420,7 +2436,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       <label class="lbl" style="font-size:11px">Nome</label>
       <input type="text" class="fi" style="margin-top:2px;margin-bottom:10px" value="${nome}" oninput="wfDesignerAtualizarRotulo('${_esc(id)}',this.value)">
       <label class="lbl" style="font-size:11px">Tipo de disparo</label>
-      <select class="fi" style="margin-top:2px;margin-bottom:10px" onchange="wfDesignerCampoCfg('${_esc(id)}','tipo_disparo',this.value);_wfRenderPainelInicio(this.closest('[data-wf-painel]')||document.getElementById('wf-painel-cfg'),'${_esc(id)}','${_esc(nome)}')">
+      <select class="fi" style="margin-top:2px;margin-bottom:10px" onchange="wfDesignerCampoCfg('${_esc(id)}','tipo_disparo',this.value);_wfRenderPainelInicio(document.getElementById('wf-designer-config'),'${_esc(id)}','${_esc(nome)}')">
         <option value="manual" ${tipoDisparo === 'manual' ? 'selected' : ''}>Manual — usuário inicia pelo sistema</option>
         <option value="agendado" ${tipoDisparo === 'agendado' ? 'selected' : ''}>Agendado — inicia em data/hora definida</option>
         <option value="evento" ${tipoDisparo === 'evento' ? 'selected' : ''}>Evento — gerado por outro processo</option>
