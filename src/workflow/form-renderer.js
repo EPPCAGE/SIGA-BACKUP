@@ -218,7 +218,9 @@
 
     if (opcoes) {
       // Múltiplas opções: array de checkboxes
-      const selecionados = Array.isArray(valor) ? valor : (valor ? [valor] : []);
+      let selecionados;
+      if (Array.isArray(valor)) selecionados = valor;
+      else selecionados = valor ? [valor] : [];
       wrapper.id = `wf-campo-${campo.id}`;
       wrapper.dataset.multiCheckbox = '1';
       opcoes.forEach((op, i) => {

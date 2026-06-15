@@ -50,7 +50,7 @@ const STATUS_TAREFA = ['pendente', 'em_execucao', 'concluida', 'cancelada', 'ven
 const TIPO_CAMPO = ['texto', 'textarea', 'numero', 'data', 'select', 'checkbox', 'anexo'];
 const CONDICAO_TRANSICAO = ['sempre', 'aprovado', 'rejeitado'];
 const TIPO_NOTIFICACAO = ['tarefa_criada', 'prazo_proximo', 'tarefa_vencida', 'tarefa_concluida', 'tarefa_delegada'];
-const FLUXO_ORIGEM = ['asis', 'tobe'];
+const FLUXO_ORIGEM = new Set(['asis', 'tobe']);
 const ACAO_WORKFLOW = ['avancar', 'concluir', 'aprovar', 'rejeitar', 'devolver', 'solicitar_ajuste'];
 const PAPEL_WORKFLOW = ['executor', 'revisor', 'aprovador'];
 const TIPO_EVENTO = [
@@ -293,6 +293,11 @@ function criarInstanciaProcesso({ processo_modelo_id, processo_modelo_versao, ti
   _requerido({ solicitante_uid }, 'solicitante_uid');
 
   const statusInicial = agendado_para ? 'agendado' : 'em_andamento';
+  let agendado_para_ts = null;
+  if (agendado_para) {
+    const d = agendado_para instanceof Date ? agendado_para : new Date(agendado_para);
+    agendado_para_ts = Timestamp.fromDate(d);
+  }
   return fsClean({
     processo_modelo_id,
     processo_modelo_versao: Number(processo_modelo_versao) || 1,
@@ -306,9 +311,7 @@ function criarInstanciaProcesso({ processo_modelo_id, processo_modelo_versao, ti
     iniciado_em: agendado_para ? null : agora(),
     concluido_em: null,
     prazo_geral: null,
-    agendado_para: agendado_para
-      ? Timestamp.fromDate(agendado_para instanceof Date ? agendado_para : new Date(agendado_para))
-      : null,
+    agendado_para: agendado_para_ts,
   });
 }
 
