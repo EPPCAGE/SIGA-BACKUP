@@ -1277,6 +1277,27 @@
     const dadosForm = _wfColetarDadosConclusaoTarefa(tarefa, acao);
     if (dadosForm == null) return;
 
+    // Preview: descobre quem será notificado pela próxima tarefa antes de confirmar
+    try {
+      const preview = await _wfApiRequest('wfTarefas', `/${encodeURIComponent(tarefa.id)}/preview-concluir`, {
+        method: 'POST', body: { acao },
+      }).catch(() => null);
+
+      if (preview && preview.tipo && preview.destinatarios?.length) {
+        let confirmMsg = '';
+        if (preview.tipo === 'usuario') {
+          const dest = preview.destinatarios[0];
+          confirmMsg = `A próxima etapa "${preview.etapa}" será notificada para ${dest.nome || dest.email}. Confirmar?`;
+        } else if (preview.tipo === 'grupo') {
+          const nomes = preview.destinatarios.map(d => d.nome || d.email).join(', ');
+          confirmMsg = `A próxima etapa "${preview.etapa}" será notificada para o grupo "${preview.nome_grupo}" (${nomes}). Confirmar?`;
+        } else if (preview.tipo === 'papel') {
+          confirmMsg = `A próxima etapa "${preview.etapa}" será notificada para o perfil "${preview.papel}". Confirmar?`;
+        }
+        if (confirmMsg && !confirm(confirmMsg)) return;
+      }
+    } catch (_) { /* se preview falhar, prossegue sem bloqueio */ }
+
     try {
       const resultado = await _wfApiRequest('wfTarefas', `/${encodeURIComponent(tarefa.id)}/concluir`, {
         method: 'POST',

@@ -1419,6 +1419,7 @@ function makeEngine(db) {
     processarAgendados,
     ativarInstancia,
     previewAtivarInstancia,
+    previewConcluirTarefa,
   };
 
   async function ativarInstancia(instanciaId) {
@@ -1429,6 +1430,50 @@ function makeEngine(db) {
       throw Object.assign(new Error(`Instância não está no status agendado (status: ${instancia.status})`), { code: 'STATUS_INVALIDO', status: 400 });
     }
     return _ativarInstanciaAgendada(instancia);
+  }
+
+  async function previewConcluirTarefa(tarefaId, acao) {
+    const tarefaSnap = await col.tarefas.doc(tarefaId).get();
+    if (!tarefaSnap.exists) throw Object.assign(new Error('Tarefa não encontrada'), { code: 'NAO_ENCONTRADO', status: 404 });
+    const tarefa = { id: tarefaSnap.id, ...tarefaSnap.data() };
+
+    const instanciaSnap = await col.instancias.doc(tarefa.instancia_id).get();
+    if (!instanciaSnap.exists) throw Object.assign(new Error('Instância não encontrada'), { code: 'NAO_ENCONTRADO', status: 404 });
+    const instancia = { id: instanciaSnap.id, ...instanciaSnap.data() };
+
+    if (!_modeloUsaCanvas(instancia)) return { destinatarios: [], tipo: null };
+
+    const acaoFinal = _normalizarAcao(acao ?? tarefa.acoes_disponiveis?.[0] ?? 'avancar');
+    const proxNo = _proximoNoExecutavelCanvas(
+      instancia.canvas, tarefa.etapa_modelo_id, acaoFinal,
+      instancia.dados_consolidados || {}, instancia.config_nos || {},
+    );
+    if (!proxNo || proxNo.tipo === 'fim') return { destinatarios: [], tipo: null };
+
+    const cfg = _configNo({ config_nos: instancia.config_nos || {} }, proxNo.id);
+    const papelAlvo = cfg.papeis?.executor || 'solicitante';
+    const destino = await _resolverDestinoTarefaCanvas(papelAlvo, instancia);
+
+    if (destino.responsavel_uid) {
+      const u = await _buscarUsuarioPorUid(destino.responsavel_uid).catch(() => null);
+      return { tipo: 'usuario', etapa: proxNo.nome || proxNo.id, destinatarios: u ? [{ nome: u.nome || u.email, email: u.email }] : [] };
+    }
+    if (destino.papel_alvo && String(destino.papel_alvo).includes('@')) {
+      return { tipo: 'usuario', etapa: proxNo.nome || proxNo.id, destinatarios: [{ nome: destino.papel_alvo, email: destino.papel_alvo }] };
+    }
+    if (destino.grupo_id) {
+      const grupoSnap = await col.grupos.doc(destino.grupo_id).get().catch(() => null);
+      if (grupoSnap?.exists) {
+        const g = grupoSnap.data();
+        const emails = [...(g.membros_email || [])];
+        if (g.chefe_email && !emails.includes(g.chefe_email)) emails.push(g.chefe_email);
+        return { tipo: 'grupo', etapa: proxNo.nome || proxNo.id, nome_grupo: g.nome || destino.grupo_id, destinatarios: emails.filter(Boolean).map(e => ({ email: e, nome: e })) };
+      }
+    }
+    if (destino.papel_alvo) {
+      return { tipo: 'papel', etapa: proxNo.nome || proxNo.id, papel: destino.papel_alvo, destinatarios: [] };
+    }
+    return { destinatarios: [], tipo: null };
   }
 
   async function previewAtivarInstancia(instanciaId) {

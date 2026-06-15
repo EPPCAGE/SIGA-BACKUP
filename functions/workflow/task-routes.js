@@ -57,6 +57,13 @@ async function handleWfTarefasRoute({ req, res, user, tarefasCol, gruposCol, usu
     return;
   }
 
+  if (req.method === 'POST' && acao === 'preview-concluir') {
+    const { acao: acaoTarefa } = req.body || {};
+    const result = await engine.previewConcluirTarefa(id, acaoTarefa || null);
+    res.json(result);
+    return;
+  }
+
   if (req.method === 'POST' && acao === 'iniciar') {
     const result = await engine.iniciarTarefa({
       tarefa_id: id,
