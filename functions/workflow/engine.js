@@ -276,6 +276,7 @@ function makeEngine(db) {
           to_email: email,
           to_name: email,
           from_name: 'Escritório de Processos das CAGE',
+          workflow: instancia.titulo,
           processo_titulo: instancia.titulo,
           etapa_nome: etapa.nome,
           instrucoes,
