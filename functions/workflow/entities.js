@@ -306,7 +306,9 @@ function criarInstanciaProcesso({ processo_modelo_id, processo_modelo_versao, ti
     iniciado_em: agendado_para ? null : agora(),
     concluido_em: null,
     prazo_geral: null,
-    agendado_para: agendado_para ? (agendado_para instanceof Date ? Timestamp.fromDate(agendado_para) : Timestamp.fromDate(new Date(agendado_para))) : null,
+    agendado_para: agendado_para
+      ? Timestamp.fromDate(agendado_para instanceof Date ? agendado_para : new Date(agendado_para))
+      : null,
   });
 }
 

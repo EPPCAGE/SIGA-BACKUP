@@ -11,12 +11,13 @@ function makeNotificacoes(db) {
   }
 
   async function tarefaCriada({ destinatario_uid, instancia, tarefa, etapa, titulo_custom, mensagem_custom }) {
-    const prazoStr = tarefa.prazo
-      ? (typeof tarefa.prazo.toDate === 'function'
-          ? tarefa.prazo.toDate()
-          : new Date(tarefa.prazo._seconds * 1000)
-        ).toLocaleString('pt-BR')
-      : 'sem prazo definido';
+    let prazoStr = 'sem prazo definido';
+    if (tarefa.prazo) {
+      const prazoDate = typeof tarefa.prazo.toDate === 'function'
+        ? tarefa.prazo.toDate()
+        : new Date(tarefa.prazo._seconds * 1000);
+      prazoStr = prazoDate.toLocaleString('pt-BR');
+    }
     return _salvar(criarNotificacao({
       destinatario_uid,
       tipo: 'tarefa_criada',
@@ -96,7 +97,7 @@ function makeNotificacoes(db) {
       destinatario_uid,
       tipo: 'tarefa_delegada',
       titulo: `Tarefa delegada: ${tarefa.etapa_nome}`,
-      mensagem: `A tarefa "${tarefa.etapa_nome}" do processo "${tarefa.processo_nome}" foi delegada a você.${motivo ? ` Motivo: ${motivo}` : ''}`,
+      mensagem: `A tarefa "${tarefa.etapa_nome}" do processo "${tarefa.processo_nome}" foi delegada a você.` + (motivo ? ` Motivo: ${motivo}` : ''),
       instancia_id: tarefa.instancia_id,
       tarefa_id: tarefa.id,
     }));

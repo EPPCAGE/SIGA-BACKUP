@@ -151,12 +151,13 @@ function makeEngine(db) {
     const ejsCfg = await _carregarEjsConfig();
     if (!ejsCfg?.service || !ejsCfg?.template || !ejsCfg?.pubkey) return;
     const { default: fetch } = await import('node-fetch');
-    const prazoStr = tarefa.prazo
-      ? (typeof tarefa.prazo.toDate === 'function'
-          ? tarefa.prazo.toDate()
-          : new Date(tarefa.prazo._seconds * 1000)
-        ).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
-      : 'sem prazo definido';
+    let prazoStr = 'sem prazo definido';
+    if (tarefa.prazo) {
+      const prazoDate = typeof tarefa.prazo.toDate === 'function'
+        ? tarefa.prazo.toDate()
+        : new Date(tarefa.prazo._seconds * 1000);
+      prazoStr = prazoDate.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    }
     const instrucoes = tarefa.instrucoes ? `\n\nOrientação: ${tarefa.instrucoes}` : '';
     for (const email of emails) {
       if (!email || typeof email !== 'string') continue;
@@ -197,7 +198,8 @@ function makeEngine(db) {
     if (_usuariosCache) return _usuariosCache;
     const snap = await col.usuariosConfig.get();
     const raw = snap.exists ? snap.data()?.data : [];
-    _usuariosCache = typeof raw === 'string' ? JSON.parse(raw) : (Array.isArray(raw) ? raw : []);
+    if (typeof raw === 'string') _usuariosCache = JSON.parse(raw);
+    else _usuariosCache = Array.isArray(raw) ? raw : [];
     return _usuariosCache;
   }
 
@@ -782,7 +784,7 @@ function makeEngine(db) {
       instancia.no_atual_id = primeiroNo.id;
 
       // Notificação de início configurada no nó de início
-      const cfgInicio = (modelo.config_nos || {})[inicio.id] || {};
+      const cfgInicio = modelo.config_nos?.[inicio.id] ?? {};
       if (cfgInicio.descricao && solicitante_uid) {
         const solicitante = await _buscarUsuarioPorUid(solicitante_uid).catch(() => null);
         const mensagemInicio = _interpolarMensagem(cfgInicio.descricao, instancia, solicitante);
@@ -1141,7 +1143,7 @@ function makeEngine(db) {
     await _registrarHistorico(
       tarefa.instancia_id, 'tarefa_delegada', usuario_uid,
       tarefa.etapa_modelo_id, tarefa_id,
-      `Tarefa delegada para usuário ${novo_responsavel_uid}.${motivo ? ` Motivo: ${motivo}` : ''}`,
+      `Tarefa delegada para usuário ${novo_responsavel_uid}.` + (motivo ? ` Motivo: ${motivo}` : ''),
       { novoResponsavel: novo_responsavel_uid, motivo },
     );
 
@@ -1264,7 +1266,7 @@ function makeEngine(db) {
       inst.etapa_atual_id = primeiroNo.id;
       inst.no_atual_id = primeiroNo.id;
 
-      const cfgInicio = (modeloData.config_nos || {})[inicio.id] || {};
+      const cfgInicio = modeloData.config_nos?.[inicio.id] ?? {};
       if (cfgInicio.descricao && inst.solicitante_uid) {
         const solicitante = await _buscarUsuarioPorUid(inst.solicitante_uid).catch(() => null);
         const msg = _interpolarMensagem(cfgInicio.descricao, inst, solicitante);
