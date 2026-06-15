@@ -2,8 +2,11 @@
 
 /**
  * Cálculo de SLA em horas úteis.
- * Considera: segunda a sexta, 08h–18h (horário de Brasília).
+ * Considera: segunda a sexta, 08h–18h (horário de Brasília, UTC-3).
  * Feriados nacionais fixos do ano corrente são excluídos.
+ *
+ * Todas as comparações de hora/dia usam a hora local de Brasília (UTC-3).
+ * O Brasil não adota horário de verão desde 2019, portanto o offset é fixo.
  */
 
 const HORA_INICIO = 8;
@@ -11,24 +14,83 @@ const HORA_FIM = 18;
 const HORAS_UTEIS_DIA = HORA_FIM - HORA_INICIO;
 const ALERTA_HORAS_ANTES = 2;
 
+// UTC-3 fixo (Brasil parou horário de verão em 2019)
+const BRASIL_OFFSET_MS = -3 * 60 * 60 * 1000;
+
 // Feriados nacionais fixos (MM-DD)
 const FERIADOS_FIXOS = new Set([
-  '01-01', '04-21', '05-01', '09-07',
-  '10-12', '11-02', '11-15', '11-20', '12-25',
+  '01-01', // Confraternização Universal
+  '04-21', // Tiradentes
+  '05-01', // Dia do Trabalho
+  '09-07', // Independência
+  '10-12', // Nossa Senhora Aparecida
+  '11-02', // Finados
+  '11-15', // Proclamação da República
+  '11-20', // Consciência Negra
+  '12-25', // Natal
 ]);
 
+/**
+ * Converte um Date UTC para um "Date" cujos métodos getUTC* retornam a hora
+ * local de Brasília. Usando essa convenção, getUTCHours() = hora em Brasília.
+ */
+function _brasilDate(data) {
+  return new Date(data.getTime() + BRASIL_OFFSET_MS);
+}
+
+/**
+ * Cria um Date UTC correspondente a hora:min:00 no mesmo dia-calendário de
+ * Brasília que `data`.
+ */
+function _setBrasilHora(data, hora, min = 0) {
+  const bd = _brasilDate(data);
+  bd.setUTCHours(hora, min, 0, 0);
+  return new Date(bd.getTime() - BRASIL_OFFSET_MS);
+}
+
 function _ehFeriado(data) {
-  const mmdd = `${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`;
+  const bd = _brasilDate(data);
+  const mmdd = `${String(bd.getUTCMonth() + 1).padStart(2, '0')}-${String(bd.getUTCDate()).padStart(2, '0')}`;
   return FERIADOS_FIXOS.has(mmdd);
 }
 
 function _ehDiaUtil(data) {
-  const dia = data.getDay(); // 0=dom, 6=sab
+  const dia = _brasilDate(data).getUTCDay(); // 0=dom, 6=sab
   return dia !== 0 && dia !== 6 && !_ehFeriado(data);
 }
 
 /**
- * Adiciona `horas` horas úteis a `dataInicio` (Date JS).
+ * Avança `data` para o próximo minuto dentro do expediente útil de Brasília.
+ * Se já está no expediente, retorna o mesmo instante.
+ */
+function _proxHorarioUtil(data) {
+  let d = new Date(data);
+
+  // Garante que estamos num dia útil
+  while (!_ehDiaUtil(d)) {
+    d = _setBrasilHora(d, HORA_INICIO);
+    // Avança para o dia seguinte (soma 24h em UTC, depois ajusta a hora)
+    d = new Date(d.getTime() + 24 * 60 * 60 * 1000);
+    d = _setBrasilHora(d, HORA_INICIO);
+  }
+
+  const h = _brasilDate(d).getUTCHours();
+  if (h < HORA_INICIO) {
+    d = _setBrasilHora(d, HORA_INICIO);
+  } else if (h >= HORA_FIM) {
+    // Próximo dia útil às HORA_INICIO
+    d = new Date(d.getTime() + 24 * 60 * 60 * 1000);
+    d = _setBrasilHora(d, HORA_INICIO);
+    while (!_ehDiaUtil(d)) {
+      d = new Date(d.getTime() + 24 * 60 * 60 * 1000);
+      d = _setBrasilHora(d, HORA_INICIO);
+    }
+  }
+  return d;
+}
+
+/**
+ * Adiciona `horas` horas úteis a `dataInicio` (Date JS, em UTC).
  * @param {Date} dataInicio
  * @param {number} horas
  * @returns {Date}
@@ -36,17 +98,11 @@ function _ehDiaUtil(data) {
 function adicionarHorasUteis(dataInicio, horas) {
   if (horas <= 0) return dataInicio;
 
-  // Trabalha em minutos para precisão
   let minutosRestantes = horas * 60;
-  let atual = new Date(dataInicio);
-
-  // Avança para o próximo horário útil se fora do expediente
-  atual = _proxHorarioUtil(atual);
+  let atual = _proxHorarioUtil(new Date(dataInicio));
 
   while (minutosRestantes > 0) {
-    const fimDoDia = new Date(atual);
-    fimDoDia.setHours(HORA_FIM, 0, 0, 0);
-
+    const fimDoDia = _setBrasilHora(atual, HORA_FIM);
     const minutosAteOFim = Math.max(0, (fimDoDia - atual) / 60000);
 
     if (minutosRestantes <= minutosAteOFim) {
@@ -54,38 +110,18 @@ function adicionarHorasUteis(dataInicio, horas) {
       minutosRestantes = 0;
     } else {
       minutosRestantes -= minutosAteOFim;
-      // Vai para o próximo dia útil
-      atual.setDate(atual.getDate() + 1);
-      atual.setHours(HORA_INICIO, 0, 0, 0);
-      while (!_ehDiaUtil(atual)) {
-        atual.setDate(atual.getDate() + 1);
+      // Próximo dia útil
+      let prox = new Date(atual.getTime() + 24 * 60 * 60 * 1000);
+      prox = _setBrasilHora(prox, HORA_INICIO);
+      while (!_ehDiaUtil(prox)) {
+        prox = new Date(prox.getTime() + 24 * 60 * 60 * 1000);
+        prox = _setBrasilHora(prox, HORA_INICIO);
       }
+      atual = prox;
     }
   }
 
   return atual;
-}
-
-function _proxHorarioUtil(data) {
-  const d = new Date(data);
-
-  // Avança para dia útil se necessário
-  while (!_ehDiaUtil(d)) {
-    d.setDate(d.getDate() + 1);
-    d.setHours(HORA_INICIO, 0, 0, 0);
-  }
-
-  const h = d.getHours();
-  if (h < HORA_INICIO) {
-    d.setHours(HORA_INICIO, 0, 0, 0);
-  } else if (h >= HORA_FIM) {
-    d.setDate(d.getDate() + 1);
-    d.setHours(HORA_INICIO, 0, 0, 0);
-    while (!_ehDiaUtil(d)) {
-      d.setDate(d.getDate() + 1);
-    }
-  }
-  return d;
 }
 
 /**
