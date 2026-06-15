@@ -1931,9 +1931,10 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
         <div class="fg"><label class="fl" for="ejs-template-workflow">Template ID (workflow — tarefas agendadas)</label><input class="fi" id="ejs-template-workflow" placeholder="template_xxxxxxx (opcional)"></div>
         <div class="fg"><label class="fl" for="ejs-pubkey">Public Key</label><input class="fi" id="ejs-pubkey" placeholder="xxxxxxxxxxxxxxxxx"></div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <button type="button" class="btn btn-p" onclick="salvarEmailJS()">Salvar e ativar</button>
-        <button type="button" class="btn" onclick="testarEmailJS()">Enviar e-mail de teste</button>
+        <button type="button" class="btn" onclick="testarEmailJS()">Testar template mapeamento</button>
+        <button type="button" class="btn" onclick="testarEmailJSWorkflow()">Testar template workflow</button>
         <span id="ejs-test-result" style="font-size:12px;color:var(--ink3)"></span>
       </div>
     </div>
@@ -3348,6 +3349,42 @@ function testarEmailJS(){
     link: ORG_CONFIG.publicUrl,
   }).then(()=>{
     res.textContent = '✓ E-mail de teste enviado para ' + destEmail;
+    res.style.color = 'var(--green)';
+  }).catch(err=>{
+    res.textContent = '✗ Erro: ' + (err.text || err.message || JSON.stringify(err));
+    res.style.color = 'var(--red)';
+  });
+}
+function testarEmailJSWorkflow(){
+  const res = document.getElementById('ejs-test-result');
+  const templateId = ejsConfig.template_workflow || ejsConfig.template;
+  if(!ejsConfig.service || !templateId || !ejsConfig.pubkey){
+    res.textContent = 'Configure e salve as credenciais primeiro.';
+    res.style.color = 'var(--red)';
+    return;
+  }
+  if(typeof emailjs === 'undefined'){
+    res.textContent = 'Biblioteca EmailJS não disponível.';
+    res.style.color = 'var(--red)';
+    return;
+  }
+  const aviso = ejsConfig.template_workflow ? '' : ' (usando template de mapeamento como fallback)';
+  res.textContent = 'Enviando' + aviso + '...';
+  res.style.color = 'var(--ink3)';
+  const destEmail = usuarioLogado?.email || '';
+  const destNome = usuarioLogado?.nome || 'Usuário';
+  emailjs.send(ejsConfig.service, templateId, {
+    to_name: destNome,
+    to_email: destEmail,
+    from_name: ORG_CONFIG.notificationFromName,
+    workflow: 'Workflow de teste',
+    processo_titulo: 'Workflow de teste',
+    etapa_nome: 'Etapa de exemplo',
+    instrucoes: 'Este é um e-mail de teste do template de workflow do '+ORG_CONFIG.systemBrand+'.',
+    prazo: new Date().toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo'}),
+    link: ORG_CONFIG.publicUrl,
+  }, ejsConfig.pubkey).then(()=>{
+    res.textContent = '✓ E-mail de teste (workflow) enviado para ' + destEmail + aviso;
     res.style.color = 'var(--green)';
   }).catch(err=>{
     res.textContent = '✗ Erro: ' + (err.text || err.message || JSON.stringify(err));
