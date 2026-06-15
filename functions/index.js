@@ -658,7 +658,7 @@ async function _processarFluxoSequencialConclusao(batch, instancia, tarefa, acao
   return `Avançou para etapa "${proxEtapa.nome}".`;
 }
 
-function _registrarHistoricoConclusaoBatch(batch, instancia, tarefa, tarefaId, uid, acao, observacao, descHistorico, now) {
+function _registrarHistoricoConclusaoBatch(batch, { instancia, tarefa, tarefaId, uid, acao, observacao, descHistorico, now }) {
   const histRef = db.collection('wf_historico_workflows').doc();
   batch.set(histRef, {
     instancia_id: instancia.id, tipo_evento: 'tarefa_concluida',
@@ -705,7 +705,7 @@ exports.wfConcluirTarefaEngine = onCall({ enforceAppCheck: false }, async (reque
     ? await _processarFluxoCanvasConclusao(batch, instancia, tarefa, acao, dadosMerged, now)
     : await _processarFluxoSequencialConclusao(batch, instancia, tarefa, acao, now);
 
-  _registrarHistoricoConclusaoBatch(batch, instancia, tarefa, tarefaId, uid, acao, observacao, descHistorico, now);
+  _registrarHistoricoConclusaoBatch(batch, { instancia, tarefa, tarefaId, uid, acao, observacao, descHistorico, now });
   _notificarSolicitanteConclusaoBatch(batch, instancia, tarefa, tarefaId, uid, acao, now);
 
   await batch.commit();

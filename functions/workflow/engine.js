@@ -159,27 +159,36 @@ function makeEngine(db) {
       prazoStr = prazoDate.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
     }
     const instrucoes = tarefa.instrucoes ? `\n\nOrientação: ${tarefa.instrucoes}` : '';
+    const enviados = [];
+    const erros = [];
     for (const email of emails) {
       if (!email || typeof email !== 'string') continue;
-      await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          service_id: ejsCfg.service,
-          template_id: ejsCfg.template,
-          user_id: ejsCfg.pubkey,
-          template_params: {
-            to_email: email,
-            to_name: email,
-            from_name: 'EP·CAGE',
-            subject: `Workflow iniciado: ${instancia.titulo}`,
-            message: `O processo "${instancia.titulo}" foi iniciado automaticamente e aguarda sua ação.\n\nEtapa: ${etapa.nome}${instrucoes}`,
-            prazo: prazoStr,
-            link: 'https://sigaepp.web.app/',
-          },
-        }),
-      }).catch(e => console.warn('[wf email] erro ao enviar para', email, ':', e.message));
+      try {
+        const resp = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            service_id: ejsCfg.service,
+            template_id: ejsCfg.template,
+            user_id: ejsCfg.pubkey,
+            template_params: {
+              to_email: email,
+              to_name: email,
+              from_name: 'EP·CAGE',
+              subject: `Workflow iniciado: ${instancia.titulo}`,
+              message: `O processo "${instancia.titulo}" foi iniciado automaticamente e aguarda sua ação.\n\nEtapa: ${etapa.nome}${instrucoes}`,
+              prazo: prazoStr,
+              link: 'https://sigaepp.web.app/',
+            },
+          }),
+        });
+        if (resp.ok) enviados.push(email);
+        else erros.push(`${email} (HTTP ${resp.status})`);
+      } catch (e) {
+        erros.push(`${email} (${e.message})`);
+      }
     }
+    return { enviados, erros };
   }
 
   // -------------------------------------------------------------------------
@@ -528,10 +537,8 @@ function makeEngine(db) {
     }
 
     // Para workflows agendados: envia e-mail a todos os responsáveis pela primeira tarefa
-    console.log('[wf criarTarefa] agendado_para:', instancia.agendado_para, '| grupo_id:', destino.grupo_id, '| papel_alvo:', destino.papel_alvo);
     if (instancia.agendado_para) {
       const emailsDestinatarios = new Set();
-      console.log('[wf email agendado] destino:', JSON.stringify({ responsavel_uid: destino.responsavel_uid, grupo_id: destino.grupo_id, papel_alvo: destino.papel_alvo }));
       if (destino.responsavel_uid) {
         const u = await _buscarUsuarioPorUid(destino.responsavel_uid).catch(() => null);
         if (u?.email) emailsDestinatarios.add(u.email);
@@ -553,18 +560,18 @@ function makeEngine(db) {
           if (u?.email) emailsDestinatarios.add(u.email);
         }
       }
-      console.log('[wf email agendado] destinatarios:', [...emailsDestinatarios]);
       if (emailsDestinatarios.size) {
-        await _enviarEmailWorkflow({
+        const emailResult = await _enviarEmailWorkflow({
           emails: [...emailsDestinatarios],
           instancia,
           tarefa,
           etapa: { id: no.id, nome: no.nome || no.id },
-        }).catch(e => console.warn('[wf email agendado]', e.message));
+        }).catch(e => ({ enviados: [], erros: [`erro geral: ${e.message}`] }));
+        return { tarefa, emailsEnviados: emailResult?.enviados || [], emailsErro: emailResult?.erros || [] };
       }
     }
 
-    return tarefa;
+    return { tarefa, emailsEnviados: [], emailsErro: [] };
   }
 
   function _avaliarCamposCondicionaisCanvas(camposCondicionais = [], dadosForm = {}) {
@@ -1277,10 +1284,13 @@ function makeEngine(db) {
       }
 
       await _notificarCientesCanvas(inst, primeiroNo);
-      await _criarTarefaCanvas(inst, modeloData, primeiroNo);
+      const resultado = await _criarTarefaCanvas(inst, modeloData, primeiroNo);
+      await _registrarHistorico(inst.id, 'instancia_ativada', null, null, null, 'Instância agendada ativada automaticamente.', {});
+      return { emailsEnviados: resultado?.emailsEnviados || [], emailsErro: resultado?.emailsErro || [] };
     }
 
     await _registrarHistorico(inst.id, 'instancia_ativada', null, null, null, 'Instância agendada ativada automaticamente.', {});
+    return { emailsEnviados: [], emailsErro: [] };
   }
 
   /**
@@ -1304,15 +1314,19 @@ function makeEngine(db) {
     });
 
     let ativadas = 0;
+    const emailsEnviados = [];
+    const emailsErro = [];
     for (const doc of vencidas) {
       try {
-        await _ativarInstanciaAgendada({ id: doc.id, ...doc.data() });
+        const res = await _ativarInstanciaAgendada({ id: doc.id, ...doc.data() });
         ativadas++;
+        (res?.emailsEnviados || []).forEach(e => emailsEnviados.push(e));
+        (res?.emailsErro || []).forEach(e => emailsErro.push(e));
       } catch (e) {
         console.error(`[processarAgendados] Erro ao ativar ${doc.id}:`, e.message);
       }
     }
-    return { ativadas, total: vencidas.length };
+    return { ativadas, total: vencidas.length, emailsEnviados, emailsErro };
   }
 
   /**

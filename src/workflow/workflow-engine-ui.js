@@ -4463,10 +4463,14 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
   async function wfAcionarAgendados() {
     try {
       const res = await _wfApiRequest('wfAdminJobs', '/agendados', { method: 'POST' });
-      const msg = res.ativadas > 0
-        ? `✅ ${res.ativadas} instância(s) ativada(s) com sucesso.`
-        : 'Nenhuma instância agendada com horário vencido no momento.';
-      if (typeof globalScope.toast === 'function') globalScope.toast(msg, 'var(--teal)');
+      const partes = [];
+      if (res.ativadas > 0) partes.push(`✅ ${res.ativadas} instância(s) ativada(s).`);
+      else partes.push('Nenhuma instância agendada com horário vencido no momento.');
+      if (res.emailsEnviados?.length) partes.push(`📧 E-mail enviado para: ${res.emailsEnviados.join(', ')}.`);
+      if (res.emailsErro?.length) partes.push(`⚠️ Erro ao enviar e-mail para: ${res.emailsErro.join(', ')}.`);
+      const msg = partes.join(' ');
+      const cor = res.emailsErro?.length ? 'var(--yellow,#ca8a04)' : 'var(--teal)';
+      if (typeof globalScope.toast === 'function') globalScope.toast(msg, cor);
       else alert(msg);
       _st.instanciasLista = null;
       wfCarregarInstancias();

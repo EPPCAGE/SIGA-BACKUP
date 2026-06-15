@@ -93,7 +93,9 @@ async function listarTodasTarefasAbertas({ tarefasCol, usuariosConfig, statusFil
 
   const usuarios = usuariosConfig ? (usuariosConfig.data()?.data || []) : [];
   const mapUsuarios = {};
-  const usuariosArr = typeof usuarios === 'string' ? JSON.parse(usuarios) : (Array.isArray(usuarios) ? usuarios : []);
+  let usuariosArr;
+  if (typeof usuarios === 'string') usuariosArr = JSON.parse(usuarios);
+  else usuariosArr = Array.isArray(usuarios) ? usuarios : [];
   usuariosArr.forEach(u => { if (u?.uid) mapUsuarios[u.uid] = u; });
 
   const tarefas = snap.docs.map(doc => {
