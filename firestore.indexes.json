@@ -5,6 +5,20 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "agendado_para",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "wf_instancia_processos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "solicitante_uid",
           "order": "ASCENDING"
         },

@@ -1436,13 +1436,16 @@
 
       const temMais = _st.instanciasCursor < instanciasFiltradas.length;
       const btnMais = temMais ? `<div style="text-align:center;margin-top:12px"><button type="button" class="btn btn-sm" onclick="wfCarregarInstancias(true)">Carregar mais</button></div>` : '';
+      const btnAgendados = isEp && instanciasFiltradas.some(i => i.status === 'agendado')
+        ? `<div style="margin-bottom:12px"><button type="button" class="btn btn-sm" onclick="wfAcionarAgendados()" style="background:var(--violet,#8b5cf6);color:#fff;border-color:transparent">▶ Ativar processos agendados agora</button></div>`
+        : '';
 
       if (acrescentar) {
         const btnAnterior = el.querySelector('.wf-btn-mais');
         if (btnAnterior) btnAnterior.remove();
         el.insertAdjacentHTML('beforeend', cards + btnMais);
       } else {
-        el.innerHTML = cards + btnMais;
+        el.innerHTML = btnAgendados + cards + btnMais;
       }
     } catch (e) {
       el.innerHTML = `<div style="color:var(--red);font-size:14px">${_esc(e.message)}</div>`;
@@ -4455,6 +4458,23 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     }
   }
 
+  // ── Acionamento manual do scheduler (EP only) ────────────────────────────
+
+  async function wfAcionarAgendados() {
+    try {
+      const res = await _wfApiRequest('wfAdminJobs', '/agendados', { method: 'POST' });
+      const msg = res.ativadas > 0
+        ? `✅ ${res.ativadas} instância(s) ativada(s) com sucesso.`
+        : 'Nenhuma instância agendada com horário vencido no momento.';
+      if (typeof globalScope.toast === 'function') globalScope.toast(msg, 'var(--teal)');
+      else alert(msg);
+      _st.instanciasLista = null;
+      wfCarregarInstancias();
+    } catch (e) {
+      alert('Erro ao acionar agendados: ' + e.message);
+    }
+  }
+
   // ── P3: Suspender / Retomar instância ────────────────────────────────────
 
   async function wfSuspenderInstancia(instanciaId) {
@@ -5356,6 +5376,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     wfAbrirDelegacao,
     wfFecharDelegacao,
     wfConfirmarDelegacao,
+    wfAcionarAgendados,
     wfSuspenderInstancia,
     wfRetomarInstancia,
     wfCarregarEquipes,

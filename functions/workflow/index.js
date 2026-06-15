@@ -389,3 +389,23 @@ exports.wfSlaJob = onScheduleV2({
   const resultado = await engine.processarSla();
   console.log('[wfSlaJob]', resultado);
 });
+
+/**
+ * POST /wfAdminJobs/agendados — ativa instâncias agendadas manualmente (EP only).
+ * Útil no emulador e como fallback caso o scheduler não tenha rodado.
+ */
+exports.wfAdminJobs = onRequest({ region: 'us-central1', cors: ['https://eppcage.com.br', 'http://localhost:5000', 'http://localhost:3000'] }, async (req, res) => {
+  await handler(req, res, async (req, res, user) => {
+    perfisPermitidos(user.perfil, 'ep');
+    const job = (req.path || '').replace(/^\//, '');
+    if (job === 'agendados') {
+      const resultado = await engine.processarAgendados();
+      res.json({ ok: true, ...resultado });
+    } else if (job === 'sla') {
+      const resultado = await engine.processarSla();
+      res.json({ ok: true, ...resultado });
+    } else {
+      res.status(404).json({ erro: 'Job desconhecido. Use: agendados | sla' });
+    }
+  });
+});

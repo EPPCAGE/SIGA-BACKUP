@@ -1282,14 +1282,24 @@ function makeEngine(db) {
    * Job agendado: ativa instâncias com agendado_para <= agora.
    */
   async function processarAgendados() {
-    const agoraTmp = agora();
+    // Usa apenas filtro de igualdade (não exige índice composto).
+    // O filtro de data é feito em memória após a busca.
+    const agoraTmp = agora(); // Firestore Timestamp
+    const agoraMs = agoraTmp.toDate().getTime();
+
     const snap = await col.instancias
       .where('status', '==', 'agendado')
-      .where('agendado_para', '<=', agoraTmp)
       .get();
 
+    const vencidas = snap.docs.filter((doc) => {
+      const ap = doc.data().agendado_para;
+      if (!ap) return false;
+      const apMs = typeof ap.toDate === 'function' ? ap.toDate().getTime() : new Date(ap).getTime();
+      return apMs <= agoraMs;
+    });
+
     let ativadas = 0;
-    for (const doc of snap.docs) {
+    for (const doc of vencidas) {
       try {
         await _ativarInstanciaAgendada({ id: doc.id, ...doc.data() });
         ativadas++;
@@ -1297,7 +1307,7 @@ function makeEngine(db) {
         console.error(`[processarAgendados] Erro ao ativar ${doc.id}:`, e.message);
       }
     }
-    return { ativadas, total: snap.size };
+    return { ativadas, total: vencidas.length };
   }
 
   /**
