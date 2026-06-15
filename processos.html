@@ -1927,7 +1927,8 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
       </div>
       <div class="g3" style="margin-bottom:.8rem">
         <div class="fg"><label class="fl" for="ejs-service">Service ID</label><input class="fi" id="ejs-service" placeholder="service_xxxxxxx"></div>
-        <div class="fg"><label class="fl" for="ejs-template">Template ID</label><input class="fi" id="ejs-template" placeholder="template_xxxxxxx"></div>
+        <div class="fg"><label class="fl" for="ejs-template">Template ID (mapeamento de processos)</label><input class="fi" id="ejs-template" placeholder="template_xxxxxxx"></div>
+        <div class="fg"><label class="fl" for="ejs-template-workflow">Template ID (workflow — tarefas agendadas)</label><input class="fi" id="ejs-template-workflow" placeholder="template_xxxxxxx (opcional)"></div>
         <div class="fg"><label class="fl" for="ejs-pubkey">Public Key</label><input class="fi" id="ejs-pubkey" placeholder="xxxxxxxxxxxxxxxxx"></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
@@ -3300,6 +3301,7 @@ function updCounts(){
 function salvarEmailJS(){
   ejsConfig.service = document.getElementById('ejs-service').value.trim();
   ejsConfig.template = document.getElementById('ejs-template').value.trim();
+  ejsConfig.template_workflow = document.getElementById('ejs-template-workflow').value.trim();
   ejsConfig.pubkey = document.getElementById('ejs-pubkey').value.trim();
   lsSet('epcage_ejs', JSON.stringify(ejsConfig));
   const status = document.getElementById('emailjs-status');
@@ -3384,10 +3386,12 @@ function enviarNotif(para_email,para_nome,acao,proc_nome,prazo,de_nome){
 function _rNotifPreencherEmailJS(){
   const sf = document.getElementById('ejs-service');
   const tf = document.getElementById('ejs-template');
+  const twf = document.getElementById('ejs-template-workflow');
   const pf = document.getElementById('ejs-pubkey');
   const st = document.getElementById('emailjs-status');
   if(sf) sf.value = ejsConfig.service  || '';
   if(tf) tf.value = ejsConfig.template || '';
+  if(twf) twf.value = ejsConfig.template_workflow || '';
   if(pf) pf.value = ejsConfig.pubkey   || '';
   if(st && ejsConfig.service && ejsConfig.template && ejsConfig.pubkey){
     st.textContent = '✓ EmailJS configurado — envio real de e-mails ativado.';
@@ -18812,9 +18816,10 @@ async function fbLoad(){
     const ejsDoc = await configRepository.get('ejs');
     if(ejsDoc.exists()){
       const d = ejsDoc.data();
-      ejsConfig.service  = d.service  || '';
-      ejsConfig.template = d.template || '';
-      ejsConfig.pubkey   = d.pubkey   || '';
+      ejsConfig.service           = d.service           || '';
+      ejsConfig.template          = d.template          || '';
+      ejsConfig.template_workflow = d.template_workflow || '';
+      ejsConfig.pubkey            = d.pubkey            || '';
       if(ejsConfig.pubkey && typeof emailjs !== 'undefined'){
         emailjs.init({publicKey: ejsConfig.pubkey});
       }
@@ -19693,9 +19698,10 @@ function _bootLoadEmailJsLocalFallback(){
     const saved = lsGet('epcage_ejs');
     if(!saved) return;
     const cfg = JSON.parse(saved);
-    ejsConfig.service  = cfg.service  || '';
-    ejsConfig.template = cfg.template || '';
-    ejsConfig.pubkey   = cfg.pubkey   || '';
+    ejsConfig.service           = cfg.service           || '';
+    ejsConfig.template          = cfg.template          || '';
+    ejsConfig.template_workflow = cfg.template_workflow || '';
+    ejsConfig.pubkey            = cfg.pubkey            || '';
     if(ejsConfig.pubkey && typeof emailjs !== 'undefined') emailjs.init({publicKey: ejsConfig.pubkey});
   } catch(e){ console.warn('ejsConfig localStorage parse error:', e.message); }
 }

@@ -4469,10 +4469,11 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       const enviados = [];
       const erros = [];
       const ejsCfg = globalScope.ejsConfig;
-      if (emailsPendentes.length && ejsCfg?.service && ejsCfg?.template && ejsCfg?.pubkey && typeof emailjs !== 'undefined') {
+      const templateId = ejsCfg?.template_workflow || ejsCfg?.template;
+      if (emailsPendentes.length && ejsCfg?.service && templateId && ejsCfg?.pubkey && typeof emailjs !== 'undefined') {
         for (const item of emailsPendentes) {
           try {
-            await emailjs.send(ejsCfg.service, ejsCfg.template, item.templateParams, ejsCfg.pubkey);
+            await emailjs.send(ejsCfg.service, templateId, item.templateParams, ejsCfg.pubkey);
             enviados.push(item.email);
           } catch (err) {
             erros.push(`${item.email} (${err?.text || err?.message || 'erro'})`);
