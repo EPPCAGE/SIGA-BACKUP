@@ -266,6 +266,8 @@ function makeEngine(db) {
         templateParams: {
           to_email: email,
           to_name: email,
+          email,
+          reply_to: email,
           from_name: 'Escritório de Processos das CAGE',
           workflow: instancia.titulo,
           processo_titulo: instancia.titulo,

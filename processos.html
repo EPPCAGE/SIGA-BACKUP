@@ -3376,6 +3376,8 @@ function testarEmailJSWorkflow(){
   emailjs.send(ejsConfig.service, templateId, {
     to_name: destNome,
     to_email: destEmail,
+    email: destEmail,
+    reply_to: destEmail,
     from_name: ORG_CONFIG.notificationFromName,
     workflow: 'Workflow de teste',
     processo_titulo: 'Workflow de teste',
@@ -3387,8 +3389,11 @@ function testarEmailJSWorkflow(){
     res.textContent = '✓ E-mail de teste (workflow) enviado para ' + destEmail + aviso;
     res.style.color = 'var(--green)';
   }).catch(err=>{
-    res.textContent = '✗ Erro: ' + (err.text || err.message || JSON.stringify(err));
+    const msg = err?.text || err?.message || JSON.stringify(err);
+    console.error('testarEmailJSWorkflow erro:', err);
+    res.textContent = '✗ Erro EmailJS: ' + msg + ' — verifique o campo "To Email" do template (deve ser {{to_email}}).';
     res.style.color = 'var(--red)';
+    if(typeof toast==='function') toast('✗ Falha no envio: '+msg, 'var(--red)');
   });
 }
 function enviarNotif(para_email,para_nome,acao,proc_nome,prazo,de_nome){
