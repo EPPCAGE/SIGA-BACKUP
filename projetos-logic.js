@@ -737,9 +737,9 @@ function projDeveloperHtml(html) {
 }
 
 function projHtmlFragment(html) {
-  const range = document.createRange();
-  range.selectNode(document.body || document.documentElement);
-  return range.createContextualFragment(projDeveloperHtml(html));
+  const tpl = document.createElement('template');
+  tpl.innerHTML = projDeveloperHtml(html);
+  return tpl.content.cloneNode(true);
 }
 
 function projSetHtml(el, html) {
