@@ -1337,8 +1337,6 @@
       el.innerHTML = '<div style="color:var(--ink3);font-size:14px">Carregando…</div>';
       _st.instanciasCursor = 0;
       _st.instanciasLista = null;
-      // Processa a fila de e-mails de workflows ativados automaticamente (envio diferido).
-      wfProcessarFilaEmails().catch(() => {});
     }
     try {
       const uid = _uid();
@@ -4479,22 +4477,10 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       }
       if (!confirm(confirmMsg)) return;
 
+      // O envio de e-mail acontece no servidor (EmailJS via accessToken).
       const res = await _wfApiRequest('wfAdminJobs', `/ativar/${encodeURIComponent(instanciaId)}`, { method: 'POST' });
-      const emailsPendentes = res.emailsPendentes || [];
-      const enviados = [];
-      const erros = [];
-      const ejsCfg = globalScope.ejsConfig;
-      const templateId = ejsCfg?.template_workflow || ejsCfg?.template;
-      if (emailsPendentes.length && ejsCfg?.service && templateId && ejsCfg?.pubkey && typeof emailjs !== 'undefined') {
-        for (const item of emailsPendentes) {
-          try {
-            await emailjs.send(ejsCfg.service, templateId, item.templateParams);
-            enviados.push(item.email);
-          } catch (err) {
-            erros.push(`${item.email} (${err?.text || err?.message || 'erro'})`);
-          }
-        }
-      }
+      const enviados = res.emailsEnviados || [];
+      const erros = res.emailsErro || [];
       const partes = ['✅ Processo ativado.'];
       if (enviados.length) partes.push(`📧 E-mail enviado para: ${enviados.join(', ')}.`);
       if (erros.length) partes.push(`⚠️ Erro ao enviar e-mail para: ${erros.join(', ')}.`);
@@ -4506,43 +4492,6 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       wfCarregarInstancias();
     } catch (e) {
       alert('Erro ao ativar processo: ' + e.message);
-    }
-  }
-
-  // Envio diferido: workflows ativados automaticamente pelo scheduler (sem navegador)
-  // deixam e-mails enfileirados em wf_emails_pendentes. Quando um EP abre o sistema,
-  // o navegador envia via EmailJS e remove da fila. Apenas EP processa a fila.
-  async function wfProcessarFilaEmails() {
-    if (!globalScope.isEP?.()) return;
-    const ejsCfg = globalScope.ejsConfig;
-    const templateId = ejsCfg?.template_workflow || ejsCfg?.template;
-    if (!ejsCfg?.service || !templateId || !ejsCfg?.pubkey || typeof emailjs === 'undefined') return;
-
-    let pendentes;
-    try {
-      const { where } = globalScope.fb();
-      pendentes = await _getAll('wf_emails_pendentes', where('enviado', '==', false));
-    } catch {
-      return;
-    }
-    if (!pendentes?.length) return;
-
-    let enviados = 0;
-    for (const item of pendentes) {
-      try {
-        await emailjs.send(ejsCfg.service, templateId, item.template_params || {});
-        await _deleteDoc('wf_emails_pendentes', item.id);
-        enviados++;
-      } catch (err) {
-        const tentativas = (item.tentativas || 0) + 1;
-        const patch = tentativas >= 3
-          ? { enviado: true, tentativas, erro: String(err?.text || err?.message || 'erro') }
-          : { tentativas };
-        await _updateDoc('wf_emails_pendentes', item.id, patch).catch(() => {});
-      }
-    }
-    if (enviados && typeof globalScope.toast === 'function') {
-      globalScope.toast(`📧 ${enviados} e-mail(s) de workflows agendados enviado(s).`, 'var(--teal)');
     }
   }
 
@@ -5448,7 +5397,6 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     wfFecharDelegacao,
     wfConfirmarDelegacao,
     wfAtivarInstanciaAgora,
-    wfProcessarFilaEmails,
     wfSuspenderInstancia,
     wfRetomarInstancia,
     wfCarregarEquipes,

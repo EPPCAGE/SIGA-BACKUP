@@ -22,6 +22,11 @@ const {
 const { calcularPrazo } = require('./sla');
 const { makeNotificacoes } = require('./notifications');
 
+// Private key do EmailJS (accessToken) — usada apenas server-side para enviar
+// e-mails de workflow no horário exato. Prefira definir process.env.EMAILJS_PRIVATE_KEY;
+// o fallback existe para não bloquear o envio caso a env não esteja configurada.
+const EMAILJS_PRIVATE_KEY_FALLBACK = '3vSmIEMCwpLGFBSSeBz_h';
+
 const ERRO = {
   MODELO_NAO_ENCONTRADO: { code: 'MODELO_NAO_ENCONTRADO', status: 404 },
   MODELO_NAO_PUBLICADO: { code: 'MODELO_NAO_PUBLICADO', status: 422 },
@@ -248,10 +253,18 @@ function makeEngine(db) {
     arquitetura: db.collection('arquitetura'),
     usuariosConfig: db.doc('config/usuarios'),
     grupos: db.collection('wf_grupos'),
-    emailsPendentes: db.collection('wf_emails_pendentes'),
   };
 
-  async function _prepararEmailsWorkflow({ emails, instancia, tarefa, etapa }) {
+  // Config EmailJS (service/template/public key) lida do Firestore via admin SDK.
+  let _ejsConfigCache = null;
+  async function _carregarEjsConfig() {
+    if (_ejsConfigCache) return _ejsConfigCache;
+    const doc = await db.doc('config/ejs').get().catch(() => null);
+    _ejsConfigCache = doc?.exists ? doc.data() : null;
+    return _ejsConfigCache;
+  }
+
+  function _montarTemplateParams({ email, instancia, tarefa, etapa }) {
     let prazoStr = 'sem prazo definido';
     if (tarefa.prazo) {
       const prazoDate = typeof tarefa.prazo.toDate === 'function'
@@ -259,25 +272,60 @@ function makeEngine(db) {
         : new Date(tarefa.prazo._seconds * 1000);
       prazoStr = prazoDate.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
     }
-    const instrucoes = tarefa.instrucoes || '';
-    return emails
-      .filter(e => e && typeof e === 'string')
-      .map(email => ({
-        email,
-        templateParams: {
-          to_email: email,
-          to_name: email,
-          email,
-          reply_to: email,
-          from_name: 'Escritório de Processos das CAGE',
-          workflow: instancia.titulo,
-          processo_titulo: instancia.titulo,
-          etapa_nome: etapa.nome,
-          instrucoes,
-          prazo: prazoStr,
-          link: 'https://sigaepp.web.app/',
-        },
-      }));
+    return {
+      to_email: email,
+      to_name: email,
+      email,
+      reply_to: email,
+      from_name: 'Escritório de Processos das CAGE',
+      workflow: instancia.titulo,
+      processo_titulo: instancia.titulo,
+      etapa_nome: etapa.nome,
+      instrucoes: tarefa.instrucoes || '',
+      prazo: prazoStr,
+      link: 'https://sigaepp.web.app/',
+    };
+  }
+
+  // Envia e-mails de workflow direto do servidor (horário exato, sem navegador).
+  // Usa a API REST do EmailJS com accessToken (private key) — requer a opção
+  // "Allow EmailJS API for non-browser applications" ativada na conta.
+  async function _enviarEmailsWorkflow({ emails, instancia, tarefa, etapa }) {
+    const cfg = await _carregarEjsConfig();
+    const serviceId = cfg?.service;
+    const templateId = cfg?.template_workflow || cfg?.template;
+    const publicKey = cfg?.pubkey;
+    const privateKey = process.env.EMAILJS_PRIVATE_KEY || EMAILJS_PRIVATE_KEY_FALLBACK;
+    if (!serviceId || !templateId || !publicKey || !privateKey) {
+      return { enviados: [], erros: ['EmailJS não configurado (service/template/pubkey/privatekey)'] };
+    }
+    const { default: fetch } = await import('node-fetch');
+    const enviados = [];
+    const erros = [];
+    for (const email of emails.filter(e => e && typeof e === 'string')) {
+      try {
+        const resp = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            service_id: serviceId,
+            template_id: templateId,
+            user_id: publicKey,
+            accessToken: privateKey,
+            template_params: _montarTemplateParams({ email, instancia, tarefa, etapa }),
+          }),
+        });
+        if (resp.ok) {
+          enviados.push(email);
+        } else {
+          const txt = await resp.text().catch(() => '');
+          erros.push(`${email} (HTTP ${resp.status} ${txt})`.trim());
+        }
+      } catch (e) {
+        erros.push(`${email} (${e.message})`);
+      }
+    }
+    return { enviados, erros };
   }
 
   // -------------------------------------------------------------------------
@@ -549,6 +597,9 @@ function makeEngine(db) {
         // Responsável individual tem prioridade — notifica só ele
         const u = await _buscarUsuarioPorUid(destino.responsavel_uid).catch(() => null);
         if (u?.email) emailsDestinatarios.add(u.email);
+      } else if (destino.papel_alvo && String(destino.papel_alvo).includes('@')) {
+        // Pessoa específica identificada por e-mail (ex: grupo_membro sem uid) — só ela
+        emailsDestinatarios.add(destino.papel_alvo);
       } else if (destino.grupo_id) {
         // Sem responsável fixo: notifica todos os membros do grupo
         const grupoSnap = await col.grupos.doc(destino.grupo_id).get().catch(() => null);
@@ -566,17 +617,17 @@ function makeEngine(db) {
         }
       }
       if (emailsDestinatarios.size) {
-        const emailsPendentes = await _prepararEmailsWorkflow({
+        const resultado = await _enviarEmailsWorkflow({
           emails: [...emailsDestinatarios],
           instancia,
           tarefa,
           etapa: { id: no.id, nome: no.nome || no.id },
-        }).catch(() => []);
-        return { tarefa, emailsPendentes };
+        }).catch(e => ({ enviados: [], erros: [`erro geral: ${e.message}`] }));
+        return { tarefa, emailsEnviados: resultado?.enviados || [], emailsErro: resultado?.erros || [] };
       }
     }
 
-    return { tarefa, emailsPendentes: [] };
+    return { tarefa, emailsEnviados: [], emailsErro: [] };
   }
 
   async function _validarFormularioTarefaCanvas(instancia, tarefa, dados_formulario = {}) {
@@ -1256,11 +1307,11 @@ function makeEngine(db) {
       await _notificarCientesCanvas(inst, primeiroNo);
       const resultado = await _criarTarefaCanvas(inst, modeloData, primeiroNo);
       await _registrarHistorico(inst.id, 'instancia_ativada', null, null, null, 'Instância agendada ativada automaticamente.', {});
-      return { emailsPendentes: resultado?.emailsPendentes || [] };
+      return { emailsEnviados: resultado?.emailsEnviados || [], emailsErro: resultado?.emailsErro || [] };
     }
 
     await _registrarHistorico(inst.id, 'instancia_ativada', null, null, null, 'Instância agendada ativada automaticamente.', {});
-    return { emailsPendentes: [] };
+    return { emailsEnviados: [], emailsErro: [] };
   }
 
   /**
@@ -1284,30 +1335,19 @@ function makeEngine(db) {
     });
 
     let ativadas = 0;
-    let emailsEnfileirados = 0;
+    const emailsEnviados = [];
+    const emailsErro = [];
     for (const doc of vencidas) {
       try {
         const res = await _ativarInstanciaAgendada({ id: doc.id, ...doc.data() });
         ativadas++;
-        // EmailJS exige navegador. Enfileira os e-mails no Firestore para que
-        // o frontend (EP) os envie quando abrir o sistema (envio diferido).
-        const pendentes = res?.emailsPendentes || [];
-        for (const p of pendentes) {
-          await col.emailsPendentes.add(fsClean({
-            instancia_id: doc.id,
-            email: p.email,
-            template_params: p.templateParams || {},
-            enviado: false,
-            tentativas: 0,
-            criado_em: agora(),
-          }));
-          emailsEnfileirados++;
-        }
+        (res?.emailsEnviados || []).forEach(e => emailsEnviados.push(e));
+        (res?.emailsErro || []).forEach(e => emailsErro.push(e));
       } catch (e) {
         console.error(`[processarAgendados] Erro ao ativar ${doc.id}:`, e.message);
       }
     }
-    return { ativadas, total: vencidas.length, emailsEnfileirados };
+    return { ativadas, total: vencidas.length, emailsEnviados, emailsErro };
   }
 
   /**
@@ -1416,6 +1456,10 @@ function makeEngine(db) {
     if (destino.responsavel_uid) {
       const u = await _buscarUsuarioPorUid(destino.responsavel_uid).catch(() => null);
       return { tipo: 'usuario', destinatarios: u ? [{ nome: u.nome || u.email, email: u.email }] : [] };
+    }
+    if (destino.papel_alvo && String(destino.papel_alvo).includes('@')) {
+      // Pessoa específica identificada por e-mail (ex: grupo_membro sem uid) — só ela
+      return { tipo: 'usuario', destinatarios: [{ nome: destino.papel_alvo, email: destino.papel_alvo }] };
     }
     if (destino.grupo_id) {
       const grupoSnap = await col.grupos.doc(destino.grupo_id).get().catch(() => null);
