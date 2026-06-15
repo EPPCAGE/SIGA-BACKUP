@@ -530,6 +530,7 @@ function makeEngine(db) {
     // Para workflows agendados: envia e-mail a todos os responsáveis pela primeira tarefa
     if (instancia.agendado_para) {
       const emailsDestinatarios = new Set();
+      console.log('[wf email agendado] destino:', JSON.stringify({ responsavel_uid: destino.responsavel_uid, grupo_id: destino.grupo_id, papel_alvo: destino.papel_alvo }));
       if (destino.responsavel_uid) {
         const u = await _buscarUsuarioPorUid(destino.responsavel_uid).catch(() => null);
         if (u?.email) emailsDestinatarios.add(u.email);
@@ -551,6 +552,7 @@ function makeEngine(db) {
           if (u?.email) emailsDestinatarios.add(u.email);
         }
       }
+      console.log('[wf email agendado] destinatarios:', [...emailsDestinatarios]);
       if (emailsDestinatarios.size) {
         await _enviarEmailWorkflow({
           emails: [...emailsDestinatarios],
