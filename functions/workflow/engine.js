@@ -248,6 +248,7 @@ function makeEngine(db) {
     arquitetura: db.collection('arquitetura'),
     usuariosConfig: db.doc('config/usuarios'),
     grupos: db.collection('wf_grupos'),
+    emailsPendentes: db.collection('wf_emails_pendentes'),
   };
 
   async function _prepararEmailsWorkflow({ emails, instancia, tarefa, etapa }) {
@@ -1283,23 +1284,30 @@ function makeEngine(db) {
     });
 
     let ativadas = 0;
-    const notificacoesPendentes = [];
+    let emailsEnfileirados = 0;
     for (const doc of vencidas) {
       try {
         const res = await _ativarInstanciaAgendada({ id: doc.id, ...doc.data() });
         ativadas++;
-        // emailsPendentes não podem ser enviados server-side (EmailJS requer browser).
-        // Registra destinatários no log para rastreabilidade.
-        const emails = (res?.emailsPendentes || []).map(e => e.email);
-        if (emails.length) {
-          notificacoesPendentes.push({ instancia_id: doc.id, emails });
-          console.info(`[processarAgendados] Instância ${doc.id} ativada. E-mails pendentes (requerem envio manual): ${emails.join(', ')}`);
+        // EmailJS exige navegador. Enfileira os e-mails no Firestore para que
+        // o frontend (EP) os envie quando abrir o sistema (envio diferido).
+        const pendentes = res?.emailsPendentes || [];
+        for (const p of pendentes) {
+          await col.emailsPendentes.add(fsClean({
+            instancia_id: doc.id,
+            email: p.email,
+            template_params: p.templateParams || {},
+            enviado: false,
+            tentativas: 0,
+            criado_em: agora(),
+          }));
+          emailsEnfileirados++;
         }
       } catch (e) {
         console.error(`[processarAgendados] Erro ao ativar ${doc.id}:`, e.message);
       }
     }
-    return { ativadas, total: vencidas.length, notificacoesPendentes };
+    return { ativadas, total: vencidas.length, emailsEnfileirados };
   }
 
   /**

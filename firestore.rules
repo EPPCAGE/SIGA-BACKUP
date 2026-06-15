@@ -183,6 +183,16 @@ service cloud.firestore {
       allow write: if isAuth() && isEP();
     }
 
+    // Fila de e-mails de workflow (envio diferido): a Cloud Function enfileira;
+    // o EP lê a fila e marca como enviado pelo navegador (EmailJS é client-side).
+    match /wf_emails_pendentes/{id} {
+      allow read: if isAuth() && isEP();
+      allow create: if isAuth() && isEP();
+      allow update: if isAuth() && isEP()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['enviado', 'tentativas', 'enviado_em', 'erro', '_atualizado_em']);
+      allow delete: if isAuth() && isEP();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
