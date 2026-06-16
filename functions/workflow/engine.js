@@ -1582,7 +1582,28 @@ function makeEngine(db) {
     ativarInstancia,
     previewAtivarInstancia,
     previewConcluirTarefa,
+    testarEmail,
   };
+
+  // Diagnóstico: envia um e-mail de teste via EmailJS e devolve o resultado
+  // bruto (inclusive erros HTTP do EmailJS), para depurar falhas de envio.
+  async function testarEmail(email) {
+    if (!email) throw Object.assign(new Error('email obrigatório'), { code: 'PARAMETRO_INVALIDO', status: 400 });
+    const cfg = await _carregarEjsConfig();
+    const resultado = await _enviarEmailsWorkflow({
+      emails: [email],
+      instancia: { titulo: 'Teste de notificação SIGA' },
+      tarefa: null,
+      etapa: { id: 'teste', nome: 'Etapa de teste' },
+    });
+    return {
+      configEncontrada: !!cfg,
+      service: cfg?.service || null,
+      template: cfg?.template_workflow || cfg?.template || null,
+      pubkeyConfigurada: !!cfg?.pubkey,
+      ...resultado,
+    };
+  }
 
   async function ativarInstancia(instanciaId) {
     const snap = await col.instancias.doc(instanciaId).get();
