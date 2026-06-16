@@ -1661,8 +1661,18 @@ function makeEngine(db) {
         return { tipo: 'grupo', etapa: proxNo.nome || proxNo.id, nome_grupo: g.nome || destino.grupo_id, destinatarios: emails.filter(Boolean).map(e => ({ email: e, nome: e })) };
       }
     }
+    if (['ep', 'gestor', 'dono'].includes(String(destino.papel_alvo))) {
+      // Fila genérica por perfil — lista todos os usuários elegíveis, como em _resolverEmailsDestino.
+      const usuarios = await _carregarUsuariosConfig();
+      const destinatarios = usuarios
+        .filter((u) => String(u?.perfil || '') === destino.papel_alvo && u?.email)
+        .map((u) => ({ nome: u.nome || u.email, email: u.email }));
+      return { tipo: 'papel', etapa: proxNo.nome || proxNo.id, papel: destino.papel_alvo, destinatarios };
+    }
     if (destino.papel_alvo) {
-      return { tipo: 'papel', etapa: proxNo.nome || proxNo.id, papel: destino.papel_alvo, destinatarios: [] };
+      const uid = await _resolverUidNotificacaoCanvas(destino.papel_alvo, instancia).catch(() => null);
+      const u = uid ? await _buscarUsuarioPorUid(uid).catch(() => null) : null;
+      return { tipo: 'papel', etapa: proxNo.nome || proxNo.id, papel: destino.papel_alvo, destinatarios: u?.email ? [{ nome: u.nome || u.email, email: u.email }] : [] };
     }
     return { destinatarios: [], tipo: null };
   }
