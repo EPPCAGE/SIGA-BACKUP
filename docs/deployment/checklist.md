@@ -31,9 +31,6 @@ Este checklist orienta a preparacao de uma nova instalacao do SIGA para outra or
 
 - Testar login com usuario administrador.
 - Testar primeiro acesso de usuario comum.
-- Testar criacao de solicitacao.
-- Testar conversao de solicitacao em mapeamento.
-- Testar conversao de solicitacao em analise de aderencia.
 - Testar envio de notificacao.
 - Testar relatorios PDF/PPT.
 - Testar permissoes por perfil.

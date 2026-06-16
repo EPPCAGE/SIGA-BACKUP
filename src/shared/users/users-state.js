@@ -2,7 +2,7 @@
  * @fileoverview Gestão de estado de usuários e solicitações
  * Módulo compartilhado entre processos.html e projetos.html
  * 
- * Gerencia USUARIOS, solicitacoes e usuarioLogado
+ * Gerencia USUARIOS e usuarioLogado
  */
 
 (function initUsersState(globalScope) {
@@ -35,12 +35,6 @@
       iniciais: 'EP'
     }
   ];
-
-  /**
-   * Lista de solicitações de acesso pendentes
-   * @type {Array<Object>}
-   */
-  globalScope.solicitacoes = [];
 
   /**
    * Usuário atualmente autenticado

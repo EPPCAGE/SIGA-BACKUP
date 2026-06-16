@@ -50,9 +50,8 @@ service cloud.firestore {
     match /arquitetura/{id} { allow read: if isAuth(); allow write: if isEP(); }
     match /plano_metas/{id} { allow read: if isAuth(); allow write: if isEP(); }
 
-    // Solicitações e notificações: qualquer usuário autenticado envia/recebe.
-    match /solicitacoes/{id} { allow read: if isAuth(); allow write: if isAuth(); }
-    match /notifs/{id}       { allow read: if isAuth(); allow write: if isAuth(); }
+    // Notificações: qualquer usuário autenticado envia/recebe.
+    match /notifs/{id} { allow read: if isAuth(); allow write: if isAuth(); }
 
     // Sessões: cada usuário acessa apenas a própria.
     match /sessions/{uid} {

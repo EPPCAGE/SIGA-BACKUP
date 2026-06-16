@@ -108,25 +108,6 @@ service cloud.firestore {
     match /plano_metas/{id} { allow read: if isAuth(); allow write: if isEP(); }
 
     // ---------------------------------------------------------------------------
-    // solicitacoes/ — Fluxo de aprovação
-    // Criador pode editar enquanto não aprovada
-    // EP pode aprovar/rejeitar
-    // ---------------------------------------------------------------------------
-    match /solicitacoes/{id} {
-      allow read: if isAuth();
-      
-      allow create: if isAuth();
-      
-      allow update: if isAuth() && (
-        isEP() ||  // EP pode tudo (aprovar, rejeitar, editar)
-        (resource.data.solicitante_email == request.auth.email &&
-         resource.data.status != 'aprovada')  // Solicitante pode editar se não aprovada
-      );
-      
-      allow delete: if isEP();
-    }
-
-    // ---------------------------------------------------------------------------
     // notifs/ — Notificações: criador pode criar, EP pode editar
     // ---------------------------------------------------------------------------
     match /notifs/{id} {

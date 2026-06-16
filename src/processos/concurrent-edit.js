@@ -35,7 +35,6 @@
     {repo: 'processosRepository',   fn: '_replaceProcessos'},
     {repo: 'kpisRepository',        fn: '_replaceKpis'},
     {repo: 'publicacoesRepository', fn: '_replacePublicacoes'},
-    {repo: 'solicitacoesRepository',fn: '_replaceSolicitacoes'},
     {repo: 'planoRepository',       fn: '_replacePlano'},
     {repo: 'planoMetasRepository',  fn: '_replaceMetas'},
   ];
@@ -113,7 +112,6 @@
           {repo: 'processosRepository',   fn: '_replaceProcessos'},
           {repo: 'kpisRepository',        fn: '_replaceKpis'},
           {repo: 'publicacoesRepository', fn: '_replacePublicacoes'},
-          {repo: 'solicitacoesRepository',fn: '_replaceSolicitacoes'},
           {repo: 'planoRepository',       fn: '_replacePlano'},
           {repo: 'planoMetasRepository',  fn: '_replaceMetas'},
         ];

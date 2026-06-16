@@ -71,12 +71,6 @@ service cloud.firestore {
         allow write: if isTenantAdmin(tenantId);
       }
 
-      match /solicitacoes/{docId} {
-        allow read: if isProcessActor(tenantId);
-        allow create: if isProcessActor(tenantId);
-        allow update, delete: if isTenantAdmin(tenantId);
-      }
-
       match /kpis/{docId} {
         allow read: if isTenantMember(tenantId);
         allow write: if isTenantAdmin(tenantId);

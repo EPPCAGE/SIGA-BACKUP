@@ -193,9 +193,6 @@ textarea.fi{min-height:76px;resize:vertical;line-height:1.5}
 select.fi{cursor:pointer}
 .g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-#sol-servicos{align-items:stretch}
-#sol-servicos>.card{height:100%}
-#sol-servicos>.card+.card{margin-top:0}
 .g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
 /* info boxes */
 .ib{padding:9px 12px;border-radius:8px;font-size:12px;line-height:1.6;margin-bottom:.9rem}
@@ -740,7 +737,6 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
   #plano-modal,
   #modal-nova-auditoria,
   #pub-modal,
-  #sol-modal,
   #modal-metadados,
   #modal-reatribuir,
   #modal-prio,
@@ -766,7 +762,6 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
   #plano-modal>div,
   #modal-nova-auditoria>div,
   #pub-modal>div,
-  #sol-modal>div,
   #modal-metadados>div,
   #modal-reatribuir>div,
   #modal-prio>div,
@@ -1070,42 +1065,6 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
   </div>
 </div>
 
-<!-- MODAL SOLICITAÇÃO DE SERVIÇO -->
-<div id="sol-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.48);z-index:5000;align-items:center;justify-content:center;padding:1rem">
-  <div style="background:var(--surf);border-radius:var(--rl);padding:1.5rem;width:100%;max-width:720px;max-height:90vh;overflow-y:auto;box-shadow:var(--sh2)">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:1rem">
-      <div>
-        <div style="font-family:var(--fh);font-size:17px;font-weight:700;color:var(--ink)" id="sol-modal-title">Nova solicitação</div>
-        <div style="font-size:12px;color:var(--ink3);margin-top:3px">Detalhe a demanda para que o EPP consiga avaliar escopo, prioridade e próximos passos.</div>
-      </div>
-      <button type="button" onclick="fecharSolicitacaoModal()" style="background:none;border:none;color:var(--ink3);cursor:pointer;font-size:22px;line-height:1;padding:0 4px" aria-label="Fechar">×</button>
-    </div>
-    <input type="hidden" id="sol-id">
-    <input type="hidden" id="sol-servico">
-    <div class="g2">
-      <div class="fg"><label class="fl" for="sol-servico-view">Serviço solicitado<span>*</span></label><input class="fi" id="sol-servico-view" disabled></div>
-      <div class="fg"><label class="fl" for="sol-prioridade">Prioridade percebida<span>*</span></label>
-        <select class="fi" id="sol-prioridade">
-          <option value="normal">Normal</option>
-          <option value="alta">Alta</option>
-          <option value="critica">Crítica</option>
-        </select>
-      </div>
-    </div>
-    <div class="fg"><label class="fl" for="sol-processo">Processo da arquitetura<span>*</span></label><select class="fi" id="sol-processo"></select></div>
-    <div class="g2">
-      <div class="fg"><label class="fl" for="sol-prazo">Prazo desejado</label><input class="fi" id="sol-prazo" type="date"></div>
-      <div class="fg"><label class="fl" for="sol-envolvidos">Áreas ou pessoas envolvidas</label><input class="fi" id="sol-envolvidos" placeholder="Ex: DTI, Contabilidade, Auditoria..."></div>
-    </div>
-    <div class="fg"><label class="fl" for="sol-justificativa">Justificativa / problema atual<span>*</span></label><textarea class="fi" id="sol-justificativa" rows="4" placeholder="Descreva o contexto, problema, risco, oportunidade ou necessidade que motiva a solicitação."></textarea></div>
-    <div class="fg"><label class="fl" for="sol-resultado">Resultado esperado</label><textarea class="fi" id="sol-resultado" rows="3" placeholder="Ex: fluxo validado, redução de retrabalho, atualização de POP, adequação normativa..."></textarea></div>
-    <div class="btn-row">
-      <button type="button" class="btn" onclick="fecharSolicitacaoModal()">Cancelar</button>
-      <button type="button" class="btn btn-p" id="sol-submit-btn" onclick="enviarSolicitacaoServico()">Enviar solicitação</button>
-    </div>
-  </div>
-</div>
-
 <!-- MODAL: alterar senha -->
 <div id="alterar-senha-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9991;align-items:center;justify-content:center;padding:1rem">
   <div style="background:#1e1e2e;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:1.8rem;width:100%;max-width:380px;box-shadow:0 16px 48px rgba(0,0,0,.6)">
@@ -1251,10 +1210,6 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
   <button type="button" class="nav-btn" onclick="go('arq',this)" id="nb-arq">
     <svg viewBox="0 0 16 16" fill="none"><rect x="6" y="1" width="4" height="3" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="1" y="6" width="4" height="3" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="11" y="6" width="4" height="3" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="6" y="11" width="4" height="3" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M8 4v2M8 9v2M3 9v1a1 1 0 001 1h4M13 9v1a1 1 0 01-1 1H8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
     Arquitetura
-  </button>
-  <button type="button" class="nav-btn" onclick="go('solicitacoes',this)" id="nb-sol">
-    <svg viewBox="0 0 16 16" fill="none"><path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" stroke-width="1.4"/><path d="M10 2v3h3M5 8h6M5 11h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.5" fill="var(--surf)" stroke="currentColor" stroke-width="1.2"/><path d="M12 10.8v2.4M10.8 12h2.4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
-    Solicitações <span class="nav-cnt" id="nb-sol-cnt">0</span>
   </button>
   <button type="button" class="nav-btn" onclick="go('indicadores',this)" id="nb-ind">
     <svg viewBox="0 0 16 16" fill="none"><rect x="1" y="8" width="3" height="7" rx="1" fill="currentColor" opacity=".5"/><rect x="6" y="5" width="3" height="10" rx="1" fill="currentColor"/><rect x="11" y="2" width="3" height="13" rx="1" fill="currentColor" opacity=".7"/></svg>
@@ -1519,26 +1474,6 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
   </div>
 
   <div id="arq-content"></div>
-</div></div>
-
-<div id="page-solicitacoes" class="page"><div style="padding:2rem">
-  <div class="ph">
-    <div>
-      <div class="ph-t">Solicitações ao Escritório de Processos</div>
-      <div class="ph-s">Demandas de mapeamento, redesenho e análise de aderência</div>
-    </div>
-  </div>
-  <div class="g3" id="sol-servicos" style="gap:12px;margin-bottom:1rem"></div>
-  <div class="card">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:.8rem">
-      <div>
-        <div class="card-t" id="sol-list-title" style="margin-bottom:2px">Minhas solicitações</div>
-        <div style="font-size:12px;color:var(--ink3)" id="sol-list-sub">Acompanhe os pedidos enviados ao EPP.</div>
-      </div>
-      <button type="button" class="btn" onclick="rSolicitacoes()" style="font-size:12px">Atualizar</button>
-    </div>
-    <div id="sol-list"></div>
-  </div>
 </div></div>
 
 <div id="page-indicadores" class="page"><div style="padding:2rem">
@@ -2725,10 +2660,6 @@ globalThis._replacePublicacoes = function(snap){
   publicacoes = [];
   snap.forEach(function(d){ publicacoes.push(d.data()); });
 };
-globalThis._replaceSolicitacoes = function(snap){
-  globalThis.solicitacoes = [];
-  snap.forEach(function(d){ globalThis.solicitacoes.push(d.data()); });
-};
 globalThis._replacePlano = function(snap){
   plano = [];
   snap.forEach(function(d){ plano.push(d.data()); });
@@ -2776,7 +2707,6 @@ const APP = {
   get plano()         { return plano; },         set plano(v)         { plano = v; },
   get notifs()        { return notifs; },        set notifs(v)        { notifs = v; },
   get usuarioLogado() { return globalThis.usuarioLogado; }, set usuarioLogado(v) { globalThis.usuarioLogado = v; },
-  get solicitacoes()  { return globalThis.solicitacoes; },  set solicitacoes(v)  { globalThis.solicitacoes = v; },
   get ARQUITETURA()   { return ARQUITETURA; },   set ARQUITETURA(v)   { ARQUITETURA = v; },
   get USUARIOS()      { return globalThis.USUARIOS; },      set USUARIOS(v)      { globalThis.USUARIOS = v; },
   get publicacoes()   { return publicacoes; },   set publicacoes(v)   { publicacoes = v; },
@@ -2954,7 +2884,7 @@ function go(page,btn){
   _getPageRenderer(page)();
   // Mobile: close drawer, update title
   if(globalThis.innerWidth<=720){mobClose();}
-  const ttl={fila:'Minhas tarefas',meusprocessos:'Meus Processos',processos:'Processos',arq:'Arquitetura',solicitacoes:'Solicitações',faq:'Base de FAQs',indicadores:'Indicadores',plano:'PAT',notificacoes:'Notificações',auditoria:'Análise de Aderência',publicacoes:'Publicações',admin:'Usuários',detalhe:'Processo',painelgestor:'Painel do Gestor',workflow:'Workflow'};
+  const ttl={fila:'Minhas tarefas',meusprocessos:'Meus Processos',processos:'Processos',arq:'Arquitetura',faq:'Base de FAQs',indicadores:'Indicadores',plano:'PAT',notificacoes:'Notificações',auditoria:'Análise de Aderência',publicacoes:'Publicações',admin:'Usuários',detalhe:'Processo',painelgestor:'Painel do Gestor',workflow:'Workflow'};
   const el=document.getElementById('mob-page-title');if(el)el.textContent=ttl[page]||'SIGA 2.0';
 }
 function _invokeGlobalHandler(handlerName){
@@ -2968,7 +2898,6 @@ function _getPageRenderer(page){
     meusprocessos:rMeusProc,
     processos:renderProcs,
     arq:rArq,
-    solicitacoes:rSolicitacoes,
     faq:rFaq,
     indicadores:()=>{rInd();},
     notificacoes:()=>{rNotif();},
@@ -3068,12 +2997,6 @@ function updCounts(){
   if(meusProcCnt) meusProcCnt.textContent=getMinhasUnidades().length;
   const mobFilaCnt=document.getElementById('mob-fila-cnt');if(mobFilaCnt){mobFilaCnt.textContent=_filaCnt;mobFilaCnt.style.display=_filaCnt>0?'inline-flex':'none';}
   document.getElementById('nb-notif-cnt').textContent=notifs.filter(n=>!n.lida).length;
-  const solEl=document.getElementById('nb-sol-cnt');
-  if(solEl){
-    const solicitacoesValidas = solicitacoes.filter(_solIsValida);
-    const abertas=solicitacoesValidas.filter(s=>!s.status||s.status==='nova'||s.status==='em_analise'||s.status==='aprovada').length;
-    solEl.textContent=isEP()?abertas:solicitacoesValidas.filter(s=>s.solicitante_email===usuarioLogado?.email).length;
-  }
   const audCnt=processos.filter(p=>p.etapa==='auditoria'||(p.auditoria?.concluida===true)).length;
   const audEl=document.getElementById('nb-aud-cnt');
   if(audEl) audEl.textContent=audCnt;
@@ -3778,379 +3701,8 @@ async function _confirmarRevisaoPeriodica(procId){
   toast(status==='confirmado'?'✅ Revisão registrada. Próxima revisão em 12 meses.':'⚠ Mudanças sinalizadas. O EP será notificado.','var(--teal)');
   rMeusProc();
 }
-const SOL_SERVICOS = {
-  mapeamento: {
-    titulo: 'Mapeamento de processo',
-    tag: 'AS IS',
-    desc: 'Levantamento do fluxo atual, papéis, entradas, saídas, sistemas, riscos e oportunidades de melhoria.',
-    entrega: 'Fluxo AS IS validado, documentação do processo e insumos para POP ou gestão por indicadores.'
-  },
-  redesenho: {
-    titulo: 'Redesenho de processo',
-    tag: 'TO BE',
-    desc: 'Revisão do fluxo atual para simplificar etapas, reduzir retrabalho, melhorar controles e redesenhar a forma futura de trabalho.',
-    entrega: 'Fluxo TO BE, plano de melhorias priorizado e recomendações de implantação.'
-  },
-  aderencia: {
-    titulo: 'Análise de aderência',
-    tag: 'Conformidade',
-    desc: 'Avaliação do processo frente a normas, POPs, controles, evidências e requisitos aplicáveis.',
-    entrega: 'Relatório de aderência com achados, riscos, oportunidades e encaminhamentos.'
-  }
-};
-
-function _solUnidadesDisponiveis(){
-  if(isEP()) return getUnidadesMapeaveis();
-  const minhas = getMinhasUnidades();
-  return minhas.length ? minhas : getUnidadesMapeaveis();
-}
-function _solServicoCardHTML(key){
-  const svc = SOL_SERVICOS[key];
-  return `<div class="card" style="border-top:3px solid var(--blue);display:flex;flex-direction:column;gap:.75rem">
-    <div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:.4rem">
-        <div class="card-t" style="margin-bottom:0">${svc.titulo}</div>
-        <span class="badge bb">${svc.tag}</span>
-      </div>
-      <div style="font-size:13px;color:var(--ink2);line-height:1.55">${svc.desc}</div>
-    </div>
-    <div class="ib ibb" style="font-size:11.5px;margin:0"><strong>Entrega típica:</strong> ${svc.entrega}</div>
-    <button type="button" class="btn btn-p" onclick="abrirSolicitacaoModal('${key}')" style="margin-top:auto;min-height:42px">Solicitar serviço</button>
-  </div>`;
-}
-function _solStatusInfo(status='nova'){
-  const st = status;
-  const map = {
-    nova: ['Nova','#2563eb','bb'],
-    em_analise: ['Em análise','#d97706','ba'],
-    aprovada: ['Aprovada','#0f766e','bt'],
-    convertida: ['Convertida','#16a34a','bt'],
-    atendida: ['Atendida','#16a34a','bt'],
-    recusada: ['Não priorizada','#dc2626','br']
-  };
-  return map[st] || map.nova;
-}
-function _solPrioridadeLabel(p){
-  return ({normal:'Normal',alta:'Alta',critica:'Crítica'})[p] || 'Normal';
-}
-function _solIsValida(s){
-  return Boolean(
-    s &&
-    s.id !== undefined &&
-    s.id !== null &&
-    s.servico &&
-    s.processo_arq_id &&
-    s.justificativa
-  );
-}
-function _solPodeEditar(s){
-  return isEP() || (s.solicitante_email===usuarioLogado?.email && (!s.status || s.status==='nova'));
-}
-function _solPodeExcluir(s){
-  return isEP() || (s.solicitante_email===usuarioLogado?.email && (!s.status || s.status==='nova'));
-}
-function _solProcessoOptions(){
-  const unidades = _solUnidadesDisponiveis();
-  if(!unidades.length) return '<option value="">Nenhum processo disponível na arquitetura</option>';
-  return '<option value="">Selecione um processo ou subprocesso...</option>' + unidades
-    .sort((a,b)=>a.label.localeCompare(b.label))
-    .map(u=>`<option value="${esc(u.arq_id)}">${esc(u.label)}</option>`)
-    .join('');
-}
-function rSolicitacoes(){
-  const servicos = document.getElementById('sol-servicos');
-  if(servicos) servicos.innerHTML = Object.keys(SOL_SERVICOS).map(_solServicoCardHTML).join('');
-  const title = document.getElementById('sol-list-title');
-  const sub = document.getElementById('sol-list-sub');
-  if(title) title.textContent = isEP() ? 'Solicitações recebidas' : 'Minhas solicitações';
-  if(sub) sub.textContent = isEP() ? 'Pedidos enviados ao '+ORG_CONFIG.supportTeamLabel+' por usuários do SIGA Processos.' : 'Acompanhe os pedidos enviados ao '+ORG_CONFIG.supportTeamLabel+'.';
-  const list = document.getElementById('sol-list');
-  if(!list) return;
-  const email = usuarioLogado?.email || '';
-  const solicitacoesValidas = solicitacoes.filter(_solIsValida);
-  const base = isEP() ? [...solicitacoesValidas] : solicitacoesValidas.filter(s=>s.solicitante_email===email);
-  base.sort((a,b)=>String(b.criada_em||'').localeCompare(String(a.criada_em||'')));
-  if(!base.length){
-    list.innerHTML = '<div class="ib ibb">Nenhuma solicitação registrada até o momento.</div>';
-    updCounts();
-    return;
-  }
-  list.innerHTML = base.map(_solCardHTML).join('');
-  updCounts();
-}
-function _solCardHTML(s){
-  const svc = SOL_SERVICOS[s.servico] || {titulo:s.servico||'Serviço'};
-  const [statusLabel,statusColor,statusClass] = _solStatusInfo(s.status);
-  const prazo = s.prazo_desejado ? `Prazo desejado: ${statusReportDateBr(s.prazo_desejado)}` : 'Sem prazo desejado';
-  const solicitante = isEP() ? `<div style="font-size:12px;color:var(--ink3);margin-top:4px">Solicitante: <strong>${esc(s.solicitante_nome||'—')}</strong> · ${esc(s.solicitante_email||'')}</div>` : '';
-  const envolvidos = s.envolvidos ? `<div style="font-size:12px;color:var(--ink3);margin-top:4px">Envolvidos: ${esc(s.envolvidos)}</div>` : '';
-  const resultado = s.resultado ? `<div style="font-size:12px;color:var(--ink2);margin-top:6px"><strong>Resultado esperado:</strong> ${esc(s.resultado)}</div>` : '';
-  const editBtn = _solPodeEditar(s) ? `<button type="button" class="btn" style="font-size:11px;padding:4px 9px" onclick="editarSolicitacao(${s.id})">Editar</button>` : '';
-  const deleteBtn = _solPodeExcluir(s) ? `<button type="button" class="btn" style="font-size:11px;padding:4px 9px;color:var(--red);border-color:var(--red-b)" onclick="excluirSolicitacao(${s.id})">Excluir</button>` : '';
-  const approveBtn = isEP() ? `<button type="button" class="btn btn-p" style="font-size:11px;padding:4px 9px" onclick="aprovarSolicitacao(${s.id})">Aprovar</button>` : '';
-  const converterBtn = _solConverterBtnHTML(s);
-  const epStatusBtns = isEP() ? `
-    <button type="button" class="btn" style="font-size:11px;padding:4px 9px" onclick="alterarSolicitacaoStatus(${s.id},'em_analise')">Em análise</button>
-    <button type="button" class="btn" style="font-size:11px;padding:4px 9px;color:var(--green);border-color:rgba(22,163,74,.35)" onclick="alterarSolicitacaoStatus(${s.id},'atendida')">Atendida</button>
-    <button type="button" class="btn" style="font-size:11px;padding:4px 9px;color:var(--red);border-color:var(--red-b)" onclick="alterarSolicitacaoStatus(${s.id},'recusada')">Não priorizada</button>` : '';
-  const actions = [editBtn, approveBtn, converterBtn, epStatusBtns, deleteBtn].filter(Boolean).join('');
-  const actionsHtml = actions ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:.75rem">${actions}</div>` : '';
-  return `<div class="prc" style="align-items:flex-start;margin-bottom:10px;cursor:default">
-    <div style="min-width:0">
-      <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
-        <div class="prc-t">${esc(svc.titulo)}</div>
-        <span class="badge ${statusClass}" style="color:${statusColor}">${statusLabel}</span>
-        <span class="badge bgr">${_solPrioridadeLabel(s.prioridade)}</span>
-      </div>
-      <div class="prc-m" style="margin-top:5px">${esc(s.processo_label||'Processo não informado')} · ${prazo}</div>
-      ${solicitante}
-      ${envolvidos}
-      <div style="font-size:12px;color:var(--ink2);margin-top:6px"><strong>Justificativa:</strong> ${esc(s.justificativa||'—')}</div>
-      ${resultado}
-      ${actionsHtml}
-    </div>
-    <div style="font-size:11px;color:var(--ink3);white-space:nowrap">${statusReportDateBr(String(s.criada_em||'').slice(0,10))}</div>
-  </div>`;
-}
-function _solConverterBtnHTML(s){
-  if(!isEP() || s.status!=='aprovada') return '';
-  if(s.servico==='aderencia'){
-    return `<button type="button" class="btn btn-p" style="font-size:11px;padding:4px 9px" onclick="converterSolicitacaoAnalise(${s.id})">Gerar análise de aderência</button>`;
-  }
-  return `<button type="button" class="btn btn-p" style="font-size:11px;padding:4px 9px" onclick="converterSolicitacaoMapeamento(${s.id})">Gerar mapeamento</button>`;
-}
-function abrirSolicitacaoModal(servico){
-  const svc = SOL_SERVICOS[servico];
-  if(!svc){ toast('Serviço não encontrado.','var(--red)'); return; }
-  document.getElementById('sol-id').value = '';
-  document.getElementById('sol-modal-title').textContent = 'Nova solicitação';
-  document.getElementById('sol-servico').value = servico;
-  document.getElementById('sol-servico-view').value = svc.titulo;
-  document.getElementById('sol-processo').innerHTML = _solProcessoOptions();
-  document.getElementById('sol-prioridade').value = 'normal';
-  document.getElementById('sol-prazo').value = '';
-  document.getElementById('sol-envolvidos').value = '';
-  document.getElementById('sol-justificativa').value = '';
-  document.getElementById('sol-resultado').value = '';
-  document.getElementById('sol-submit-btn').textContent = 'Enviar solicitação';
-  document.getElementById('sol-modal').style.display = 'flex';
-}
-function editarSolicitacao(id){
-  const sol = solicitacoes.find(s=>s.id===id);
-  if(!sol) return;
-  if(!_solPodeEditar(sol)){ toast('Esta solicitação não pode mais ser editada.','var(--amber)'); return; }
-  const svc = SOL_SERVICOS[sol.servico] || {titulo:sol.servico||'Serviço'};
-  document.getElementById('sol-id').value = sol.id;
-  document.getElementById('sol-modal-title').textContent = 'Editar solicitação';
-  document.getElementById('sol-servico').value = sol.servico || '';
-  document.getElementById('sol-servico-view').value = svc.titulo;
-  document.getElementById('sol-processo').innerHTML = _solProcessoOptions();
-  document.getElementById('sol-processo').value = sol.processo_arq_id || '';
-  document.getElementById('sol-prioridade').value = sol.prioridade || 'normal';
-  document.getElementById('sol-prazo').value = sol.prazo_desejado || '';
-  document.getElementById('sol-envolvidos').value = sol.envolvidos || '';
-  document.getElementById('sol-justificativa').value = sol.justificativa || '';
-  document.getElementById('sol-resultado').value = sol.resultado || '';
-  document.getElementById('sol-submit-btn').textContent = 'Salvar alterações';
-  document.getElementById('sol-modal').style.display = 'flex';
-}
-function fecharSolicitacaoModal(){
-  const modal = document.getElementById('sol-modal');
-  if(modal) modal.style.display = 'none';
-}
-function enviarSolicitacaoServico(){
-  const editId = Number(document.getElementById('sol-id')?.value || 0);
-  const servico = document.getElementById('sol-servico')?.value || '';
-  const arqId = document.getElementById('sol-processo')?.value || '';
-  const prioridade = document.getElementById('sol-prioridade')?.value || 'normal';
-  const prazo = document.getElementById('sol-prazo')?.value || '';
-  const envolvidos = document.getElementById('sol-envolvidos')?.value.trim() || '';
-  const justificativa = document.getElementById('sol-justificativa')?.value.trim() || '';
-  const resultado = document.getElementById('sol-resultado')?.value.trim() || '';
-  const unidade = getUnidadesMapeaveis().find(u=>u.arq_id===arqId);
-  if(!servico){ toast('Selecione o serviço.','var(--amber)'); return; }
-  if(!unidade){ toast('Selecione um processo da arquitetura.','var(--amber)'); return; }
-  if(!justificativa){ toast('Informe a justificativa da solicitação.','var(--amber)'); return; }
-  if(editId){
-    const sol = solicitacoes.find(s=>s.id===editId);
-    if(!sol) return;
-    if(!_solPodeEditar(sol)){ toast('Esta solicitação não pode mais ser editada.','var(--amber)'); return; }
-    Object.assign(sol,{
-      servico,
-      processo_arq_id: arqId,
-      processo_label: unidade.label,
-      macro: unidade.macro,
-      area: unidade.area || '',
-      prioridade,
-      prazo_desejado: prazo,
-      envolvidos,
-      justificativa,
-      resultado,
-      atualizada_em: new Date().toISOString(),
-      atualizada_por: usuarioLogado?.email || ''
-    });
-    fbAutoSave('solicitacaoEditada');
-    fecharSolicitacaoModal();
-    rSolicitacoes();
-    toast('Solicitação atualizada.','var(--teal)');
-    return;
-  }
-  const sol = {
-    id: Date.now(),
-    servico,
-    processo_arq_id: arqId,
-    processo_label: unidade.label,
-    macro: unidade.macro,
-    area: unidade.area || '',
-    prioridade,
-    prazo_desejado: prazo,
-    envolvidos,
-    justificativa,
-    resultado,
-    status: 'nova',
-    solicitante_nome: usuarioLogado?.nome || '',
-    solicitante_email: usuarioLogado?.email || '',
-    solicitante_perfil: usuarioLogado?.perfil || '',
-    criada_em: new Date().toISOString()
-  };
-  solicitacoes.unshift(sol);
-  notificarEPSolicitacao(sol);
-  fbAutoSave('solicitacao');
-  fecharSolicitacaoModal();
-  rSolicitacoes();
-  toast('Solicitação enviada ao '+ORG_CONFIG.supportTeamLabel+'.','var(--teal)');
-}
-function _solDestinatariosEP(){
-  const eps = USUARIOS.filter(u=>getPerfisUsuario(u).includes('ep')&&u.email);
-  return eps.length ? eps : [{nome:ORG_CONFIG.organizationName,email:ORG_CONFIG.epTeamEmail}];
-}
-function notificarEPSolicitacao(sol){
-  const svc = SOL_SERVICOS[sol.servico] || {titulo:sol.servico};
-  const prazo = sol.prazo_desejado ? statusReportDateBr(sol.prazo_desejado) : 'não informado';
-  const acao = [
-    'Nova solicitação de serviço: '+svc.titulo,
-    'Solicitante: '+(sol.solicitante_nome||'—')+' <'+(sol.solicitante_email||'')+'>',
-    'Prioridade: '+_solPrioridadeLabel(sol.prioridade),
-    'Prazo desejado: '+prazo,
-    'Justificativa: '+sol.justificativa,
-    sol.resultado ? 'Resultado esperado: '+sol.resultado : ''
-  ].filter(Boolean).join('\n');
-  _solDestinatariosEP().forEach(ep=>enviarNotif(ep.email,ep.nome||ORG_CONFIG.supportTeamLabel,acao,sol.processo_label,prazo,sol.solicitante_nome||'Solicitante'));
-}
-function alterarSolicitacaoStatus(id,status){
-  if(!isEP()){ toast('Ação restrita ao '+ORG_CONFIG.supportTeamLabel+'.','var(--amber)'); return; }
-  const sol = solicitacoes.find(s=>s.id===id);
-  if(!sol) return;
-  sol.status = status;
-  sol.atualizada_em = new Date().toISOString();
-  sol.atualizada_por = usuarioLogado?.email || '';
-  fbAutoSave('solicitacaoStatus');
-  rSolicitacoes();
-  toast('Status da solicitação atualizado.','var(--teal)');
-}
-function aprovarSolicitacao(id){
-  if(!isEP()){ toast('Ação restrita ao '+ORG_CONFIG.supportTeamLabel+'.','var(--amber)'); return; }
-  alterarSolicitacaoStatus(id,'aprovada');
-}
-function excluirSolicitacao(id){
-  const sol = solicitacoes.find(s=>s.id===id);
-  if(!sol) return;
-  if(!_solPodeExcluir(sol)){ toast('Esta solicitação não pode ser excluída.','var(--amber)'); return; }
-  confirmar('Excluir esta solicitação?\n\nEsta ação removerá o pedido da lista de solicitações.',()=>{
-    globalThis.solicitacoes = globalThis.solicitacoes.filter(s=>s.id!==id);
-    if(fbReady()){
-      solicitacoesRepository.remove(id).catch(e=>console.warn('deleteSolicitacao error:',e.message));
-    }
-    fbAutoSave('solicitacaoExcluida');
-    rSolicitacoes();
-    toast('Solicitação excluída.','var(--amber)');
-  },'Excluir',true);
-}
-function _solArqUnit(sol){
-  return getUnidadesMapeaveis().find(u=>u.arq_id===sol.processo_arq_id) || null;
-}
-function _solPrioProcesso(prioridade){
-  if(prioridade==='critica') return 'Critica';
-  if(prioridade==='alta') return 'Alta';
-  return 'Normal';
-}
 function _solDonoEmail(nome){
   return USUARIOS.find(u=>u.nome===nome)?.email || '';
-}
-function _solEnsureProcesso(sol, produto, etapaInicial){
-  const existente = processos.find(p=>p.arq_id===sol.processo_arq_id);
-  if(existente) return existente;
-  const unidade = _solArqUnit(sol);
-  if(!unidade){ toast('Processo da arquitetura não encontrado.','var(--red)'); return null; }
-  const donoNome = unidade.gerente || sol.solicitante_nome || '';
-  const donoEmail = _solDonoEmail(donoNome) || sol.solicitante_email || '';
-  const respEp = usuarioLogado?.nome || 'EP';
-  const item = findArqItemById(sol.processo_arq_id);
-  if(item) item.proc_id = nextProcId;
-  const p = {
-    id: nextProcId++,
-    arq_id: sol.processo_arq_id,
-    nome: unidade.nome,
-    macro: unidade.macro,
-    area: unidade.area || '',
-    dono: donoNome,
-    dono_email: donoEmail,
-    interessados: [sol.solicitante_email].filter(Boolean),
-    pat: '',
-    resp_ep: respEp,
-    prio: _solPrioProcesso(sol.prioridade),
-    produto,
-    objetivo: sol.resultado || sol.justificativa || '',
-    ent: {dt_inicio:new Date().toISOString().slice(0,10),dt_prev:sol.prazo_desejado||'',dt_efetiva:'',equipe:respEp+(donoNome?', '+donoNome:''),t_total:'',t_sem_fila:'',
-      prob:[],mat:0,quest_resp:{},vol:{exec:'',tempo:'',custo:'',sazon:''},riscos:[],
-      analise:{gargalos:[],retrabalhos:[],gaps:[],oportunidades:[],complexidade:'',t_ciclo_medio:'',t_espera_medio:'',qtd_decisoes:0,qtd_atividades:0}},
-    mod:{asIs:'',toBe:'',bpmnAsIs:null,bpmnToBe:null,obs:'',etapas_proc:[],etapas_proc_tobe:[]},
-    form:{pop_ok:false,pop:null,apresent:'',bpmnXml:null},
-    etapa: etapaInicial,
-    atribuicoes:{},
-    hist:[{step:etapaInicial,role:'EP',acao:'Criado a partir da solicitação #'+sol.id,data:now()}],
-    origem_solicitacao_id: sol.id
-  };
-  processos.push(p);
-  if(donoNome || donoEmail) syncDonoProcessoUsuario({nome:donoNome,email:donoEmail,arqId:p.arq_id});
-  return p;
-}
-function _solMarcarConvertida(sol, processo, tipo){
-  sol.status = 'convertida';
-  sol.convertida_em = new Date().toISOString();
-  sol.convertida_por = usuarioLogado?.email || '';
-  sol.convertida_tipo = tipo;
-  sol.processo_id = processo.id;
-}
-function converterSolicitacaoMapeamento(id){
-  if(!isEP()){ toast('Ação restrita ao '+ORG_CONFIG.supportTeamLabel+'.','var(--amber)'); return; }
-  const sol = solicitacoes.find(s=>s.id===id);
-  if(!sol || sol.status!=='aprovada'){ toast('A solicitação precisa estar aprovada.','var(--amber)'); return; }
-  const produto = sol.servico==='redesenho' ? 'Redesenho' : 'Mapeamento';
-  const p = _solEnsureProcesso(sol,produto,'abertura');
-  if(!p) return;
-  p.produto = p.produto || produto;
-  push(p,p.etapa,'EP','Solicitação aprovada convertida em '+produto.toLowerCase());
-  _solMarcarConvertida(sol,p,produto);
-  fbAutoSave('solicitacaoConvertidaMapeamento');
-  rSolicitacoes();updCounts();
-  toast('Solicitação convertida em '+produto.toLowerCase()+'.','var(--teal)');
-  setTimeout(()=>abrirProc(p.id),200);
-}
-function converterSolicitacaoAnalise(id){
-  if(!isEP()){ toast('Ação restrita ao '+ORG_CONFIG.supportTeamLabel+'.','var(--amber)'); return; }
-  const sol = solicitacoes.find(s=>s.id===id);
-  if(!sol || sol.status!=='aprovada'){ toast('A solicitação precisa estar aprovada.','var(--amber)'); return; }
-  const p = _solEnsureProcesso(sol,'Análise de Aderência','auditoria');
-  if(!p) return;
-  p.auditoria = null;
-  p.etapa = 'auditoria';
-  push(p,'auditoria','EP','Solicitação aprovada convertida em análise de aderência');
-  _solMarcarConvertida(sol,p,'Análise de Aderência');
-  fbAutoSave('solicitacaoConvertidaAnalise');
-  rSolicitacoes();updCounts();
-  toast('Solicitação convertida em análise de aderência.','var(--teal)');
-  setTimeout(()=>abrirProc(p.id),200);
 }
 let _meusProc_macroFiltro = '';
 function _setMeusProc_macroFiltro(v){ _meusProc_macroFiltro=v; rMeusProc(); }
@@ -18256,7 +17808,6 @@ async function fbSaveAll(){
     const _savedBy = usuarioLogado?.email || '';
     processos.forEach(p => ops.push({ref: processosRepository.ref(p.id), data: _fsClean({...p, _lastSavedBy: _savedBy})}));
     kpis.forEach(k => ops.push({ref: kpisRepository.ref(k.id), data: _fsClean({...k, _lastSavedBy: _savedBy})}));
-    solicitacoes.filter(_solIsValida).forEach(s => ops.push({ref: solicitacoesRepository.ref(s.id), data: _fsClean(s)}));
     // Coleções restritas ao EP — ignoradas se o usuário não tiver permissão
     if(isEP()){
       publicacoes.forEach(p => ops.push({ref: publicacoesRepository.ref(p.id), data: _fsClean(p)}));
@@ -18315,7 +17866,6 @@ async function fbLoad(){
     await _fbLoadProcessos();
     await _fbLoadKpis();
     await _fbLoadPlano();
-    await _fbLoadSolicitacoes();
     await _fbLoadPublicacoes();
     await _fbLoadArquitetura();
     await _fbLoadRelatoriosPat();
@@ -18435,21 +17985,6 @@ async function _fbLoadPlano(){
   plano = [];
   planoSnap.docs.forEach(d => plano.push(d.data));
   _planoIdC = Math.max(...plano.map(a=>a.id), 0) + 1;
-}
-async function _fbLoadSolicitacoes(){
-  const solSnap = await solicitacoesRepository.list();
-  if(solSnap.empty) return;
-  globalThis.solicitacoes = [];
-  const limpezas = [];
-  solSnap.docs.forEach(d => {
-    const data = d.data;
-    if(_solIsValida(data)){
-      solicitacoes.push(data);
-      return;
-    }
-    limpezas.push(solicitacoesRepository.remove(d.id).catch(error_=>console.warn('solicitacao invalida mantida:', d.id, error_.message)));
-  });
-  await Promise.all(limpezas);
 }
 async function _fbLoadPublicacoes(){
   const pubSnap = await publicacoesRepository.list();

@@ -65,7 +65,6 @@ Cada módulo de navegação, qual função o renderiza e quais coleções lê/es
 graph LR
   subgraph NAV["Navegação (go('página', btn))"]
     PROC["Processos\ngo('processos')"]
-    SOL["Solicitações\ngo('solicitacoes')"]
     FAQ["FAQ\ngo('faq')"]
     PLANO["PAT\ngo('plano')"]
     AUD["Análise de Aderência\ngo('auditoria')"]
@@ -74,7 +73,6 @@ graph LR
 
   subgraph FIRE["Coleções Firestore"]
     C1[("processos")]
-    C2[("solicitacoes")]
     C4[("plano\nplano_metas")]
     C5[("publicacoes")]
     C6[("kpis")]
@@ -87,7 +85,6 @@ graph LR
   PROC -->|"rDetalhe()\nrenderProcs()"| C1
   PROC --> C6
   PROC --> C9
-  SOL -->|"rSolicitacoes()"| C2
   PLANO -->|"rPlano()"| C4
   AUD -->|"rAuditoria()"| C1
   PUB --> C5
@@ -109,7 +106,6 @@ graph TD
   subgraph Repos["src/shared/firestore-repositories.js"]
     RP["processosRepository"]
     RK["kpisRepository"]
-    RS["solicitacoesRepository"]
     RPL["planoRepository / planoMetasRepository"]
     RPB["publicacoesRepository"]
     RRI["relatoriosIndicadoresRepository"]
@@ -123,7 +119,6 @@ graph TD
   subgraph FS["Cloud Firestore"]
     processos[("processos")]
     kpis[("kpis")]
-    solicitacoes[("solicitacoes")]
     plano[("plano")]
     plano_metas[("plano_metas")]
     publicacoes[("publicacoes")]
@@ -137,7 +132,6 @@ graph TD
 
   UI --> RP --> processos
   UI --> RK --> kpis
-  UI --> RS --> solicitacoes
   UI --> RPL --> plano & plano_metas
   UI --> RPB --> publicacoes
   UI --> RRI --> relatorios_ind

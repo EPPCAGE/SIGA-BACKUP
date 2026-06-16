@@ -159,7 +159,7 @@ await planoRepository.set('id', dados);
 const snap = await getDocs(collection(db, 'processos'));
 ```
 
-Os repositórios disponíveis são: `processosRepository`, `solicitacoesRepository`, `kpisRepository`, `publicacoesRepository`, `planoRepository`, `relatoriosIndicadoresRepository`, `projetosRepository`, `programasRepository`, `configRepository`.
+Os repositórios disponíveis são: `processosRepository`, `kpisRepository`, `publicacoesRepository`, `planoRepository`, `relatoriosIndicadoresRepository`, `projetosRepository`, `programasRepository`, `configRepository`.
 
 ### 3.5 Coleções Firestore
 

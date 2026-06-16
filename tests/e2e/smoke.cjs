@@ -13,7 +13,6 @@ const { chromium } = require('playwright');
     fbReady: globalThis._fbReady,
     hasGo: typeof go,
     hasAplicar: typeof _aplicarUsuario,
-    hasSolic: typeof enviarSolicitacaoServico,
     bodyText: document.body.innerText.slice(0, 500)
   }));
   console.log(JSON.stringify({ state, logs: logs.slice(-60) }, null, 2));
