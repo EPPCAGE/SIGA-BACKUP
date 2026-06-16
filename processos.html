@@ -356,18 +356,6 @@ select.fi{cursor:pointer}
 .notif-item{padding:6px 0;border-bottom:1px solid var(--bdr);font-size:12px;display:flex;gap:8px;align-items:flex-start}
 .notif-item:last-child{border-bottom:none}
 .notif-dot{width:8px;height:8px;border-radius:50%;background:var(--blue);flex-shrink:0;margin-top:4px}
-/* pipeline visual */
-.pipeline-phases{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:1.4rem}
-.pip-phase{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
-.pip-phase-hd{padding:.5rem .7rem;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
-.pip-e{background:var(--teal-l);color:var(--teal)}.pip-m{background:var(--purple-l);color:var(--purple)}
-.pip-f{background:var(--amber-l);color:var(--amber)}.pip-o{background:var(--blue-l);color:var(--blue)}.pip-a{background:var(--red-l);color:var(--red)}
-.pip-steps{padding:.4rem .6rem}
-.pip-step{font-size:11px;padding:3px 6px;border-radius:5px;margin-bottom:2px;cursor:pointer;color:var(--ink3);transition:all .1s;display:flex;align-items:center;gap:5px}
-.pip-step:hover{background:var(--bg2);color:var(--ink)}.pip-step.has{font-weight:600;color:var(--ink)}
-.pip-step.pip-e.has{background:var(--teal-l);color:var(--teal)}.pip-step.pip-m.has{background:var(--purple-l);color:var(--purple)}
-.pip-step.pip-f.has{background:var(--amber-l);color:var(--amber)}.pip-step.pip-o.has{background:var(--blue-l);color:var(--blue)}.pip-step.pip-a.has{background:var(--red-l);color:var(--red)}
-.pip-dot{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.5;flex-shrink:0}
 /* arq */
 .arq-macro{border:1px solid var(--bdr);border-radius:var(--rl);margin-bottom:.8rem;overflow:hidden;box-shadow:var(--sh)}
 .arq-macro-hd{display:flex;align-items:center;gap:10px;padding:.8rem 1rem;background:var(--ink);color:#fff;cursor:pointer;user-select:none}
@@ -455,7 +443,6 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
   .g2,.g3,.g4{grid-template-columns:1fr}
   .page .tab-p [style*="grid-template-columns"],
   .page .card [style*="grid-template-columns"],
-  #dash-analytics [style*="grid-template-columns"],
   #ind-c [style*="grid-template-columns"],
   #plano-dash [style*="grid-template-columns"],
   #plano-stats [style*="grid-template-columns"],
@@ -523,7 +510,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
   .prc-m{font-size:12px;gap:6px}
   .prc-r{flex-direction:row;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:8px}
   .badge{font-size:11px;padding:5px 10px;border-radius:999px}
-  .bpmn-wrap,.arq-macro,.pip-phase,.aud-report,.faq-proc-body{border-radius:16px}
+  .bpmn-wrap,.arq-macro,.aud-report,.faq-proc-body{border-radius:16px}
   .bpmn-canvas{height:320px}
   .det-valid-layout{flex-direction:column}
   .det-valid-bpmn{width:100%;position:static}
@@ -624,10 +611,6 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
   .etapa-proc-hd{align-items:flex-start}
   .etapa-nome{font-size:14px;line-height:1.4}
   .likert{gap:8px}
-  .pipeline-phases{grid-template-columns:1fr;gap:12px}
-  .pip-phase-hd{padding:.8rem 1rem;font-size:10px}
-  .pip-steps{padding:.7rem .8rem}
-  .pip-step{padding:9px 10px;font-size:12px;border-radius:8px}
   .pop-tbl{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;font-size:13px;min-width:0}
   .pop-tbl thead,.pop-tbl tbody{display:table;min-width:720px;width:100%}
   .pop-tbl th,.pop-tbl td{padding:10px 12px;white-space:nowrap}
@@ -1256,10 +1239,6 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
     <svg viewBox="0 0 16 16" fill="none"><path d="M2 3h12M2 7h8M2 11h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="13" cy="11" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M13 10v1.5l1 1" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>
     Minhas tarefas <span class="nav-cnt hot" id="nb-fila-cnt">0</span>
   </button>
-  <button type="button" class="nav-btn" onclick="go('dashboard',this)" id="nb-dash">
-    <svg viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1.5" fill="currentColor"/><rect x="9" y="1" width="6" height="6" rx="1.5" fill="currentColor" opacity=".5"/><rect x="1" y="9" width="6" height="6" rx="1.5" fill="currentColor" opacity=".5"/><rect x="9" y="9" width="6" height="6" rx="1.5" fill="currentColor" opacity=".5"/></svg>
-    Painel geral <span class="nav-cnt" id="nb-pend">0</span>
-  </button>
   <button type="button" class="nav-btn" onclick="go('painelgestor',this)" id="nb-painel-gestor" style="display:none">
     <svg viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="9" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="1" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="9" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.4"/></svg>
     Painel do Gestor
@@ -1350,7 +1329,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
 <!-- PAGES -->
 <div id="page-fila" class="page on"><div style="padding:2rem">
   <div class="ph"><div><div class="ph-t">Minhas tarefas</div><div class="ph-s" id="fila-sub">Carregando...</div></div>
-  <button type="button" class="btn btn-p ep-only" onclick="go('dashboard',document.getElementById('nb-dash'))">Ver painel</button></div>
+  </div>
   <div id="fila-content"></div>
 
 </div></div>
@@ -1365,21 +1344,6 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
   <div id="meus-proc-summary" style="margin-bottom:1rem"></div>
   <div class="g3" id="meus-proc-list"></div>
   <div id="meus-proc-empty" class="ib ibb" style="display:none">Nenhum macroprocesso foi vinculado ao seu usuário. Peça ao EPP para ajustar seu cadastro.</div>
-</div></div>
-
-<div id="page-dashboard" class="page"><div style="padding:2rem">
-  <div class="ph"><div><div class="ph-t">Painel geral</div><div class="ph-s" id="dash-dt"></div></div>
-  <div id="btn-novo-proc-dash"></div></div>
-  <div id="dash-alertas-ep"></div>
-  <div class="card" style="margin-bottom:1rem"><div class="card-t">Pipeline por fase</div><div class="pipeline-phases" id="dash-pipe"></div></div>
-  <div class="g2" style="gap:12px;margin-bottom:1rem">
-    <div><div class="card-t" style="margin-bottom:.6rem">Aguardando ação</div><div id="dash-pend"></div></div>
-    <div><div class="card-t" style="margin-bottom:.6rem;color:var(--red)">⚠ Prazo vencido</div><div id="dash-vencidos"></div></div>
-  </div>
-  <div id="dash-analytics"></div>
-  <div id="dash-prazos"></div>
-  <div id="dash-mapchart"></div>
-  <div id="dash-sem-indicadores"></div>
 </div></div>
 
 <div id="page-processos" class="page"><div style="padding:2rem">
@@ -2990,7 +2954,7 @@ function go(page,btn){
   _getPageRenderer(page)();
   // Mobile: close drawer, update title
   if(globalThis.innerWidth<=720){mobClose();}
-  const ttl={fila:'Minhas tarefas',meusprocessos:'Meus Processos',dashboard:'Painel geral',processos:'Processos',arq:'Arquitetura',solicitacoes:'Solicitações',faq:'Base de FAQs',indicadores:'Indicadores',plano:'PAT',notificacoes:'Notificações',auditoria:'Análise de Aderência',publicacoes:'Publicações',admin:'Usuários',detalhe:'Processo',painelgestor:'Painel do Gestor',workflow:'Workflow'};
+  const ttl={fila:'Minhas tarefas',meusprocessos:'Meus Processos',processos:'Processos',arq:'Arquitetura',solicitacoes:'Solicitações',faq:'Base de FAQs',indicadores:'Indicadores',plano:'PAT',notificacoes:'Notificações',auditoria:'Análise de Aderência',publicacoes:'Publicações',admin:'Usuários',detalhe:'Processo',painelgestor:'Painel do Gestor',workflow:'Workflow'};
   const el=document.getElementById('mob-page-title');if(el)el.textContent=ttl[page]||'SIGA 2.0';
 }
 function _invokeGlobalHandler(handlerName){
@@ -3002,7 +2966,6 @@ function _getPageRenderer(page){
   const renderer = ({
     fila:rFila,
     meusprocessos:rMeusProc,
-    dashboard:rDash,
     processos:renderProcs,
     arq:rArq,
     solicitacoes:rSolicitacoes,
@@ -3099,7 +3062,6 @@ function pbBadge(p){return '<span class="badge '+({Baixa:'bg',Media:'ba',Alta:'b
 function ibBadge(v){return '<span class="badge '+({Baixo:'bg',Medio:'ba',Alto:'br',Critico:'br'}[v]||'bgr')+'"'+(v==='Critico'?' style="background:var(--red);color:#fff"':'')+'>'+v+'</span>';}
 function updCounts(){
   document.getElementById('nb-total').textContent=processos.filter(isProcessoEmAndamento).length;
-  document.getElementById('nb-pend').textContent=getPendenciasDashboard().length;
   const _filaCnt=getTarefasUsr().length+(isEP()?0:processos.filter(p=>['vencida','pendente'].includes(_revStatus(p))&&['acompanha','auditoria'].includes(p.etapa)&&(p.dono===usuarioLogado?.nome||p.dono_email===usuarioLogado?.email||usuarioTemAcessoArqId(usuarioLogado,p.arq_id))).length);
   document.getElementById('nb-fila-cnt').textContent=_filaCnt;
   const meusProcCnt=document.getElementById('nb-meusproc-cnt');
@@ -3632,10 +3594,13 @@ function rPainelGestor(){
     </table></div>
   </div>`:'';
 
-  el.innerHTML=statsHtml+pieHtml+macroHtml+andHtml+relIndHtml+matHtml+desatualHtml+relHtml;
+  const mapChartHtml=buildMapChartHTML();
+
+  el.innerHTML=statsHtml+pieHtml+macroHtml+mapChartHtml+andHtml+relIndHtml+matHtml+desatualHtml+relHtml;
 
   setTimeout(()=>{
     if(typeof Chart==='undefined') return;
+    initMapChart();
 
     const pieCanvas=document.getElementById('pg-pie-chart');
     if(pieCanvas) new Chart(pieCanvas,{
@@ -4914,10 +4879,6 @@ function _aplicarPermissoesNavBtns(){
   if(btnNovo) btnNovo.innerHTML = isEP()
     ? '<button type="button" class="btn btn-p" onclick="abrirNovoProc()">+ Novo processo</button>'
     : '';
-  const btnNovoDash = document.getElementById('btn-novo-proc-dash');
-  if(btnNovoDash) btnNovoDash.innerHTML = isEP()
-    ? '<button type="button" class="btn btn-p" onclick="abrirNovoProc()">+ Novo processo</button>'
-    : '';
   const btnArq = document.getElementById('btn-arq-actions');
   if(btnArq) btnArq.innerHTML = isEP()
     ? `<div style="display:flex;gap:8px">
@@ -4947,8 +4908,6 @@ function aplicarPermissoes(){
   if(nbMeusProc) nbMeusProc.style.display = (usuarioLogado?.perfil==='dono'||usuarioLogado?.perfil==='gestor') ? '' : 'none';
   const nbProc = document.getElementById('nb-proc');
   if(nbProc) nbProc.style.display = (usuarioLogado?.perfil==='dono'||usuarioLogado?.perfil==='gestor') ? 'none' : '';
-  const nbDash = document.getElementById('nb-dash');
-  if(nbDash) nbDash.style.display = (usuarioLogado?.perfil==='dono'||usuarioLogado?.perfil==='gestor') ? 'none' : '';
   const nbPainelGestor = document.getElementById('nb-painel-gestor');
   if(nbPainelGestor) nbPainelGestor.style.display = usuarioLogado?.perfil==='gestor' ? '' : 'none';
   const nbNotif = document.getElementById('nb-notif');
@@ -4986,206 +4945,6 @@ function buildArqStatsHTML(f){
     (eco===0?'': `<div class="stat cg" title="Soma da economia de horas/mês da última reavaliação de cada processo"><div class="stat-n">${ecoSign}${eco.toFixed(1)}h</div><div class="stat-l">Economia/mês estimada${filtLabel}</div></div>`);
 }
 
-function rDash(){
-  aplicarPermissoes();
-  syncArquiteturaProcessos();
-  document.getElementById('dash-dt').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  const alertasEl=document.getElementById('dash-alertas-ep');
-  if(alertasEl) alertasEl.innerHTML=isEP()?buildPainelAlertasEPHTML():'';
-  // Pipeline
-  const processosAtivos=processos.filter(isProcessoAtivo);
-  const cnt={};ETAPAS.forEach(e=>{cnt[e.id]=processosAtivos.filter(p=>p.etapa===e.id).length;});
-  document.getElementById('dash-pipe').innerHTML=buildPipelineHTML(cnt);
-  const pend=getPendenciasDashboard();
-  document.getElementById('dash-pend').innerHTML=buildPendentesHTML(pend);
-  // Q035: destacar processos vencidos
-  const vencidos=processos.filter(p=>isVencido(p));
-  document.getElementById('dash-vencidos').innerHTML=buildVencidosHTML(vencidos);
-  // Q036: analytics gerenciais
-  document.getElementById('dash-analytics').innerHTML=buildAnalyticsHTML();
-  document.getElementById('dash-prazos').innerHTML=buildPrazosCardHTML();
-  document.getElementById('dash-mapchart').innerHTML=buildMapChartHTML();
-  document.getElementById('dash-sem-indicadores').innerHTML=buildSemIndicadoresHTML();
-  setTimeout(()=>{initPrazosChart();initMapChart();},0);
-}
-function filtEtapaGo(etId){filtFaseAtual='';document.querySelectorAll('#fase-chips .chip').forEach((c,i)=>c.classList.toggle('on',i===0));go('processos',document.getElementById('nb-proc'));}
-
-function buildPipelineHTML(cnt){
-  const faseMap={Entendimento:'pip-e',Modelagem:'pip-m',Formalizacao:'pip-f',Operacao:'pip-o',Auditoria:'pip-a'};
-  const faseTitle={Entendimento:'Entendimento',Modelagem:'Modelagem',Formalizacao:'Formalização',Operacao:'Operação',Auditoria:'Análise de Aderência'};
-  return FASES.map(f=>`
-    <div class="pip-phase"><div class="pip-phase-hd ${faseMap[f]}">${faseTitle[f]}</div>
-    <div class="pip-steps">${ETAPAS.filter(e=>e.fase===f).map(e=>`
-      <div class="pip-step ${faseMap[f]} ${cnt[e.id]>0?'has':''}" onclick="filtEtapaGo('${e.id}')">
-        <div class="pip-dot"></div>${e.lb}${cnt[e.id]>0?' <strong style="margin-left:auto">'+cnt[e.id]+'</strong>':''}
-      </div>`).join('')}
-    </div></div>`).join('');
-}
-function getPendenciasDashboard(){
-  const pendencias=[];
-  const aprovacoesLegadas=new Set(['det_valid_asis','det_valid_tobe','apresentacao']);
-  processos.forEach(p=>{
-    if(p.status_ciclo==='suspenso'||p.status_ciclo==='cancelado') return;
-    const atribuicoes=p.atribuicoes||{};
-    Object.entries(atribuicoes).forEach(([etapaId,atrib])=>{
-      if(!atrib||etapaId!==p.etapa) return;
-      pendencias.push({proc:p,etapaId,atrib,tipo:'atribuicao'});
-    });
-    if(aprovacoesLegadas.has(p.etapa)&&!atribuicoes[p.etapa]){
-      pendencias.push({proc:p,etapaId:p.etapa,atrib:{para_nome:p.dono||p.resp_ep||'Responsável não informado',prazo:p.ent?.dt_prev||''},tipo:'legado'});
-    }
-  });
-  return pendencias.sort((a,b)=>{
-    const prazoA=a.atrib?.prazo||'9999-12-31';
-    const prazoB=b.atrib?.prazo||'9999-12-31';
-    return prazoA.localeCompare(prazoB)||String(a.proc?.nome||'').localeCompare(String(b.proc?.nome||''));
-  });
-}
-function isProcessoAtivo(p){
-  return p.status_ciclo!=='suspenso'&&p.status_ciclo!=='cancelado';
-}
-function buildPendentesHTML(pend){
-  if(!pend.length) return '<div class="ib ibg">Nenhuma ação pendente.</div>';
-  const hoje=new Date().toISOString().slice(0,10);
-  return pend.map(item=>{
-    const p=item.proc;
-    const atrib=item.atrib||{};
-    const prazo=atrib.prazo||'';
-    const prazoFmt=prazo?prazo.split('-').reverse().join('/'):'sem prazo';
-    const vencida=prazo&&prazo<hoje;
-    const resp=atrib.para_nome||atrib.para_email||atrib.para||p.dono||'Responsável não informado';
-    const tipo=item.tipo==='legado'?'Aprovação pendente':'Ação atribuída';
-    return `<div class="prc" onclick="abrirProc(${p.id})" style="margin-bottom:7px${vencida?';border-left:3px solid var(--red)':''}"><div><div class="prc-t">${esc(p.nome)}</div><div class="prc-m">${esc(resp)} · ${tipo} · prazo: ${esc(prazoFmt)}</div></div><div>${eBadge(item.etapaId)}${vencida?' <span class="badge br">Vencida</span>':''}</div></div>`;
-  }).join('');
-}
-// Q035
-function buildVencidosHTML(venc){
-  if(!venc.length) return '<div class="ib ibg">Nenhum processo com prazo vencido.</div>';
-  return venc.map(p=>`<div class="prc" onclick="abrirProc(${p.id})" style="margin-bottom:7px;border-left:3px solid var(--red)"><div><div class="prc-t">${esc(p.nome)}</div><div class="prc-m">${esc(p.resp_ep)} · Prev: ${(p.ent?.dt_prev||'').split('-').reverse().join('/')}</div></div><div>${eBadge(p.etapa)}</div></div>`).join('');
-}
-// Q036: analytics gerenciais
-function buildAnalyticsHTML(){
-  const processosAtivos=processos.filter(isProcessoAtivo);
-  if(!processosAtivos.length) return '';
-  // Tempo médio por etapa (dias entre dt_etapas registradas)
-  const tempoEtapa={};
-  const contEtapa={};
-  processosAtivos.forEach(p=>{
-    const dts=p.dt_etapas||{};
-    ETAPAS.forEach((et,i)=>{
-      if(i===0||!dts[et.id]) return;
-      const prev=ETAPAS[i-1];
-      if(!dts[prev.id]) return;
-      const dias=Math.round((new Date(dts[et.id].split('/').reverse().join('-'))-new Date(dts[prev.id].split('/').reverse().join('-')))/(1000*60*60*24));
-      if(dias>=0&&dias<365){
-        tempoEtapa[prev.id]=(tempoEtapa[prev.id]||0)+dias;
-        contEtapa[prev.id]=(contEtapa[prev.id]||0)+1;
-      }
-    });
-  });
-  // Taxa de devolução por etapa
-  const devEtapa={};
-  processosAtivos.forEach(p=>{
-    (p.hist||[]).forEach(h=>{
-      if(h.acao&&h.acao.includes('Retornado para ajustes')){
-        devEtapa[h.step]=(devEtapa[h.step]||0)+1;
-      }
-    });
-  });
-  // Concluídos no mês
-  const hoje=new Date();
-  const mesAtual=hoje.toISOString().slice(0,7);
-  const conclMes=processosAtivos.filter(p=>{
-    const ef=p.ent?.dt_efetiva||'';
-    return ef && ef.slice(0,7)===mesAtual;
-  }).length;
-  // Desvio médio de prazo
-  const desvios=processosAtivos.map(p=>_desviosPrazo(p)).filter(d=>d!==null);
-  const desvMedio=desvios.length?Math.round(desvios.reduce((a,b)=>a+b,0)/desvios.length):null;
-  // Top etapas com mais devoluções
-  const topDev=Object.entries(devEtapa).sort((a,b)=>b[1]-a[1]).slice(0,3);
-  const topTempo=Object.entries(tempoEtapa).map(([id,t])=>([id,Math.round(t/(contEtapa[id]||1))])).sort((a,b)=>b[1]-a[1]).slice(0,3);
-  const topDevRows=topDev.map(([id,n])=>'<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0"><span style="flex:1;color:var(--ink)">'+etLb(id)+'</span><span style="font-weight:600;color:var(--red)">'+n+'×</span></div>').join('');
-  const topTempoRows=topTempo.map(([id,d])=>'<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0"><span style="flex:1;color:var(--ink)">'+etLb(id)+'</span><span style="font-weight:600;color:var(--blue)">'+d+' dias</span></div>').join('');
-  let desvCor,desvVal;
-  if(desvMedio==null){ desvCor='var(--ink3)'; desvVal='—'; }
-  else if(desvMedio>0){ desvCor='var(--red)'; desvVal='+'+desvMedio+'d'; }
-  else { desvCor='var(--teal)'; desvVal=desvMedio+'d'; }
-  return `<div class="card" style="margin-bottom:1rem">
-    <div class="card-t">Análise gerencial</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:1rem">
-      <div style="background:var(--bg2);border-radius:var(--r);padding:.8rem;text-align:center">
-        <div style="font-size:22px;font-weight:700;color:var(--teal)">${conclMes}</div>
-        <div style="font-size:11px;color:var(--ink3)">Concluídos este mês</div>
-      </div>
-      <div style="background:var(--bg2);border-radius:var(--r);padding:.8rem;text-align:center">
-        <div style="font-size:22px;font-weight:700;color:${desvCor}">${desvVal}</div>
-        <div style="font-size:11px;color:var(--ink3)">Desvio médio de prazo</div>
-      </div>
-      <div style="background:var(--bg2);border-radius:var(--r);padding:.8rem;text-align:center">
-        <div style="font-size:22px;font-weight:700;color:var(--amber)">${Object.values(devEtapa).reduce((a,b)=>a+b,0)}</div>
-        <div style="font-size:11px;color:var(--ink3)">Devoluções totais</div>
-      </div>
-      <div style="background:var(--bg2);border-radius:var(--r);padding:.8rem;text-align:center">
-        <div style="font-size:22px;font-weight:700;color:var(--blue)">${processosAtivos.filter(p=>isVencido(p)).length}</div>
-        <div style="font-size:11px;color:var(--ink3)">Processos vencidos</div>
-      </div>
-    </div>
-    ${topDev.length?`<div style="margin-bottom:.8rem"><div class="sec-lbl" style="margin-bottom:.4rem">Etapas com mais devoluções</div>
-      ${topDevRows}</div>`:''}
-    ${topTempo.length?`<div><div class="sec-lbl" style="margin-bottom:.4rem">Etapas com maior tempo médio</div>
-      ${topTempoRows}</div>`:''}
-  </div>`;
-}
-function buildPrazosCardHTML(){
-  const concluidos=processos.filter(p=>p.ent?.dt_inicio&&p.ent?.dt_efetiva);
-  if(!concluidos.length) return '';
-  const duracoes=concluidos.map(p=>{
-    const d=Math.round((new Date(p.ent.dt_efetiva)-new Date(p.ent.dt_inicio))/(1000*60*60*24));
-    return d>=0?d:null;
-  }).filter(d=>d!==null);
-  const tMedio=duracoes.length?Math.round(duracoes.reduce((a,b)=>a+b,0)/duracoes.length):null;
-  const comPrazo=concluidos.filter(p=>p.ent?.dt_prev);
-  const noPrazo=comPrazo.filter(p=>p.ent.dt_efetiva<=p.ent.dt_prev).length;
-  const pctNo=comPrazo.length?Math.round(noPrazo/comPrazo.length*100):null;
-  const pctFora=pctNo===null?null:100-pctNo;
-  if(tMedio===null&&pctNo===null) return '';
-  const statBase='background:var(--bg2);border-radius:var(--r);padding:.8rem;text-align:center';
-  return `<div class="card" style="margin-bottom:1rem">
-    <div class="card-t">Prazos e duração dos mapeamentos</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:${comPrazo.length?'1rem':'0'}">
-      ${tMedio===null?'':`<div style="${statBase}"><div style="font-size:22px;font-weight:700;color:var(--blue)">${tMedio}d</div><div style="font-size:11px;color:var(--ink3)">Tempo médio (início → entrega)</div></div>`}
-      ${pctNo===null?'':`<div style="${statBase}"><div style="font-size:22px;font-weight:700;color:var(--teal)">${pctNo}%</div><div style="font-size:11px;color:var(--ink3)">Entregues no prazo</div></div>`}
-      ${pctFora===null?'':`<div style="${statBase}"><div style="font-size:22px;font-weight:700;color:var(--red)">${pctFora}%</div><div style="font-size:11px;color:var(--ink3)">Entregues fora do prazo</div></div>`}
-      <div style="${statBase}"><div style="font-size:22px;font-weight:700;color:var(--ink2)">${concluidos.length}</div><div style="font-size:11px;color:var(--ink3)">Mapeamentos concluídos</div></div>
-    </div>
-    ${comPrazo.length?`<div style="display:flex;justify-content:center"><div style="position:relative;height:180px;width:240px"><canvas id="dash-prazos-canvas"></canvas></div></div>`:''}
-  </div>`;
-}
-function initPrazosChart(){
-  if(typeof Chart==='undefined') return;
-  const canvas=document.getElementById('dash-prazos-canvas');
-  if(!canvas) return;
-  const comPrazo=processos.filter(p=>p.ent?.dt_prev&&p.ent?.dt_efetiva);
-  if(!comPrazo.length) return;
-  const noPrazo=comPrazo.filter(p=>p.ent.dt_efetiva<=p.ent.dt_prev).length;
-  const foraPrazo=comPrazo.length-noPrazo;
-  new Chart(canvas,{
-    type:'doughnut',
-    data:{
-      labels:['No prazo','Fora do prazo'],
-      datasets:[{data:[noPrazo,foraPrazo],backgroundColor:['#0d9488','#ef4444'],borderWidth:0}]
-    },
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{
-        legend:{position:'bottom',labels:{font:{size:12},padding:16}},
-        tooltip:{callbacks:{label:ctx=>' '+ctx.label+': '+ctx.raw+' ('+Math.round(ctx.raw/comPrazo.length*100)+'%)'}}
-      },
-      cutout:'60%'
-    }
-  });
-}
 function buildMapChartHTML(){
   const MESES_PT=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const hoje=new Date();
@@ -5203,8 +4962,8 @@ function buildMapChartHTML(){
   });
   const temDados=meses.some(m=>contagem[m.key]);
   if(!temDados) return '';
-  return `<div class="card" style="margin-bottom:1rem">
-    <div class="card-t">Mapeamentos concluídos por mês</div>
+  return `<div style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:1rem;margin-bottom:1.5rem">
+    <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:.75rem">Mapeamentos concluídos por mês</div>
     <div style="position:relative;height:220px"><canvas id="dash-mapchart-canvas"></canvas></div>
   </div>`;
 }
@@ -5248,18 +5007,6 @@ function initMapChart(){
       }
     }
   });
-}
-function buildSemIndicadoresHTML(){
-  const _etFinal=new Set(['publicacao','acompanha','auditoria']);
-  const mapeados=getUnidadesMapeaveis().filter(u=>(u.proc&&_etFinal.has(u.proc.etapa))||isMapeado(u.arq_id));
-  const semInd=mapeados.filter(u=>!kpis.some(k=>(u.proc&&k.pid===u.proc.id)||k.arq_id===u.arq_id));
-  if(!semInd.length) return '';
-  return `<div style="background:var(--surf);border:1px solid var(--bdr);border-left:3px solid var(--amber);border-radius:var(--r);padding:1rem;margin-top:1rem">
-    <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:.5rem">⚠ Processos sem indicadores vinculados (${semInd.length})</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px">
-      ${semInd.map(u=>`<span style="font-size:11px;background:var(--bg2);border:1px solid var(--bdr);border-radius:99px;padding:2px 10px">${esc(u.nome)}</span>`).join('')}
-    </div>
-  </div>`;
 }
 // ═══════════════════════════════════════════
 // Q024: UPLOAD DE EVIDÊNCIAS (reutilizável)
@@ -14378,69 +14125,6 @@ function _procIntelSnapshot(proc){
   if(atividadesAbertas.length) recomendacoes.push('Atualizar as ações abertas do PAT relacionadas a este processo.');
   if(_revSt==='vencida') recomendacoes.push('Contatar o dono "'+esc(proc.dono||'—')+'" para realizar a revisão periódica vencida.');
   return {riscos, indicadores, pubs, atividadesPlano, atividadesAbertas, analise, vencido, sinais, recomendacoes};
-}
-
-function buildPainelAlertasEPHTML(){
-  const vinculados = processos.filter(p=>p.arq_id&&isProcessoAtivo(p));
-  const itens = vinculados.map(proc=>({proc, intel:_procIntelSnapshot(proc)}))
-    .filter(x=>x.intel.sinais.length || x.intel.recomendacoes.length);
-
-  if(!itens.length){
-    return `<div class="ib ibg" style="margin-bottom:1rem;font-size:12px">Atenção requerida: nenhum alerta nos processos vinculados à arquitetura.</div>`;
-  }
-
-  const totalVencidos = itens.filter(x=>x.intel.vencido).length;
-  const semRisco = itens.filter(x=>!x.intel.riscos.length).length;
-  const patAberto = itens.filter(x=>x.intel.atividadesAbertas.length).length;
-  const resumo = [
-    totalVencidos ? totalVencidos+' vencido(s)' : null,
-    semRisco ? semRisco+' sem riscos' : null,
-    patAberto ? patAberto+' com PAT aberto' : null
-  ].filter(Boolean);
-
-  const rank = itens.sort((a,b)=>{
-    const peso = x => (x.intel.vencido?30:0) + (x.intel.atividadesAbertas.length?15:0) + x.intel.sinais.length*5 + x.intel.recomendacoes.length;
-    return peso(b) - peso(a);
-  }).slice(0,10);
-  const totalAlertas = itens.length;
-  const exibidosAlertas = rank.length;
-  let badgeAlertas;
-  if(totalAlertas > exibidosAlertas){
-    badgeAlertas = exibidosAlertas+' de '+totalAlertas+' processos com alerta';
-  } else {
-    const plural = totalAlertas===1 ? '' : 's';
-    badgeAlertas = totalAlertas+' processo'+plural+' com alerta';
-  }
-  const contextoAlertas = totalAlertas > exibidosAlertas ? ' · exibindo principais alertas' : '';
-
-  return `<div style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rl);padding:1rem 1.1rem;margin:-.4rem 0 1rem;box-shadow:var(--sh)">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:.75rem">
-      <div>
-        <div style="font-family:var(--fh);font-size:14px;font-weight:700;color:var(--ink)">Atenção requerida</div>
-        <div style="font-size:11.5px;color:var(--ink3);margin-top:2px">${resumo.length?resumo.join(' · '):'Alertas contextuais dos processos vinculados à arquitetura'}${contextoAlertas}</div>
-      </div>
-      <span class="badge ba" style="font-size:10px">${badgeAlertas}</span>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px">
-      ${rank.map(({proc,intel})=>{
-        const unidade = getUnidadesMapeaveis().find(u=>u.arq_id===proc.arq_id);
-        const rec = intel.recomendacoes[0] || 'Revisar pendências do processo.';
-        return `<div style="border:1px solid var(--bdr);border-radius:var(--r);padding:.65rem .75rem;background:var(--surf2)">
-          <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:.35rem">
-            <div style="flex:1;min-width:0">
-              <div style="font-size:12.5px;font-weight:700;color:var(--ink);line-height:1.35">${esc(proc.nome)}</div>
-              <div style="font-size:10.5px;color:var(--ink3);line-height:1.35">${esc(unidade?.macro||proc.macro||'')} ${unidade?.parentNome?'› '+esc(unidade.parentNome):''}</div>
-            </div>
-            <button type="button" class="btn btn-p" style="font-size:10px;padding:2px 8px;min-height:24px" onclick="abrirProc(${proc.id})">Abrir</button>
-          </div>
-          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:.35rem">
-            ${intel.sinais.slice(0,3).map(s=>`<span class="badge ${s.cls}" style="font-size:9.5px">${esc(s.txt)}</span>`).join('')}
-          </div>
-          <div style="font-size:11px;color:var(--ink2);line-height:1.45">${esc(rec)}</div>
-        </div>`;
-      }).join('')}
-    </div>
-  </div>`;
 }
 
 function _procCentralInteligenciaHTML(proc){

@@ -88,7 +88,7 @@ graph LR
   PROC --> C6
   PROC --> C9
   SOL -->|"rSolicitacoes()"| C2
-  PLANO -->|"rDash()"| C4
+  PLANO -->|"rPlano()"| C4
   AUD -->|"rAuditoria()"| C1
   PUB --> C5
   PROC --> C10
