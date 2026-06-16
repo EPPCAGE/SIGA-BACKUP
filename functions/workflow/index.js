@@ -97,7 +97,7 @@ function perfisPermitidos(perfil, ...perfisValidos) {
  * POST /wf/processos-modelo
  * Integração: lista processos da coleção `arquitetura` disponíveis para vinculação
  */
-exports.wfProcessosModelo = onRequest({ region: 'us-central1', cors: ['https://eppcage.com.br', 'http://localhost:5000', 'http://localhost:3000'] }, async (req, res) => {
+exports.wfProcessosModelo = onRequest({ region: 'us-central1', cors: ['https://eppcage.com.br', 'https://sigaepp.web.app', 'https://sigaepp.firebaseapp.com', 'http://localhost:5000', 'http://localhost:3000'] }, async (req, res) => {
   await handler(req, res, async (req, res, user) => {
     const perfil = user.perfil || 'dono';
 
@@ -127,7 +127,7 @@ exports.wfProcessosModelo = onRequest({ region: 'us-central1', cors: ['https://e
  * GET /wf/arquitetura-processos
  * Lista processos da coleção `arquitetura` existentes para vinculação ao modelo
  */
-exports.wfArquiteturaProcessos = onRequest({ region: 'us-central1', cors: ['https://eppcage.com.br', 'http://localhost:5000', 'http://localhost:3000'] }, async (req, res) => {
+exports.wfArquiteturaProcessos = onRequest({ region: 'us-central1', cors: ['https://eppcage.com.br', 'https://sigaepp.web.app', 'https://sigaepp.firebaseapp.com', 'http://localhost:5000', 'http://localhost:3000'] }, async (req, res) => {
   await handler(req, res, async (req, res, user) => {
     if (req.method !== 'GET') { res.status(405).end(); return; }
     const snap = await col.arquitetura.orderBy('nome').limit(200).get();
@@ -146,7 +146,7 @@ exports.wfArquiteturaProcessos = onRequest({ region: 'us-central1', cors: ['http
  * POST /wf/processos-modelo/:id/publicar
  * DELETE /wf/processos-modelo/:id
  */
-exports.wfProcessoModeloItem = onRequest({ region: 'us-central1', cors: ['https://eppcage.com.br', 'http://localhost:5000', 'http://localhost:3000'] }, async (req, res) => {
+exports.wfProcessoModeloItem = onRequest({ region: 'us-central1', cors: ['https://eppcage.com.br', 'https://sigaepp.web.app', 'https://sigaepp.firebaseapp.com', 'http://localhost:5000', 'http://localhost:3000'] }, async (req, res) => {
   await handler(req, res, async (req, res, user) => {
     const perfil = user.perfil || 'dono';
     const segments = req.path.split('/').filter(Boolean);
@@ -210,7 +210,7 @@ exports.wfProcessoModeloItem = onRequest({ region: 'us-central1', cors: ['https:
  * GET /wf/processos-modelo/:id/etapas
  * POST /wf/processos-modelo/:id/etapas
  */
-exports.wfEtapas = onRequest({ region: 'us-central1', cors: ['https://eppcage.com.br', 'http://localhost:5000', 'http://localhost:3000'] }, async (req, res) => {
+exports.wfEtapas = onRequest({ region: 'us-central1', cors: ['https://eppcage.com.br', 'https://sigaepp.web.app', 'https://sigaepp.firebaseapp.com', 'http://localhost:5000', 'http://localhost:3000'] }, async (req, res) => {
   await handler(req, res, async (req, res, user) => {
     const perfil = user.perfil || 'dono';
     const modeloId = req.path.split('/').find(Boolean);
@@ -237,7 +237,7 @@ exports.wfEtapas = onRequest({ region: 'us-central1', cors: ['https://eppcage.co
  * GET /wf/processos-modelo/:modeloId/transicoes
  * POST /wf/processos-modelo/:modeloId/transicoes
  */
-exports.wfTransicoes = onRequest({ region: 'us-central1', cors: ['https://eppcage.com.br', 'http://localhost:5000', 'http://localhost:3000'] }, async (req, res) => {
+exports.wfTransicoes = onRequest({ region: 'us-central1', cors: ['https://eppcage.com.br', 'https://sigaepp.web.app', 'https://sigaepp.firebaseapp.com', 'http://localhost:5000', 'http://localhost:3000'] }, async (req, res) => {
   await handler(req, res, async (req, res, user) => {
     const perfil = user.perfil || 'dono';
     const modeloId = req.path.split('/').find(Boolean);
@@ -264,7 +264,7 @@ exports.wfTransicoes = onRequest({ region: 'us-central1', cors: ['https://eppcag
  * GET /wf/formularios-modelo
  * POST /wf/formularios-modelo
  */
-exports.wfFormularios = onRequest({ region: 'us-central1', cors: ['https://eppcage.com.br', 'http://localhost:5000', 'http://localhost:3000'] }, async (req, res) => {
+exports.wfFormularios = onRequest({ region: 'us-central1', cors: ['https://eppcage.com.br', 'https://sigaepp.web.app', 'https://sigaepp.firebaseapp.com', 'http://localhost:5000', 'http://localhost:3000'] }, async (req, res) => {
   await handler(req, res, async (req, res, user) => {
     const perfil = user.perfil || 'dono';
 
@@ -290,7 +290,7 @@ exports.wfFormularios = onRequest({ region: 'us-central1', cors: ['https://eppca
  * GET  /wf/instancias
  * POST /wf/instancias
  */
-exports.wfInstancias = onRequest({ region: 'us-central1', cors: ['https://eppcage.com.br', 'http://localhost:5000', 'http://localhost:3000'] }, async (req, res) => {
+exports.wfInstancias = onRequest({ region: 'us-central1', cors: ['https://eppcage.com.br', 'https://sigaepp.web.app', 'https://sigaepp.firebaseapp.com', 'http://localhost:5000', 'http://localhost:3000'] }, async (req, res) => {
   await handler(req, res, async (req, res, user) => {
     await handleWfInstanciasRoute({ req, res, user, instanciasCol: col.instancias, engine });
   });
@@ -301,7 +301,7 @@ exports.wfInstancias = onRequest({ region: 'us-central1', cors: ['https://eppcag
  * POST /wf/instancias/:id/cancelar
  * GET  /wf/instancias/:id/historico
  */
-exports.wfInstanciaItem = onRequest({ region: 'us-central1', cors: ['https://eppcage.com.br', 'http://localhost:5000', 'http://localhost:3000'] }, async (req, res) => {
+exports.wfInstanciaItem = onRequest({ region: 'us-central1', cors: ['https://eppcage.com.br', 'https://sigaepp.web.app', 'https://sigaepp.firebaseapp.com', 'http://localhost:5000', 'http://localhost:3000'] }, async (req, res) => {
   await handler(req, res, async (req, res, user) => {
     await handleWfInstanciaItemRoute({
       req,
@@ -321,7 +321,7 @@ exports.wfInstanciaItem = onRequest({ region: 'us-central1', cors: ['https://epp
  * POST /wf/tarefas/:id/iniciar
  * POST /wf/tarefas/:id/concluir
  */
-exports.wfTarefas = onRequest({ region: 'us-central1', cors: ['https://eppcage.com.br', 'http://localhost:5000', 'http://localhost:3000'] }, async (req, res) => {
+exports.wfTarefas = onRequest({ region: 'us-central1', cors: ['https://eppcage.com.br', 'https://sigaepp.web.app', 'https://sigaepp.firebaseapp.com', 'http://localhost:5000', 'http://localhost:3000'] }, async (req, res) => {
   await handler(req, res, async (req, res, user) => {
     await handleWfTarefasRoute({
       req,
@@ -343,7 +343,7 @@ exports.wfTarefas = onRequest({ region: 'us-central1', cors: ['https://eppcage.c
  * POST /wf/notificacoes/:id/marcar-lida
  * POST /wf/notificacoes/marcar-todas-lidas
  */
-exports.wfNotificacoes = onRequest({ region: 'us-central1', cors: ['https://eppcage.com.br', 'http://localhost:5000', 'http://localhost:3000'] }, async (req, res) => {
+exports.wfNotificacoes = onRequest({ region: 'us-central1', cors: ['https://eppcage.com.br', 'https://sigaepp.web.app', 'https://sigaepp.firebaseapp.com', 'http://localhost:5000', 'http://localhost:3000'] }, async (req, res) => {
   await handler(req, res, async (req, res, user) => {
     await handleWfNotificacoesRoute({ req, res, user, notificacoesCol: col.notificacoes, db });
   });
@@ -396,7 +396,7 @@ exports.wfSlaJob = onScheduleV2({
  * POST /wfAdminJobs/agendados — ativa instâncias agendadas manualmente (EP only).
  * Útil no emulador e como fallback caso o scheduler não tenha rodado.
  */
-exports.wfAdminJobs = onRequest({ region: 'us-central1', cors: ['https://eppcage.com.br', 'http://localhost:5000', 'http://localhost:3000'] }, async (req, res) => {
+exports.wfAdminJobs = onRequest({ region: 'us-central1', cors: ['https://eppcage.com.br', 'https://sigaepp.web.app', 'https://sigaepp.firebaseapp.com', 'http://localhost:5000', 'http://localhost:3000'] }, async (req, res) => {
   await handler(req, res, async (req, res, user) => {
     perfisPermitidos(user.perfil, 'ep');
     const path = (req.path || '').replace(/^\//, '');
