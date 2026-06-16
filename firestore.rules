@@ -71,13 +71,6 @@ service cloud.firestore {
       allow write: if isAuth() && request.auth.uid == uid;
     }
 
-    // Ideias de melhoria: qualquer autenticado lê e cria; EP e gestor atualizam (status, comentário).
-    match /ideias/{id} {
-      allow read: if isAuth();
-      allow create: if isAuth();
-      allow update: if isAuth() && (isEP() || request.auth.token.get('perfil','') == 'gestor');
-    }
-
     // Fluxos (imagens dos diagramas vinculadas à arquitetura): qualquer autenticado lê; EP escreve.
     match /fluxos/{id} { allow read: if isAuth(); allow write: if isEP(); }
 

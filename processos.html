@@ -4318,7 +4318,6 @@ function rMeusProc(){
       <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px">
         ${hasFaq?`<button type="button" class="btn" style="font-size:10px;padding:2px 9px" title="Ver perguntas frequentes" onclick="event.stopPropagation();abrirFaqProc('${u.arq_id}')">❓ FAQ</button>`:''}
         ${(()=>{const _inds=kpis.filter(k=>(proc&&k.pid===proc.id)||(k.arq_id===u.arq_id));const _nGrp=Object.keys(kpiGroupByKey(_inds)).length;return _nGrp?`<button type="button" class="btn" style="font-size:10px;padding:2px 9px" title="Ver indicadores vinculados" onclick="event.stopPropagation();abrirIndicadoresProc('${u.arq_id}')">📊 ${_nGrp} ind.</button>`:''})()}
-        <button type="button" class="btn" style="font-size:10px;padding:2px 9px" onclick="event.stopPropagation();abrirIdeiasProc('${u.arq_id}')">💡 Ideias</button>
       </div>
       </div>
     </div>`;
@@ -4406,10 +4405,6 @@ function abrirInfoMeusProc(arqId){
   document.body.appendChild(modal);
   modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
 }
-// ── BANCO DE IDEIAS ──────────────────────────────────────────────────────────
-const _IDEIA_STATUS_LABELS = {nova:'Nova',em_analise:'Em análise',implementada:'Implementada',descartada:'Descartada'};
-const _IDEIA_STATUS_COLORS = {nova:'var(--blue)',em_analise:'var(--amber)',implementada:'var(--teal)',descartada:'var(--ink3)'};
-
 function abrirFaqProc(arqId){
   const u=getMinhasUnidades().find(x=>x.arq_id===arqId);
   const proc=u?.proc;
@@ -4459,124 +4454,6 @@ function abrirIndicadoresProc(arqId){
   </div>`;
   document.body.appendChild(modal);
   setTimeout(()=>{ Object.entries(grupos).forEach(([key,items])=>createKpiChart(key,items)); }, 50);
-}
-async function abrirIdeiasProc(arqId){
-  document.getElementById('ideias-proc-modal')?.remove();
-  const item = findArqItemById(arqId);
-  const nomeProc = item ? item.nome : arqId;
-  const modal = document.createElement('div');
-  modal.id = 'ideias-proc-modal';
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;padding:1rem';
-  modal.innerHTML = `<div style="background:var(--surf);border-radius:var(--rl);padding:1.5rem;width:100%;max-width:640px;max-height:90vh;overflow-y:auto;box-shadow:var(--sh2)">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:.5rem">
-      <div>
-        <div style="font-family:var(--fh);font-size:16px;font-weight:600;color:var(--ink)">💡 Ideias de melhoria</div>
-        <div style="font-size:11px;color:var(--ink3);margin-top:2px">${esc(nomeProc)}</div>
-      </div>
-      <button type="button" class="btn" onclick="document.getElementById('ideias-proc-modal').remove()">✕</button>
-    </div>
-    <div id="ideias-proc-lista" style="margin:1rem 0;min-height:60px"><div style="color:var(--ink3);font-size:13px">Carregando...</div></div>
-    <div style="border-top:1px solid var(--bdr);padding-top:1rem">
-      <div style="font-size:12px;font-weight:600;color:var(--ink);margin-bottom:6px">Registrar nova ideia</div>
-      <textarea id="ideia-texto" class="fi" style="width:100%;min-height:80px;resize:vertical" placeholder="Descreva sua ideia de melhoria para este processo..."></textarea>
-      <div class="btn-row" style="margin-top:8px">
-        <button type="button" class="btn btn-p" id="btn-salvar-ideia" onclick="salvarIdeia('${arqId}')">Enviar ideia</button>
-      </div>
-    </div>
-  </div>`;
-  document.body.appendChild(modal);
-  modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
-  await _carregarIdeiasProc(arqId);
-}
-
-async function _carregarIdeiasProc(arqId){
-  const el = document.getElementById('ideias-proc-lista');
-  if(!el) return;
-  try {
-    const result = await ideiasRepository.listByArqId(arqId);
-    if(result.empty){
-      el.innerHTML = '<div style="font-size:13px;color:var(--ink3);text-align:center;padding:1.5rem">Nenhuma ideia registrada ainda. Seja o primeiro!</div>';
-      return;
-    }
-    const canManage = isEP() || usuarioLogado?.perfil === 'gestor';
-    el.innerHTML = result.docs.map(d=>{
-      const v = d.data;
-      const data = v.criadoEm ? new Date(v.criadoEm).toLocaleDateString('pt-BR') : '';
-      const sOpts = Object.entries(_IDEIA_STATUS_LABELS).map(([sv,sl])=>`<option value="${sv}" ${v.status===sv?'selected':''}>${sl}</option>`).join('');
-      return `<div style="border:1px solid var(--bdr);border-radius:var(--r);padding:.75rem;margin-bottom:.5rem">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;flex-wrap:wrap">
-          <div style="font-size:11px;font-weight:600;color:var(--ink3)">${esc(v.autorNome)} · ${data}</div>
-          ${canManage
-            ? `<select class="fi" style="width:auto;font-size:11px;padding:2px 8px" onchange="atualizarStatusIdeia('${d.id}',this.value)">${sOpts}</select>`
-            : `<span style="font-size:10px;font-weight:600;padding:1px 8px;border-radius:99px;background:var(--bg3);color:${_IDEIA_STATUS_COLORS[v.status]||'var(--ink3)'}">${_IDEIA_STATUS_LABELS[v.status]||v.status}</span>`}
-        </div>
-        <div style="font-size:13px;color:var(--ink);white-space:pre-wrap;margin-bottom:${canManage?'6px':'0'}">${esc(v.texto)}</div>
-        ${canManage?`<div style="display:flex;gap:6px;align-items:center;margin-top:4px">
-          <input type="text" class="fi" style="flex:1;font-size:11px;padding:3px 8px" placeholder="Comentário (opcional)" value="${esc(v.comentarioEP||'')}" id="ep-coment-${d.id}">
-          <button type="button" class="btn" style="font-size:11px;padding:3px 8px;flex-shrink:0" onclick="salvarComentarioEP('${d.id}')">Salvar</button>
-        </div>`:''}
-        ${!canManage&&v.comentarioEP?`<div style="font-size:11.5px;color:var(--ink3);margin-top:6px;padding-top:6px;border-top:1px solid var(--bdr)"><strong>Resposta EP:</strong> ${esc(v.comentarioEP)}</div>`:''}
-      </div>`;
-    }).join('');
-  } catch(e){
-    console.warn('_carregarIdeiasProc:', e.message);
-    if(el) el.innerHTML = '<div style="color:var(--red);font-size:13px">Erro ao carregar ideias.</div>';
-  }
-}
-
-async function salvarIdeia(arqId){
-  const textoEl = document.getElementById('ideia-texto');
-  const texto = textoEl?.value.trim();
-  if(!texto){ toast('Descreva a ideia antes de enviar.','var(--amber)'); return; }
-  const item = findArqItemById(arqId);
-  const nomeProc = item ? item.nome : arqId;
-  const btn = document.getElementById('btn-salvar-ideia');
-  if(btn){ btn.disabled=true; btn.textContent='⏳ Salvando...'; }
-  try {
-    await ideiasRepository.add({
-      arqId, procNome: nomeProc, texto,
-      autorUid: fb().auth.currentUser?.uid || null,
-      autorNome: usuarioLogado.nome || usuarioLogado.email,
-      criadoEm: new Date().toISOString(),
-      status: 'nova'
-    });
-    if(textoEl) textoEl.value = '';
-    toast('Ideia registrada!','var(--teal)');
-    await _carregarIdeiasProc(arqId);
-    const autorNome = usuarioLogado.nome || usuarioLogado.email;
-    (USUARIOS||[]).filter(u=>u.perfil===PERFIL.EP&&u.email).forEach(ep=>{
-      enviarNotif(ep.email, ep.nome||ep.email,
-        `Nova ideia de melhoria para o processo "${nomeProc}" registrada por ${autorNome}.`,
-        nomeProc, '', autorNome);
-    });
-  } catch(e){
-    toast('Erro ao salvar ideia: '+(e.message||e),'var(--red)');
-  } finally {
-    if(btn){ btn.disabled=false; btn.textContent='Enviar ideia'; }
-  }
-}
-
-
-async function atualizarStatusIdeia(ideiaId, status){
-  try {
-    await ideiasRepository.update(ideiaId,{status});
-    toast('Status atualizado.','var(--teal)');
-  } catch(e){
-    console.warn('atualizarStatusIdeia:', e.message);
-    toast('Erro ao atualizar status.','var(--red)');
-  }
-}
-
-async function salvarComentarioEP(ideiaId){
-  const input = document.getElementById('ep-coment-'+ideiaId);
-  const comentarioEP = input?.value.trim()||'';
-  try {
-    await ideiasRepository.update(ideiaId,{comentarioEP});
-    toast('Comentário salvo.','var(--teal)');
-  } catch(e){
-    console.warn('salvarComentarioEP:', e.message);
-    toast('Erro ao salvar comentário.','var(--red)');
-  }
 }
 // ── IA: SUGESTÃO DE ACHADOS E DESCRIÇÃO ─────────────────────────────────────
 async function iaSugerirAchados(){
@@ -14353,7 +14230,6 @@ function _subArqItemHTML(mid, pid, s){
     </div>
     <div id="arq-ssub-${s.id}" style="display:none;padding:.6rem 1.2rem .8rem 2.2rem;background:var(--surf);border-top:1px dashed var(--bdr)">
       ${metaFieldsReadonly(s)}
-      ${(isEP()||usuarioLogado?.perfil==='gestor')?`<div style="display:flex;justify-content:flex-end;margin-top:.5rem"><button type="button" class="btn" style="font-size:10px;padding:2px 9px" onclick="abrirIdeiasProc('${s.id}')">💡 Ideias</button></div>`:''}
     </div>
   </div>`;
 }
@@ -14400,7 +14276,6 @@ function procArqHTML(mid,p){
     </div>
     <div id="arq-sub-${p.id}" style="display:none;background:var(--surf2);border:1px solid var(--bdr);border-top:none;border-radius:0 0 var(--r) var(--r)">
       ${bodyHTML}
-      ${(isEP()||usuarioLogado?.perfil==='gestor')?`<div style="display:flex;justify-content:flex-end;padding:.5rem .8rem .6rem"><button type="button" class="btn" style="font-size:10px;padding:2px 9px" onclick="abrirIdeiasProc('${p.id}')">💡 Ideias</button></div>`:''}
     </div>
   </div>`;
 }
