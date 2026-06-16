@@ -673,9 +673,6 @@
     // Limpa seleção de gestor de uma tarefa anterior
     const gestorSel = document.getElementById('wf-exec-gestor');
     if (gestorSel) gestorSel.value = '';
-    // Limpa o texto de "o que precisa ser ajustado" digitado em outra tarefa
-    const motivoTxt = document.getElementById('wf-exec-motivo-devolucao-txt');
-    if (motivoTxt) motivoTxt.value = '';
     // Motivo de devolução (tarefa foi devolvida por etapa posterior)
     let motivoEl = document.getElementById('wf-exec-motivo-devolvido');
     if (!motivoEl) {
@@ -1197,17 +1194,6 @@
       return `<button type="button" class="${cls}"${style} title="${_esc(_WF_ACAO_DESC[a]||'')}" onclick="wfConcluirTarefa('${a}')">${_esc(globalScope.WF_ACAO_LABELS?.[a] || a)}</button>`;
     }).join('') + `<button type="button" class="btn" onclick="wfNavWorkflow('tarefas')">Cancelar</button>`;
 
-    // mostra/oculta campo de motivo da devolução
-    let motivoEl = document.getElementById('wf-exec-motivo-devolucao');
-    if (!motivoEl) {
-      motivoEl = document.createElement('div');
-      motivoEl.id = 'wf-exec-motivo-devolucao';
-      motivoEl.style.cssText = 'display:none;margin-top:10px';
-      motivoEl.innerHTML = `<label class="lbl">O que precisa ser ajustado? <span style="color:var(--red)">*</span></label><textarea id="wf-exec-motivo-devolucao-txt" class="fi" rows="3" placeholder="Descreva o que o solicitante deve corrigir ou complementar…" style="margin-top:4px;width:100%"></textarea>`;
-      acoesEl.parentElement.insertBefore(motivoEl, acoesEl);
-    }
-    motivoEl.style.display = acoes.includes('devolver') ? '' : 'none';
-
     // Campo obrigatório de gestor, se avançar levar a etapa do "gestor do solicitante"
     const pedeGestor = acoes.includes('avancar')
       && _wfProximaEtapaPedeGestor(instancia, tarefa, dadosParciais);
@@ -1249,16 +1235,44 @@
     return dadosForm;
   }
 
+  // Pop-up exibido somente ao clicar em "Devolver" — pede o motivo do ajuste.
+  // Retorna a string informada, ou null se o usuário cancelar.
+  function _wfPedirMotivoDevolucao() {
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10000;display:flex;align-items:center;justify-content:center';
+      overlay.innerHTML = `
+        <div style="background:#fff;border-radius:12px;padding:28px 24px;width:380px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+          <div style="font-weight:700;font-size:16px;margin-bottom:4px">Devolver tarefa</div>
+          <label class="lbl">O que precisa ser ajustado? <span style="color:var(--red)">*</span></label>
+          <textarea id="_wf-devol-txt" class="fi" rows="3" placeholder="Descreva o que o solicitante deve corrigir ou complementar…" style="margin-top:4px;margin-bottom:18px;width:100%"></textarea>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button type="button" class="btn" id="_wf-devol-cancel">Cancelar</button>
+            <button type="button" class="btn btn-p" id="_wf-devol-ok">Devolver</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      const txt = overlay.querySelector('#_wf-devol-txt');
+      txt.focus();
+      overlay.querySelector('#_wf-devol-cancel').onclick = () => { overlay.remove(); resolve(null); };
+      overlay.querySelector('#_wf-devol-ok').onclick = () => {
+        const val = txt.value.trim();
+        if (!val) { alert('Informe o que precisa ser ajustado.'); return; }
+        overlay.remove();
+        resolve(val);
+      };
+    });
+  }
+
   async function wfConcluirTarefa(acaoOriginal) {
     if (!_st.tarefaAtual) return;
     const tarefa = _st.tarefaAtual;
     const acao = _WF_ACAO_NORMALIZAR[acaoOriginal] || acaoOriginal || tarefa.acoes_disponiveis?.[0] || 'avancar';
     const obs = (document.getElementById('wf-exec-obs')?.value || '').trim();
-    const motivoDevolucao = acao === 'devolver' ? (document.getElementById('wf-exec-motivo-devolucao-txt')?.value || '').trim() : '';
-    if (acao === 'devolver' && !motivoDevolucao) {
-      alert('Informe o que precisa ser ajustado antes de devolver.');
-      document.getElementById('wf-exec-motivo-devolucao-txt')?.focus();
-      return;
+    let motivoDevolucao = '';
+    if (acao === 'devolver') {
+      motivoDevolucao = await _wfPedirMotivoDevolucao();
+      if (motivoDevolucao === null) return; // usuário cancelou o pop-up
     }
     if (!_wfValidarConclusaoTarefa(tarefa, acao, obs)) return;
 
