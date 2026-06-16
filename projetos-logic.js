@@ -4316,11 +4316,15 @@ function projConclusaoImagemSrc(img){
 }
 
 function projConclusaoImagemDisplaySrc(imgOrUrl){
-  const raw = typeof imgOrUrl === 'string' ? imgOrUrl.trim() : projConclusaoImagemSrc(imgOrUrl);
+  return typeof imgOrUrl === 'string' ? imgOrUrl.trim() : projConclusaoImagemSrc(imgOrUrl);
+}
+
+function projConclusaoImagemSharePointDownloadSrc(src){
+  const raw = String(src || '').trim();
   if(!raw) return '';
   try {
     const url = new URL(raw);
-    if(!/\.sharepoint\.com$/i.test(url.hostname)) return raw;
+    if(!/\.sharepoint\.com$/i.test(url.hostname)) return '';
 
     const sharedPath = /^\/:[a-z]:\/r(\/.+)$/i.exec(url.pathname);
     const serverRelativePath = sharedPath ? sharedPath[1] : url.pathname;
@@ -4329,7 +4333,7 @@ function projConclusaoImagemDisplaySrc(imgOrUrl){
     return downloadUrl.href;
   } catch(e) {
     if(!(e instanceof TypeError)) throw e;
-    return raw;
+    return '';
   }
 }
 
@@ -4412,21 +4416,41 @@ function projImagemMemorialFallbackNode(href, alt){
 
 function projHandleMemorialImageError(event){
   const img = event.target;
-  if(!(img instanceof HTMLImageElement) || !img.dataset.projImageHref) return;
-  if(!img.dataset.projProxyTried) {
-    const proxySrc = projImagemMemorialProxySrc(img.currentSrc || img.src);
-    if(proxySrc) {
-      img.dataset.projProxyTried = '1';
-      img.src = proxySrc;
-      return;
-    }
+  if(!(img instanceof HTMLImageElement)) return;
+  if(!img.closest('.proj-v9-attach-grid, .proj-v12-single-image, .proj-v12-carousel')) return;
+  const originalSrc = img.dataset.projImageHref || img.currentSrc || img.src;
+  const fallbackSources = [
+    originalSrc && !img.dataset.projDownloadTried ? projConclusaoImagemSharePointDownloadSrc(originalSrc) : '',
+    originalSrc && !img.dataset.projProxyTried ? projImagemMemorialProxySrc(originalSrc) : ''
+  ].filter(Boolean);
+  const nextSrc = fallbackSources.find(src => src !== img.src && src !== img.currentSrc);
+  if(nextSrc) {
+    if(nextSrc.includes('/_layouts/15/download.aspx')) img.dataset.projDownloadTried = '1';
+    else img.dataset.projProxyTried = '1';
+    img.src = nextSrc;
+    return;
   }
   if(img.dataset.projFallbackDone) return;
   img.dataset.projFallbackDone = '1';
-  img.replaceWith(projImagemMemorialFallbackNode(img.dataset.projImageHref, img.dataset.projImageAlt || img.alt));
+  const href = img.dataset.projImageHref || (img.closest('a')?.href) || img.src;
+  img.replaceWith(projImagemMemorialFallbackNode(href, img.dataset.projImageAlt || img.alt));
+}
+
+function projRetryBrokenMemorialImages(root = document){
+  root.querySelectorAll('.proj-v9-attach-grid img, .proj-v12-single-image img, .proj-v12-carousel img').forEach(img => {
+    if(img.complete && img.naturalWidth === 0) {
+      projHandleMemorialImageError({ target: img });
+    }
+  });
+}
+
+function projScheduleMemorialImageCheck(root){
+  window.setTimeout(() => projRetryBrokenMemorialImages(root || document), 250);
+  window.setTimeout(() => projRetryBrokenMemorialImages(root || document), 1200);
 }
 
 document.addEventListener('error', projHandleMemorialImageError, true);
+document.addEventListener('DOMContentLoaded', () => projScheduleMemorialImageCheck(document));
 function projAvancarFase(id) {
   projLoad();
   const proj = PROJETOS.find(p => String(p.id) === String(id));
