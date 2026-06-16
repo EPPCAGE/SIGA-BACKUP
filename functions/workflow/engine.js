@@ -1583,6 +1583,7 @@ function makeEngine(db) {
     previewAtivarInstancia,
     previewConcluirTarefa,
     testarEmail,
+    diagnosticarTarefa,
   };
 
   // Diagnóstico: envia um e-mail de teste via EmailJS e devolve o resultado
@@ -1602,6 +1603,30 @@ function makeEngine(db) {
       template: cfg?.template_workflow || cfg?.template || null,
       pubkeyConfigurada: !!cfg?.pubkey,
       ...resultado,
+    };
+  }
+
+  // Diagnóstico: compara responsavel_uid/papel_alvo de uma tarefa com o
+  // cadastro em config/usuarios, para investigar por que uma tarefa atribuída
+  // a um e-mail não aparece em "Minhas Tarefas" para o usuário correspondente.
+  async function diagnosticarTarefa(tarefaId) {
+    if (!tarefaId) throw Object.assign(new Error('tarefaId obrigatório'), { code: 'PARAMETRO_INVALIDO', status: 400 });
+    const snap = await col.tarefas.doc(tarefaId).get();
+    if (!snap.exists) throw Object.assign(new Error('Tarefa não encontrada'), { code: 'NAO_ENCONTRADO', status: 404 });
+    const tarefa = { id: snap.id, ...snap.data() };
+    const usuarios = await _carregarUsuariosConfig();
+    const porUid = tarefa.responsavel_uid ? usuarios.find(u => u?.uid === tarefa.responsavel_uid) : null;
+    const porEmailPapel = tarefa.papel_alvo && String(tarefa.papel_alvo).includes('@')
+      ? usuarios.find(u => String(u?.email || '').toLowerCase() === String(tarefa.papel_alvo).toLowerCase())
+      : null;
+    return {
+      tarefa_id: tarefa.id,
+      status: tarefa.status,
+      responsavel_uid: tarefa.responsavel_uid || null,
+      papel_alvo: tarefa.papel_alvo || null,
+      grupo_id: tarefa.grupo_id || null,
+      cadastro_por_uid: porUid ? { uid: porUid.uid, email: porUid.email, nome: porUid.nome || null, perfil: porUid.perfil || null } : null,
+      cadastro_por_email_papel_alvo: porEmailPapel ? { uid: porEmailPapel.uid, email: porEmailPapel.email, nome: porEmailPapel.nome || null, perfil: porEmailPapel.perfil || null } : null,
     };
   }
 

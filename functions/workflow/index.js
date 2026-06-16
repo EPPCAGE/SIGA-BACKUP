@@ -413,6 +413,10 @@ exports.wfAdminJobs = onRequest({ region: 'us-central1', cors: ['https://eppcage
       const email = req.query.email || req.body?.email;
       const resultado = await engine.testarEmail(email);
       res.json({ ok: true, ...resultado });
+    } else if (path === 'diagnosticar-tarefa') {
+      const tarefaId = req.query.tarefaId || req.body?.tarefaId;
+      const resultado = await engine.diagnosticarTarefa(tarefaId);
+      res.json({ ok: true, ...resultado });
     } else if (path.startsWith('ativar/')) {
       const restante = path.slice('ativar/'.length);
       if (restante.endsWith('/preview')) {
