@@ -3623,85 +3623,6 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
           </div>`;
   }
 
-  function _wfAtualizarResumoEquipeAtribuicao(grupos, grupoId, membrosDiv) {
-    if (!membrosDiv) return;
-    const grupo = grupos.find(x => x.id === grupoId);
-    if (!grupo) {
-      membrosDiv.classList.remove('vis');
-      return;
-    }
-    const nomes = (grupo.membros_email || []).map((email) => {
-      const u = (globalScope.USUARIOS || []).find(x => x.email === email);
-      return _esc(u?.nome || email);
-    });
-    if (nomes.length === 0) {
-      membrosDiv.innerHTML = 'Nenhum membro cadastrado nesta equipe.';
-      membrosDiv.classList.add('vis');
-      return;
-    }
-    const sufixo = nomes.length > 1 ? 's' : '';
-    membrosDiv.innerHTML = `<strong>${nomes.length} membro${sufixo}:</strong> ${nomes.join(', ')}`;
-    membrosDiv.classList.add('vis');
-  }
-
-  function _wfOpcoesGruposAtribuicao(grupos) {
-    if (!grupos.length) return '<option value="">— nenhuma equipe cadastrada —</option>';
-    const opcoes = grupos.map(g => `<option value="${_esc(g.id)}">${_esc(g.nome)}</option>`).join('');
-    return `<option value="">— selecione uma equipe —</option>${opcoes}`;
-  }
-
-  // — Coleta perfis que precisam de atribuição explícita ao iniciar —
-  // Retorna array de strings únicas, ex: ['ep', 'gestor']
-  // Abre modal de vinculação de equipe; chama callback({ grupo_id, grupo_nome }) ou null se cancelado
-  async function _wfAbrirModalAtribuicao(nomeModelo, callback) {
-    const el = document.getElementById('wf-modal-atribuicao');
-    if (!el) { callback({}); return; }
-    const titulo = document.getElementById('wf-modal-atrib-titulo');
-    if (titulo) titulo.textContent = `Vincular equipe — ${_esc(nomeModelo)}`;
-
-    const sel = document.getElementById('wf-atrib-sel-equipe');
-    const membrosDiv = document.getElementById('wf-atrib-equipe-membros');
-    if (sel) sel.innerHTML = '<option value="">— carregando… —</option>';
-
-    const { getDocs, collection, query, orderBy } = globalScope.fb();
-    const snap = await getDocs(query(collection(_db(), 'wf_grupos'), orderBy('nome')));
-    const grupos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-    if (sel) {
-      sel.innerHTML = _wfOpcoesGruposAtribuicao(grupos);
-      sel.onchange = () => _wfAtualizarResumoEquipeAtribuicao(grupos, sel.value, membrosDiv);
-    }
-
-    el.style.display = 'flex';
-    el._atribCallback = callback;
-    el._atribGrupos = grupos;
-  }
-
-  function wfConfirmarAtribuicao() {
-    const el = document.getElementById('wf-modal-atribuicao');
-    if (!el) return;
-    const sel = document.getElementById('wf-atrib-sel-equipe');
-    const grupos = el._atribGrupos || [];
-    const grupoId = sel?.value || null;
-    const grupo = grupos.find(g => g.id === grupoId) || null;
-    const payload = {};
-    if (grupoId) {
-      payload.grupo_id = grupoId;
-      payload.grupo_nome = grupo?.nome || grupoId;
-    }
-    el.style.display = 'none';
-    if (typeof el._atribCallback === 'function') {
-      el._atribCallback(payload);
-    }
-  }
-
-  function wfCancelarAtribuicao() {
-    const el = document.getElementById('wf-modal-atribuicao');
-    if (!el) return;
-    el.style.display = 'none';
-    if (typeof el._atribCallback === 'function') el._atribCallback(null);
-  }
-
   function _wfMostrarModalFim(mensagem) {
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10000;display:flex;align-items:center;justify-content:center';
@@ -3778,8 +3699,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     const tipoDisparo = cfgInicio.tipo_disparo || 'manual';
     const agendadoPadrao = cfgInicio.agendado_padrao || '';
 
-    _wfAbrirModalAtribuicao(modelo.nome, async (vinculo) => {
-      if (vinculo === null) return;
+    (async () => {
       try {
         let agendadoPara = null;
         if (tipoDisparo === 'agendado') {
@@ -3792,8 +3712,6 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
           body: {
             processo_modelo_id: modelo.id,
             titulo,
-            grupo_id: vinculo.grupo_id || null,
-            grupo_nome: vinculo.grupo_nome || null,
             agendado_para: agendadoPara || undefined,
           },
         });
@@ -3808,7 +3726,7 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
       } catch (e) {
         alert('Erro ao iniciar: ' + e.message);
       }
-    });
+    })();
   }
 
   // ── Motor de Regras ───────────────────────────────────────────────────────
@@ -5456,8 +5374,6 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     wfCarregarTemplatesPublicados,
     wfIniciarDeProcesso,
     wfIniciarDeModelo,
-    wfConfirmarAtribuicao,
-    wfCancelarAtribuicao,
     // Designer
     wfToggleCanvasMaximize,
     wfImportarMapeamento,

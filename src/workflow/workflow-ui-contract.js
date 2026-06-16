@@ -29,7 +29,6 @@
     'wf-notif-lista',
     'wf-modal-formulario',
     'wf-modal-grupo',
-    'wf-modal-atribuicao',
     'wf-modal-delegacao',
     'wf-modal-inicio-form',
     'wf-modal-simulacao',
