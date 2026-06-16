@@ -4,7 +4,7 @@ async function handleWfInstanciasRoute({ req, res, user, instanciasCol, engine }
   if (req.method === 'GET') {
     const snap = await instanciasCol
       .where('solicitante_uid', '==', user.uid)
-      .orderBy('iniciado_em', 'desc')
+      .orderBy('criado_em', 'desc')
       .limit(50)
       .get();
     res.json(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));

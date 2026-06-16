@@ -1372,8 +1372,8 @@
 
       let instancias = Array.isArray(_st.instanciasLista) ? _st.instanciasLista.slice() : [];
       instancias.sort((a, b) => {
-        const ta = a._criado_em?.seconds ?? (a._criado_em ? a._criado_em.getTime() / 1000 : 0);
-        const tb = b._criado_em?.seconds ?? (b._criado_em ? b._criado_em.getTime() / 1000 : 0);
+        const ta = a.criado_em?.seconds ?? a._criado_em?.seconds ?? 0;
+        const tb = b.criado_em?.seconds ?? b._criado_em?.seconds ?? 0;
         return tb - ta;
       });
 

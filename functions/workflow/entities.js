@@ -308,6 +308,7 @@ function criarInstanciaProcesso({ processo_modelo_id, processo_modelo_versao, ti
     grupo_id: _stringOuNull(grupo_id),
     grupo_nome: _stringOuNull(grupo_nome),
     dados_consolidados: {},
+    criado_em: agora(),
     iniciado_em: agendado_para ? null : agora(),
     concluido_em: null,
     prazo_geral: null,
