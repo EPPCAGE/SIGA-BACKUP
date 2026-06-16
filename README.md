@@ -22,7 +22,7 @@ Usuários com perfil `ep` têm acesso total a ambos os módulos. Usuários podem
 | Seção | Perfis | Descrição |
 |-------|--------|-----------|
 | Fila de tarefas | Todos | Tarefas pendentes do usuário logado na pipeline |
-| Painel geral | Todos | Dashboard com pipeline, pendências e resumo |
+| Painel do Gestor | Gestor | Carteira de processos, maturidade e mapeamentos concluídos por mês |
 | Processos em andamento | Todos | Lista de processos em mapeamento |
 | Arquitetura de processos | Todos | Macroprocesso → Processo → Subprocesso |
 | Indicadores (KPIs) | Todos | KPIs com filtros, importação xlsx e sincronização com Google Sheets |
