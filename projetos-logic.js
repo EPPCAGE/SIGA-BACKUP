@@ -4314,12 +4314,39 @@ function projConclusaoImagemSrc(img){
   if(typeof img === 'string') return img.trim();
   return String(img?.url || img?.data || '').trim();
 }
+
+function projSharePointImagemDireta(url){
+  const raw = String(url || '').trim();
+  if(!raw) return '';
+  try {
+    const u = new URL(raw);
+    if(!/\.sharepoint\.com$/i.test(u.hostname)) return raw;
+
+    const sharedPath = /^\/:[a-z]:\/r(\/.+)$/i.exec(u.pathname);
+    const direct = sharedPath ? new URL(u.origin + sharedPath[1]) : u;
+    if(!direct.searchParams.has('download')) direct.searchParams.set('download', '1');
+    return direct.href;
+  } catch(e) {
+    if(!(e instanceof TypeError)) throw e;
+    return raw;
+  }
+}
+
+function projConclusaoImagemDisplaySrc(img){
+  return projSharePointImagemDireta(projConclusaoImagemSrc(img));
+}
+
+function projConclusaoImagemHref(img){
+  return projConclusaoImagemSrc(img) || projConclusaoImagemDisplaySrc(img);
+}
+
 function projConclusaoImagemNome(url, index){
   try {
     const u = new URL(url);
     const last = decodeURIComponent((u.pathname.split('/').filter(Boolean).pop() || '').trim());
     return last || `Imagem ${index + 1}`;
-  } catch(_e) {
+  } catch(e) {
+    if(!(e instanceof TypeError)) throw e;
     return `Imagem ${index + 1}`;
   }
 }
@@ -4350,6 +4377,19 @@ function projConclusaoUrlsToImagens(text){
     .map((url, index) => ({nome: projConclusaoImagemNome(url, index), url, data: url, externo: true}));
 }
 
+function projConclusaoImagemPreviewItemHtml(url, index){
+  const src = projSharePointImagemDireta(url);
+  const alt = projConclusaoImagemNome(url, index);
+  return `<div><img src="${projEsc(src)}" alt="${projEsc(alt)}" loading="lazy" decoding="async"><button type="button" class="proj-btn danger" style="font-size:10px;padding:2px 6px;margin-top:3px;width:100%" onclick="projRemoveConclusaoImagem(${index})">Remover</button></div>`;
+}
+
+function projMemorialImagemLinkHtml(img, active){
+  const src = projConclusaoImagemDisplaySrc(img);
+  const href = projConclusaoImagemHref(img);
+  const alt = img?.nome || 'Imagem do memorial';
+  const className = active ? 'proj-v12-carousel-slide on' : 'proj-v12-carousel-slide';
+  return `<a href="${projEsc(href)}" target="_blank" rel="noopener" class="${className}"><img src="${projEsc(src)}" alt="${projEsc(alt)}" loading="lazy" decoding="async"></a>`;
+}
 // ── AVANÇAR FASE ──────────────────────────────────────────────────
 function projAvancarFase(id) {
   projLoad();
@@ -5325,7 +5365,7 @@ function projConclusaoImagemEditorHtml(conc) {
   const urls = projConclusaoImagensToUrls(conc);
   const urlsText = urls.join('\n');
   const preview = urls.length
-    ? `<div class="proj-v9-attach-grid">${urls.map((url,i)=>`<div><img src="${projEsc(url)}" alt="${projEsc(projConclusaoImagemNome(url,i))}"><button type="button" class="proj-btn danger" style="font-size:10px;padding:2px 6px;margin-top:3px;width:100%" onclick="projRemoveConclusaoImagem(${i})">Remover</button></div>`).join('')}</div>`
+    ? `<div class="proj-v9-attach-grid">${urls.map(projConclusaoImagemPreviewItemHtml).join('')}</div>`
     : '<div style="font-size:11px;color:var(--ink3);margin-top:4px">Nenhuma URL de imagem informada.</div>';
   return `<div class="proj-form-section" style="background:#fff;margin-top:1rem"><div class="proj-form-section-title">URLs de Imagens do Memorial</div><div class="proj-fg"><label class="proj-fl">URL da imagem <span style="font-size:10px;color:var(--ink3)">(uma por linha)</span></label><textarea class="proj-fi" id="conc-imagens-urls" rows="3" placeholder="https://.../imagem.jpg">${projEsc(urlsText)}</textarea>${preview}</div></div>`;
 }
@@ -5619,10 +5659,11 @@ function projMemorialImagesHtml(conc) {
   if(!imagens.length) return '<div style="font-size:12px;color:var(--ink3)">Nenhuma imagem anexada ao Memorial.</div>';
   if(imagens.length === 1) {
     const img = imagens[0];
-    const src = projConclusaoImagemSrc(img);
-    return `<div class="proj-v12-single-image"><a href="${projEsc(src)}" target="_blank"><img src="${projEsc(src)}" alt="${projEsc(img.nome||'Imagem do memorial')}"></a></div>`;
+    const src = projConclusaoImagemDisplaySrc(img);
+    const href = projConclusaoImagemHref(img);
+    return `<div class="proj-v12-single-image"><a href="${projEsc(href)}" target="_blank" rel="noopener"><img src="${projEsc(src)}" alt="${projEsc(img.nome||'Imagem do memorial')}" loading="lazy" decoding="async"></a></div>`;
   }
-  return `<div class="proj-v12-carousel" id="proj-memorial-carousel" data-index="0"><button type="button" class="proj-v12-carousel-btn prev" onclick="projMemorialCarouselStep(-1)" aria-label="Imagem anterior">‹</button><div class="proj-v12-carousel-stage">${imagens.map((img,i) => { const src = projConclusaoImagemSrc(img); return `<a href="${projEsc(src)}" target="_blank" class="proj-v12-carousel-slide ${i===0?'on':''}"><img src="${projEsc(src)}" alt="${projEsc(img.nome||'Imagem do memorial')}"></a>`; }).join('')}</div><button type="button" class="proj-v12-carousel-btn next" onclick="projMemorialCarouselStep(1)" aria-label="Próxima imagem">›</button><div class="proj-v12-carousel-counter">1 / ${imagens.length}</div></div>`;
+  return `<div class="proj-v12-carousel" id="proj-memorial-carousel" data-index="0"><button type="button" class="proj-v12-carousel-btn prev" onclick="projMemorialCarouselStep(-1)" aria-label="Imagem anterior">‹</button><div class="proj-v12-carousel-stage">${imagens.map((img, i) => projMemorialImagemLinkHtml(img, i === 0)).join('')}</div><button type="button" class="proj-v12-carousel-btn next" onclick="projMemorialCarouselStep(1)" aria-label="Próxima imagem">›</button><div class="proj-v12-carousel-counter">1 / ${imagens.length}</div></div>`;
 }
 
 function projMemorialCarouselStep(delta) {

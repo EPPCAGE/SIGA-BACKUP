@@ -170,7 +170,7 @@
       <div class="ep-only" style="padding:.6rem 1rem;border-bottom:1px solid var(--bdr);display:flex;gap:6px">
         <button type="button" class="proj-btn" style="font-size:10.5px;padding:4px 8px;flex:1" onclick="projExportJSON()">📤 Exportar</button>
         <button type="button" class="proj-btn" style="font-size:10.5px;padding:4px 8px;flex:1" onclick="projImportJSON()">📥 Importar</button>
-        <input type="file" id="proj-import-file" accept=".json" style="display:none" onchange="projProcessImport(this)">
+        <input type="file" id="proj-import-file" accept=".json" aria-label="Arquivo JSON para importação de projetos" style="display:none" onchange="projProcessImport(this)">
       </div>
       <div class="proj-aside-top">
         <div class="proj-aside-logos proj-aside-logos-stacked">
@@ -225,7 +225,7 @@
           <svg viewBox="0 0 16 16" fill="none" width="14" height="14"><path d="M10 12l-4-4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Voltar ao Hub
         </button>
-        <div style="margin-top:10px;font-size:9.5px;color:#94a3b8;letter-spacing:.02em">deploy 11/06/2026 09:31 BRT</div>
+        <div style="margin-top:10px;font-size:9.5px;color:#94a3b8;letter-spacing:.02em">deploy 16/06/2026 12:28 BRT</div>
       </div>
     </div>
     <!-- Toggle button -->
@@ -506,6 +506,6 @@
 
 <!-- ⭐ FASE 0: Módulos compartilhados e boot sequence -->
 <script src="src/shared/projetos/projetos-boot.js"></script>
-<script src="projetos-logic.js?v=20260611-1"></script>
+<script src="projetos-logic.js?v=20260616-1"></script>
 </body>
 </html>
