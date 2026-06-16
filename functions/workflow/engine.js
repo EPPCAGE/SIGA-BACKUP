@@ -530,6 +530,42 @@ function makeEngine(db) {
     return base.includes(acaoNorm);
   }
 
+  // Resolve os e-mails a notificar para um destino { responsavel_uid, papel_alvo, grupo_id }.
+  async function _resolverEmailsDestino(destino, instancia) {
+    const emails = new Set();
+    if (destino.responsavel_uid) {
+      // Responsável individual tem prioridade — notifica só ele
+      const u = await _buscarUsuarioPorUid(destino.responsavel_uid).catch(() => null);
+      if (u?.email) emails.add(u.email);
+    } else if (destino.papel_alvo && String(destino.papel_alvo).includes('@')) {
+      // Pessoa específica identificada por e-mail (ex: grupo_membro sem uid) — só ela
+      emails.add(destino.papel_alvo);
+    } else if (destino.grupo_id) {
+      // Sem responsável fixo: notifica todos os membros do grupo
+      const grupoSnap = await col.grupos.doc(destino.grupo_id).get().catch(() => null);
+      if (grupoSnap?.exists) {
+        const g = grupoSnap.data();
+        (g.membros_email || []).forEach(e => { if (e) emails.add(e); });
+        if (g.chefe_email) emails.add(g.chefe_email);
+      }
+    } else if (['ep', 'gestor', 'dono'].includes(String(destino.papel_alvo))) {
+      // Fila genérica por perfil (sem responsável individual atribuído) —
+      // notifica todos os usuários com esse perfil, já que qualquer um pode assumir.
+      const usuarios = await _carregarUsuariosConfig();
+      usuarios
+        .filter((u) => String(u?.perfil || '') === destino.papel_alvo && u?.email)
+        .forEach((u) => emails.add(u.email));
+    } else if (destino.papel_alvo) {
+      // Papel específico (ex: gestor_solicitante) — resolve uid único
+      const uid = await _resolverUidNotificacaoCanvas(destino.papel_alvo, instancia).catch(() => null);
+      if (uid) {
+        const u = await _buscarUsuarioPorUid(uid).catch(() => null);
+        if (u?.email) emails.add(u.email);
+      }
+    }
+    return [...emails];
+  }
+
   async function _criarTarefaCanvas(instancia, modelo, no, dadosIniciais = {}, anexosIniciais = [], motivoDevolucao = null) {
     const cfg = _configNo(modelo, no.id);
     const papelAlvo = cfg.papeis?.executor || 'solicitante';
@@ -592,40 +628,10 @@ function makeEngine(db) {
 
     // Envia e-mail ao(s) responsável(is) pela tarefa criada
     {
-      const emailsDestinatarios = new Set();
-      if (destino.responsavel_uid) {
-        // Responsável individual tem prioridade — notifica só ele
-        const u = await _buscarUsuarioPorUid(destino.responsavel_uid).catch(() => null);
-        if (u?.email) emailsDestinatarios.add(u.email);
-      } else if (destino.papel_alvo && String(destino.papel_alvo).includes('@')) {
-        // Pessoa específica identificada por e-mail (ex: grupo_membro sem uid) — só ela
-        emailsDestinatarios.add(destino.papel_alvo);
-      } else if (destino.grupo_id) {
-        // Sem responsável fixo: notifica todos os membros do grupo
-        const grupoSnap = await col.grupos.doc(destino.grupo_id).get().catch(() => null);
-        if (grupoSnap?.exists) {
-          const g = grupoSnap.data();
-          (g.membros_email || []).forEach(e => { if (e) emailsDestinatarios.add(e); });
-          if (g.chefe_email) emailsDestinatarios.add(g.chefe_email);
-        }
-      } else if (['ep', 'gestor', 'dono'].includes(String(destino.papel_alvo))) {
-        // Fila genérica por perfil (sem responsável individual atribuído) —
-        // notifica todos os usuários com esse perfil, já que qualquer um pode assumir.
-        const usuarios = await _carregarUsuariosConfig();
-        usuarios
-          .filter((u) => String(u?.perfil || '') === destino.papel_alvo && u?.email)
-          .forEach((u) => emailsDestinatarios.add(u.email));
-      } else if (destino.papel_alvo) {
-        // Papel específico (ex: gestor_solicitante) — resolve uid único
-        const uid = await _resolverUidNotificacaoCanvas(destino.papel_alvo, instancia).catch(() => null);
-        if (uid) {
-          const u = await _buscarUsuarioPorUid(uid).catch(() => null);
-          if (u?.email) emailsDestinatarios.add(u.email);
-        }
-      }
-      if (emailsDestinatarios.size) {
+      const emailsDestinatarios = await _resolverEmailsDestino(destino, instancia);
+      if (emailsDestinatarios.length) {
         const resultado = await _enviarEmailsWorkflow({
-          emails: [...emailsDestinatarios],
+          emails: emailsDestinatarios,
           instancia,
           tarefa,
           etapa: { id: no.id, nome: no.nome || no.id },
@@ -672,10 +678,28 @@ function makeEngine(db) {
 
     await _enviar(instancia.solicitante_uid);
 
-    // E-mail ao solicitante informando que o processo chegou ao fim
-    if (solicitante?.email) {
+    // E-mail ao solicitante informando que o processo chegou ao fim. Se não houver
+    // solicitante com e-mail (ex: processo iniciado por recorrência automática),
+    // notifica o responsável pela primeira etapa do processo.
+    let emailsFim = solicitante?.email ? [solicitante.email] : [];
+    if (!emailsFim.length) {
+      // Sem orderBy para não depender de índice composto adicional: ordena em memória.
+      const tarefasSnap = await col.tarefas.where('instancia_id', '==', instancia.id).get().catch(() => null);
+      const tarefasOrdenadas = (tarefasSnap?.docs || [])
+        .map((d) => d.data())
+        .sort((a, b) => (a.criado_em?.toMillis?.() || 0) - (b.criado_em?.toMillis?.() || 0));
+      const primeiraTarefa = tarefasOrdenadas[0] || null;
+      if (primeiraTarefa) {
+        emailsFim = await _resolverEmailsDestino({
+          responsavel_uid: primeiraTarefa.responsavel_uid || null,
+          papel_alvo: primeiraTarefa.papel_alvo || null,
+          grupo_id: primeiraTarefa.grupo_id || null,
+        }, instancia);
+      }
+    }
+    if (emailsFim.length) {
       await _enviarEmailsWorkflow({
-        emails: [solicitante.email],
+        emails: emailsFim,
         instancia,
         tarefa: null,
         etapa: { id: 'fim', nome: cfgFim.titulo_fim || 'Processo concluído' },
