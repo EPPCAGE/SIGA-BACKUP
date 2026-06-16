@@ -37,7 +37,6 @@
     {repo: 'publicacoesRepository', fn: '_replacePublicacoes'},
     {repo: 'solicitacoesRepository',fn: '_replaceSolicitacoes'},
     {repo: 'planoRepository',       fn: '_replacePlano'},
-    {repo: 'trilhasRepository',     fn: '_replaceTrilhas'},
     {repo: 'planoMetasRepository',  fn: '_replaceMetas'},
   ];
 
@@ -116,7 +115,6 @@
           {repo: 'publicacoesRepository', fn: '_replacePublicacoes'},
           {repo: 'solicitacoesRepository',fn: '_replaceSolicitacoes'},
           {repo: 'planoRepository',       fn: '_replacePlano'},
-          {repo: 'trilhasRepository',     fn: '_replaceTrilhas'},
           {repo: 'planoMetasRepository',  fn: '_replaceMetas'},
         ];
         watched.forEach(function(item){

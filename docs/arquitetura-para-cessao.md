@@ -17,7 +17,6 @@ O SIGA 2.0 é uma aplicação web de gestão de processos institucionais com doi
 - Geração automática de POP (Procedimento Operacional Padrão) e PPT via IA
 - Indicadores de desempenho (KPIs) com importação e relatórios
 - Análise de aderência
-- Trilhas de capacitação
 - Publicações e documentos institucionais
 - PAT — Plano Anual de Trabalho com metas estratégicas
 - Auditoria de processos
@@ -160,7 +159,7 @@ await planoRepository.set('id', dados);
 const snap = await getDocs(collection(db, 'processos'));
 ```
 
-Os repositórios disponíveis são: `processosRepository`, `solicitacoesRepository`, `kpisRepository`, `publicacoesRepository`, `planoRepository`, `trilhasRepository`, `avisosRepository`, `relatoriosIndicadoresRepository`, `projetosRepository`, `programasRepository`, `configRepository`.
+Os repositórios disponíveis são: `processosRepository`, `solicitacoesRepository`, `kpisRepository`, `publicacoesRepository`, `planoRepository`, `avisosRepository`, `relatoriosIndicadoresRepository`, `projetosRepository`, `programasRepository`, `configRepository`.
 
 ### 3.5 Coleções Firestore
 
@@ -168,7 +167,6 @@ Os repositórios disponíveis são: `processosRepository`, `solicitacoesReposito
 |---------|----------|
 | `processos` | Mapeamentos (todas as etapas) |
 | `kpis` | Indicadores de desempenho |
-| `trilhas` | Trilhas de capacitação |
 | `publicacoes` | Metodologias publicadas |
 | `plano` | PAT — Plano Anual de Trabalho |
 | `plano_metas` | Metas estratégicas |
@@ -300,7 +298,6 @@ Módulos com poucas dependências externas. Começar aqui.
 
 | Módulo | Tamanho estimado | Testes E2E |
 |--------|-----------------|------------|
-| Trilhas de capacitação | ~800 linhas | Criar antes de extrair |
 | Notificações / e-mail | ~600 linhas | Criar antes de extrair |
 | Avisos | ~400 linhas | Criar antes de extrair |
 | Auditoria de processos | ~1.500 linhas | Já existem |

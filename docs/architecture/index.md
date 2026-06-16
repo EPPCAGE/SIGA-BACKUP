@@ -6,7 +6,7 @@ Este documento e a porta de entrada para analistas entenderem a arquitetura atua
 
 O SIGA 2.0 e uma aplicacao web hospedada no Firebase, com dois modulos principais:
 
-- `processos.html`: SIGA Processos, com arquitetura de processos, mapeamentos, solicitacoes, indicadores, PAT, trilhas, publicacoes e analise de aderencia.
+- `processos.html`: SIGA Processos, com arquitetura de processos, mapeamentos, solicitacoes, indicadores, PAT, publicacoes e analise de aderencia.
 - `projetos.html`: SIGA Projetos, com portfolio, programas, estrategia, cronogramas, reunioes, indicadores e relatorio executivo.
 
 Historicamente, a aplicacao nasceu como front-end monolitico. A arquitetura atual preserva compatibilidade com esse modelo, mas ja introduz camadas para configuracao institucional, tenancy, seguranca, persistencia e modularizacao gradual.
@@ -46,7 +46,6 @@ Todo acesso novo ao Firestore deve passar por repositorios, por exemplo:
 - `kpisRepository`
 - `publicacoesRepository`
 - `planoRepository`
-- `trilhasRepository`
 - `avisosRepository`
 - `relatoriosIndicadoresRepository`
 - `projetosRepository`

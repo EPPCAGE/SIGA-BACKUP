@@ -142,7 +142,6 @@
   globalScope.kpisRepository = collectionRepository('kpis');
   globalScope.publicacoesRepository = collectionRepository('publicacoes');
   globalScope.planoRepository = collectionRepository('plano');
-  globalScope.trilhasRepository = collectionRepository('trilhas');
   globalScope.planoMetasRepository = collectionRepository('plano_metas');
   globalScope.solicitacoesRepository = collectionRepository('solicitacoes');
   globalScope.avisosRepository = collectionRepository('avisos');

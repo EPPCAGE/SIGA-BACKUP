@@ -92,11 +92,6 @@ service cloud.firestore {
         allow write: if isTenantAdmin(tenantId);
       }
 
-      match /trilhas/{docId} {
-        allow read: if isTenantMember(tenantId);
-        allow write: if isTenantAdmin(tenantId);
-      }
-
       match /plano_metas/{docId} {
         allow read: if isTenantMember(tenantId);
         allow write: if isTenantAdmin(tenantId);

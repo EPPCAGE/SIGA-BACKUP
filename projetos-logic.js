@@ -4314,12 +4314,40 @@ function projConclusaoImagemSrc(img){
   if(typeof img === 'string') return img.trim();
   return String(img?.url || img?.data || '').trim();
 }
+
+function projConclusaoImagemDisplaySrc(imgOrUrl){
+  return typeof imgOrUrl === 'string' ? imgOrUrl.trim() : projConclusaoImagemSrc(imgOrUrl);
+}
+
+function projConclusaoImagemSharePointDownloadSrc(src){
+  const raw = String(src || '').trim();
+  if(!raw) return '';
+  try {
+    const url = new URL(raw);
+    if(!/\.sharepoint\.com$/i.test(url.hostname)) return '';
+
+    const sharedPath = /^\/:[a-z]:\/r(\/.+)$/i.exec(url.pathname);
+    const serverRelativePath = sharedPath ? sharedPath[1] : url.pathname;
+    const downloadUrl = new URL('/_layouts/15/download.aspx', url.origin);
+    downloadUrl.searchParams.set('SourceUrl', decodeURIComponent(serverRelativePath));
+    return downloadUrl.href;
+  } catch(e) {
+    if(!(e instanceof TypeError)) throw e;
+    return '';
+  }
+}
+
+function projConclusaoImagemHref(img){
+  return projConclusaoImagemSrc(img) || projConclusaoImagemDisplaySrc(img);
+}
+
 function projConclusaoImagemNome(url, index){
   try {
     const u = new URL(url);
     const last = decodeURIComponent((u.pathname.split('/').filter(Boolean).pop() || '').trim());
     return last || `Imagem ${index + 1}`;
-  } catch(_e) {
+  } catch(e) {
+    if(!(e instanceof TypeError)) throw e;
     return `Imagem ${index + 1}`;
   }
 }
@@ -4349,8 +4377,80 @@ function projConclusaoUrlsToImagens(text){
     })
     .map((url, index) => ({nome: projConclusaoImagemNome(url, index), url, data: url, externo: true}));
 }
+function projConclusaoImagemPreviewItemHtml(url, index){
+  const src = projConclusaoImagemDisplaySrc(url);
+  const alt = projConclusaoImagemNome(url, index);
+  return `<div><img src="${projEsc(src)}" data-proj-image-href="${projEsc(url)}" data-proj-image-alt="${projEsc(alt)}" alt="${projEsc(alt)}" loading="lazy" decoding="async" referrerpolicy="no-referrer"><button type="button" class="proj-btn danger" style="font-size:10px;padding:2px 6px;margin-top:3px;width:100%" onclick="projRemoveConclusaoImagem(${index})">Remover</button></div>`;
+}
+
+function projMemorialImagemLinkHtml(img, active, carousel){
+  const src = projConclusaoImagemDisplaySrc(img);
+  const href = projConclusaoImagemHref(img);
+  const alt = img?.nome || 'Imagem do memorial';
+  const classAttr = carousel ? ` class="${active ? 'proj-v12-carousel-slide on' : 'proj-v12-carousel-slide'}"` : '';
+  return `<a href="${projEsc(href)}" target="_blank" rel="noopener"${classAttr}><img src="${projEsc(src)}" data-proj-image-href="${projEsc(href)}" data-proj-image-alt="${projEsc(alt)}" alt="${projEsc(alt)}" loading="lazy" decoding="async" referrerpolicy="no-referrer"></a>`;
+}
 
 // ── AVANÇAR FASE ──────────────────────────────────────────────────
+function projImagemMemorialProxySrc(src){
+  const value = String(src || '').trim();
+  if(!value || value.startsWith('data:') || value.startsWith('blob:')) return '';
+  return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(value);
+}
+
+function projImagemMemorialFallbackNode(href, alt){
+  const box = document.createElement('div');
+  box.className = 'proj-image-load-fallback';
+  const title = document.createElement('strong');
+  title.textContent = alt || 'Imagem do memorial';
+  const text = document.createElement('span');
+  text.textContent = 'A imagem nao pode ser carregada embutida pelo provedor.';
+  const link = document.createElement('a');
+  link.href = href || '#';
+  link.target = '_blank';
+  link.rel = 'noopener';
+  link.textContent = 'Abrir imagem';
+  box.append(title, text, link);
+  return box;
+}
+
+function projHandleMemorialImageError(event){
+  const img = event.target;
+  if(!(img instanceof HTMLImageElement)) return;
+  if(!img.closest('.proj-v9-attach-grid, .proj-v12-single-image, .proj-v12-carousel')) return;
+  const originalSrc = img.dataset.projImageHref || img.currentSrc || img.src;
+  const fallbackSources = [
+    originalSrc && !img.dataset.projDownloadTried ? projConclusaoImagemSharePointDownloadSrc(originalSrc) : '',
+    originalSrc && !img.dataset.projProxyTried ? projImagemMemorialProxySrc(originalSrc) : ''
+  ].filter(Boolean);
+  const nextSrc = fallbackSources.find(src => src !== img.src && src !== img.currentSrc);
+  if(nextSrc) {
+    if(nextSrc.includes('/_layouts/15/download.aspx')) img.dataset.projDownloadTried = '1';
+    else img.dataset.projProxyTried = '1';
+    img.src = nextSrc;
+    return;
+  }
+  if(img.dataset.projFallbackDone) return;
+  img.dataset.projFallbackDone = '1';
+  const href = img.dataset.projImageHref || (img.closest('a')?.href) || img.src;
+  img.replaceWith(projImagemMemorialFallbackNode(href, img.dataset.projImageAlt || img.alt));
+}
+
+function projRetryBrokenMemorialImages(root = document){
+  root.querySelectorAll('.proj-v9-attach-grid img, .proj-v12-single-image img, .proj-v12-carousel img').forEach(img => {
+    if(img.complete && img.naturalWidth === 0) {
+      projHandleMemorialImageError({ target: img });
+    }
+  });
+}
+
+function projScheduleMemorialImageCheck(root){
+  window.setTimeout(() => projRetryBrokenMemorialImages(root || document), 250);
+  window.setTimeout(() => projRetryBrokenMemorialImages(root || document), 1200);
+}
+
+document.addEventListener('error', projHandleMemorialImageError, true);
+document.addEventListener('DOMContentLoaded', () => projScheduleMemorialImageCheck(document));
 function projAvancarFase(id) {
   projLoad();
   const proj = PROJETOS.find(p => String(p.id) === String(id));
@@ -5325,7 +5425,7 @@ function projConclusaoImagemEditorHtml(conc) {
   const urls = projConclusaoImagensToUrls(conc);
   const urlsText = urls.join('\n');
   const preview = urls.length
-    ? `<div class="proj-v9-attach-grid">${urls.map((url,i)=>`<div><img src="${projEsc(url)}" alt="${projEsc(projConclusaoImagemNome(url,i))}"><button type="button" class="proj-btn danger" style="font-size:10px;padding:2px 6px;margin-top:3px;width:100%" onclick="projRemoveConclusaoImagem(${i})">Remover</button></div>`).join('')}</div>`
+    ? `<div class="proj-v9-attach-grid">${urls.map(projConclusaoImagemPreviewItemHtml).join('')}</div>`
     : '<div style="font-size:11px;color:var(--ink3);margin-top:4px">Nenhuma URL de imagem informada.</div>';
   return `<div class="proj-form-section" style="background:#fff;margin-top:1rem"><div class="proj-form-section-title">URLs de Imagens do Memorial</div><div class="proj-fg"><label class="proj-fl">URL da imagem <span style="font-size:10px;color:var(--ink3)">(uma por linha)</span></label><textarea class="proj-fi" id="conc-imagens-urls" rows="3" placeholder="https://.../imagem.jpg">${projEsc(urlsText)}</textarea>${preview}</div></div>`;
 }
@@ -5619,10 +5719,9 @@ function projMemorialImagesHtml(conc) {
   if(!imagens.length) return '<div style="font-size:12px;color:var(--ink3)">Nenhuma imagem anexada ao Memorial.</div>';
   if(imagens.length === 1) {
     const img = imagens[0];
-    const src = projConclusaoImagemSrc(img);
-    return `<div class="proj-v12-single-image"><a href="${projEsc(src)}" target="_blank"><img src="${projEsc(src)}" alt="${projEsc(img.nome||'Imagem do memorial')}"></a></div>`;
+    return `<div class="proj-v12-single-image">${projMemorialImagemLinkHtml(img, false)}</div>`;
   }
-  return `<div class="proj-v12-carousel" id="proj-memorial-carousel" data-index="0"><button type="button" class="proj-v12-carousel-btn prev" onclick="projMemorialCarouselStep(-1)" aria-label="Imagem anterior">‹</button><div class="proj-v12-carousel-stage">${imagens.map((img,i) => { const src = projConclusaoImagemSrc(img); return `<a href="${projEsc(src)}" target="_blank" class="proj-v12-carousel-slide ${i===0?'on':''}"><img src="${projEsc(src)}" alt="${projEsc(img.nome||'Imagem do memorial')}"></a>`; }).join('')}</div><button type="button" class="proj-v12-carousel-btn next" onclick="projMemorialCarouselStep(1)" aria-label="Próxima imagem">›</button><div class="proj-v12-carousel-counter">1 / ${imagens.length}</div></div>`;
+  return `<div class="proj-v12-carousel" id="proj-memorial-carousel" data-index="0"><button type="button" class="proj-v12-carousel-btn prev" onclick="projMemorialCarouselStep(-1)" aria-label="Imagem anterior">‹</button><div class="proj-v12-carousel-stage">${imagens.map((img, i) => projMemorialImagemLinkHtml(img, i === 0, true)).join('')}</div><button type="button" class="proj-v12-carousel-btn next" onclick="projMemorialCarouselStep(1)" aria-label="Próxima imagem">›</button><div class="proj-v12-carousel-counter">1 / ${imagens.length}</div></div>`;
 }
 
 function projMemorialCarouselStep(delta) {

@@ -1940,6 +1940,33 @@ select.proj-fi { cursor:pointer; }
 .proj-v9-attach-grid .proj-btn {
   margin:8px;
 }
+.proj-image-load-fallback {
+  min-height:118px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  padding:16px;
+  border:1px dashed #b9c7da;
+  border-radius:12px;
+  background:#f8fbff;
+  color:#334155;
+  text-align:center;
+  font-size:12px;
+}
+.proj-image-load-fallback strong {
+  color:#172033;
+  font-size:13px;
+}
+.proj-image-load-fallback span {
+  color:#64748b;
+}
+.proj-image-load-fallback a {
+  color:var(--blue);
+  font-weight:800;
+  text-decoration:none;
+}
 @media(max-width:720px) {
   .proj-v9-attach-grid {
     grid-template-columns:1fr;

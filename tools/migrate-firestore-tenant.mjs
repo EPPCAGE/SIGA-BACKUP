@@ -7,7 +7,6 @@ const DEFAULT_COLLECTIONS = [
   'kpis',
   'publicacoes',
   'plano',
-  'trilhas',
   'plano_metas',
   'solicitacoes',
   'avisos',

@@ -463,8 +463,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
   #plano-dash [style*="grid-template-columns"],
   #plano-stats [style*="grid-template-columns"],
   #aud-list [style*="grid-template-columns"],
-  #pub-list [style*="grid-template-columns"],
-  #trilhas-lista [style*="grid-template-columns"]{
+  #pub-list [style*="grid-template-columns"]{
     grid-template-columns:1fr!important
   }
   .ph{flex-direction:column;align-items:flex-start;gap:.7rem}
@@ -700,44 +699,18 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
   .pub-action-delete{background:var(--red-l,#fee2e2)!important;border-color:var(--red-b,#fca5a5)!important;color:var(--red,#dc2626)!important}
   #modal-nova-auditoria .btn{width:100%;justify-content:center}
   #pub-modal [style*="display:flex;gap:8px;align-items:center"],
-  #trilha-modal [style*="justify-content:space-between"],
   #ejs-config [style*="display:flex;gap:8px"]{
     flex-direction:column!important;
     align-items:stretch!important
   }
   #pub-modal [style*="display:flex;gap:8px;align-items:center"] .fi,
   #pub-modal [style*="display:flex;gap:8px;align-items:center"] .btn,
-  #trilha-modal [style*="justify-content:space-between"] .btn,
   #ejs-config [style*="display:flex;gap:8px"] .btn{
     width:100%!important;
     max-width:none!important;
     justify-content:center
   }
   #pub-thumb-preview img{width:100%;height:auto!important;max-height:160px}
-  #trilha-procs-chk{max-height:220px!important;padding:12px!important}
-  #trilha-procs-chk label{min-height:40px;align-items:center}
-  #trilhas-lista .card>div[style*="justify-content:space-between"],
-  #trilha-niveis-editor div[style*="display:flex;align-items:center"],
-  #trilha-niveis-editor div[style*="display:flex;align-items:center;gap:4px"],
-  #trilha-niveis-editor div[style*="display:flex;align-items:center;gap:6px"]{
-    flex-direction:column!important;
-    align-items:stretch!important
-  }
-  #trilhas-lista .card>div[style*="justify-content:space-between"]>div:last-child{
-    width:100%;
-    display:flex!important;
-    gap:8px!important
-  }
-  #trilhas-lista .card .btn,
-  #trilha-niveis-editor .btn,
-  #trilha-niveis-editor .fi{
-    width:100%!important;
-    max-width:none!important;
-    min-height:42px;
-    justify-content:center
-  }
-  #trilha-niveis-editor div[style*="margin-left:26px"]{margin-left:0!important}
-  #trilha-niveis-editor details summary{min-height:46px;align-items:center}
   #plano-metas>div[style*="display:flex"],
   #plano-c div[style*="justify-content:space-between"],
   #plano-c div[style*="align-items:center;gap:12px"],
@@ -789,7 +762,6 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
   #plano-modal,
   #modal-nova-auditoria,
   #pub-modal,
-  #trilha-modal,
   #sol-modal,
   #modal-metadados,
   #modal-reatribuir,
@@ -817,7 +789,6 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
   #plano-modal>div,
   #modal-nova-auditoria>div,
   #pub-modal>div,
-  #trilha-modal>div,
   #sol-modal>div,
   #modal-metadados>div,
   #modal-reatribuir>div,
@@ -1046,7 +1017,7 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
     <div class="module-grid" id="module-grid">
       <div class="module-card" id="hub-card-processos">
         <h3>🧩 Gestão de Processos</h3>
-        <p>Mapeamento, workflow, análise de aderência, trilhas e demais funcionalidades de gestão de processos.</p>
+        <p>Mapeamento, workflow, análise de aderência e demais funcionalidades de gestão de processos.</p>
         <button type="button" class="btn btn-p" onclick="enterProcessModule()">Entrar →</button>
       </div>
       <div class="module-card" id="hub-card-projetos">
@@ -1363,10 +1334,6 @@ hr{border:none;border-top:1px solid var(--bdr);margin:.8rem 0}
   <button type="button" class="nav-btn" onclick="go('indicadores',this)" id="nb-ind">
     <svg viewBox="0 0 16 16" fill="none"><rect x="1" y="8" width="3" height="7" rx="1" fill="currentColor" opacity=".5"/><rect x="6" y="5" width="3" height="10" rx="1" fill="currentColor"/><rect x="11" y="2" width="3" height="13" rx="1" fill="currentColor" opacity=".7"/></svg>
     Indicadores
-  </button>
-  <button type="button" class="nav-btn" onclick="go('trilhas',this)" id="nb-trilhas">
-    <svg viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="13" cy="8" r="2" fill="currentColor" opacity=".7"/><circle cx="11" cy="12" r="2" fill="currentColor" opacity=".5"/></svg>
-    Trilhas de capacitação
   </button>
   <button type="button" class="nav-btn" onclick="go('faq',this)" id="nb-faq">
     <svg viewBox="0 0 16 16" fill="none"><path d="M3 2h10a1 1 0 011 1v8a1 1 0 01-1 1H9l-1 2-1-2H3a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" stroke-width="1.4"/><path d="M8 10V9.5c0-.8.5-1.2 1-1.6.4-.3.7-.7.7-1.2a1.7 1.7 0 00-3.4 0" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="11.5" r="0" fill="none"/></svg>
@@ -2094,55 +2061,6 @@ Não responda este e-mail.</pre>
 
 <div id="page-admin" class="page"></div>
 <div id="page-avisos" class="page"></div>
-
-<!-- TRILHAS DE CAPACITAÇÃO -->
-<div id="page-trilhas" class="page"><div style="padding:2rem">
-  <div class="ph">
-    <div><div class="ph-t">Trilhas de capacitação</div><div class="ph-s">Gerencie trilhas de aprendizagem vinculadas a macroprocessos e processos</div></div>
-    <button type="button" class="btn btn-p" onclick="abrirNovaTrilha()">+ Nova trilha</button>
-  </div>
-  <div id="trilhas-lista"></div>
-
-  <!-- MODAL TRILHA -->
-  <div id="trilha-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;align-items:center;justify-content:center;padding:1rem">
-    <div style="background:var(--surf);border-radius:var(--rl);padding:1.5rem;width:100%;max-width:680px;max-height:93vh;overflow-y:auto;box-shadow:var(--sh2)">
-      <div style="font-family:var(--fh);font-size:16px;font-weight:600;margin-bottom:1rem" id="trilha-modal-t">Nova trilha</div>
-      <input type="hidden" id="trilha-edit-id">
-      <div class="fg"><label class="fl" for="trilha-nome">Nome da trilha<span>*</span></label>
-        <input class="fi" id="trilha-nome" placeholder="Ex: Trilha de Gestão de Processos">
-      </div>
-      <div class="fg"><label class="fl" for="trilha-desc">Descrição</label>
-        <textarea class="fi" id="trilha-desc" style="min-height:55px" placeholder="Objetivo da trilha..."></textarea>
-      </div>
-      <div class="g2">
-        <div class="fg"><label class="fl" for="trilha-macro">Macroprocesso vinculado<span>*</span></label>
-          <select class="fi" id="trilha-macro" onchange="trilhaPopulateProcs()"><option value="">Selecione...</option></select>
-        </div>
-        <div class="fg"><label class="fl" for="trilha-niveis-num">Número de níveis</label>
-          <input class="fi" id="trilha-niveis-num" type="number" min="1" max="10" value="3" placeholder="3">
-        </div>
-      </div>
-      <div class="fg">
-        <div class="fl" id="trilha-procs-lbl">Processos vinculados</div>
-        <fieldset id="trilha-procs-chk" aria-labelledby="trilha-procs-lbl" style="display:flex;flex-direction:column;gap:5px;max-height:140px;overflow-y:auto;padding:8px;border:1px solid var(--bdr);border-radius:var(--r);background:var(--bg2)">
-          <span style="font-size:12px;color:var(--ink3)">Selecione o macroprocesso primeiro.</span>
-        </fieldset>
-      </div>
-      <div style="border-top:1px solid var(--bdr);margin:.8rem 0 .6rem;padding-top:.8rem">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
-          <span style="font-weight:600;font-size:13px">Níveis e competências</span>
-          <button type="button" class="btn" style="font-size:12px;padding:3px 10px" onclick="trilhaAddNivel()">+ Nível</button>
-        </div>
-        <div id="trilha-niveis-editor"></div>
-      </div>
-      <div class="btn-row">
-        <button type="button" class="btn btn-r" id="trilha-del-btn" style="margin-right:auto;display:none" onclick="excluirTrilhaModal()">Excluir trilha</button>
-        <button type="button" class="btn" onclick="document.getElementById('trilha-modal').style.display='none'">Cancelar</button>
-        <button type="button" class="btn btn-p" onclick="salvarTrilha()">Salvar trilha</button>
-      </div>
-    </div>
-  </div>
-</div></div>
 
 <!-- ===== WORKFLOW ===== -->
 <div id="page-workflow" class="page"><div style="padding:2rem;max-width:1400px;width:100%;margin:0 auto">
@@ -2907,11 +2825,6 @@ globalThis._replacePlano = function(snap){
   snap.forEach(function(d){ plano.push(d.data()); });
   if(plano.length) _planoIdC = Math.max(...plano.map(function(a){ return a.id||0; })) + 1;
 };
-globalThis._replaceTrilhas = function(snap){
-  TRILHAS = [];
-  snap.forEach(function(d){ TRILHAS.push(d.data()); });
-  if(TRILHAS.length) _trilhaIdC = Math.max(...TRILHAS.map(function(t){ return t.id||0; })) + 1;
-};
 globalThis._replaceMetas = function(snap){
   PAT_METAS = [];
   snap.forEach(function(d){ PAT_METAS.push(d.data()); });
@@ -2922,9 +2835,6 @@ let _lastIndLista   = [];
 let _lastRelatorioIndHtml    = '';
 let _lastRelatorioIndFiltros = '';
 let RELATORIOS_IND = [];
-
-let TRILHAS = [];
-let _trilhaIdC = 1;
 
 let publicacoes = [];
 let _pubIdC = 1;
@@ -3137,7 +3047,7 @@ function go(page,btn){
   _getPageRenderer(page)();
   // Mobile: close drawer, update title
   if(globalThis.innerWidth<=720){mobClose();}
-  const ttl={fila:'Minhas tarefas',meusprocessos:'Meus Processos',dashboard:'Painel geral',processos:'Processos',arq:'Arquitetura',solicitacoes:'Solicitações',faq:'Base de FAQs',indicadores:'Indicadores',plano:'PAT',notificacoes:'Notificações',auditoria:'Análise de Aderência',publicacoes:'Publicações',admin:'Usuários',avisos:'Avisos',detalhe:'Processo',trilhas:'Trilhas de capacitação',painelgestor:'Painel do Gestor',workflow:'Workflow'};
+  const ttl={fila:'Minhas tarefas',meusprocessos:'Meus Processos',dashboard:'Painel geral',processos:'Processos',arq:'Arquitetura',solicitacoes:'Solicitações',faq:'Base de FAQs',indicadores:'Indicadores',plano:'PAT',notificacoes:'Notificações',auditoria:'Análise de Aderência',publicacoes:'Publicações',admin:'Usuários',avisos:'Avisos',detalhe:'Processo',painelgestor:'Painel do Gestor',workflow:'Workflow'};
   const el=document.getElementById('mob-page-title');if(el)el.textContent=ttl[page]||'SIGA 2.0';
 }
 function _invokeGlobalHandler(handlerName){
@@ -3161,7 +3071,6 @@ function _getPageRenderer(page){
     admin:renderAdmin,
     plano:rPlano,
     avisos:rAvisos,
-    trilhas:rTrilhas,
     painelgestor:rPainelGestor,
     workflow:globalThis.rWorkflow,
   })[page];
@@ -5219,8 +5128,6 @@ function aplicarPermissoes(){
   if(nbMeusProc) nbMeusProc.style.display = (usuarioLogado?.perfil==='dono'||usuarioLogado?.perfil==='gestor') ? '' : 'none';
   const nbProc = document.getElementById('nb-proc');
   if(nbProc) nbProc.style.display = (usuarioLogado?.perfil==='dono'||usuarioLogado?.perfil==='gestor') ? 'none' : '';
-  const nbTrilhas = document.getElementById('nb-trilhas');
-  if(nbTrilhas) nbTrilhas.style.display = (usuarioLogado?.perfil==='dono'||usuarioLogado?.perfil==='gestor') ? 'none' : '';
   const nbDash = document.getElementById('nb-dash');
   if(nbDash) nbDash.style.display = (usuarioLogado?.perfil==='dono'||usuarioLogado?.perfil==='gestor') ? 'none' : '';
   const nbPainelGestor = document.getElementById('nb-painel-gestor');
@@ -14616,10 +14523,6 @@ function _procPublicacoesVinculadas(proc){
   });
 }
 
-function _procTrilhasVinculadas(proc){
-  return TRILHAS.filter(t=>(t.proc_ids||[]).includes(proc.id));
-}
-
 function _procPlanoVinculado(proc){
   return plano.filter(a=>a.vinculo_id===proc.id || _normIntel(a.vinculo_nome)===_normIntel(proc.nome));
 }
@@ -14632,7 +14535,6 @@ function _procIntelSnapshot(proc){
   const riscos = proc.ent?.riscos || [];
   const indicadores = kpis.filter(k => k.pid === proc.id);
   const pubs = _procPublicacoesVinculadas(proc);
-  const trilhasProc = _procTrilhasVinculadas(proc);
   const atividadesPlano = _procPlanoVinculado(proc);
   const analise = proc.ent?.analise || {};
   const temAnalise = !!((analise.gargalos||[]).length || (analise.oportunidades||[]).length || (analise.gaps||[]).length);
@@ -14658,7 +14560,7 @@ function _procIntelSnapshot(proc){
   if(vencido) recomendacoes.push('Revisar prazo global ou justificar suspensão/cancelamento do mapeamento.');
   if(atividadesAbertas.length) recomendacoes.push('Atualizar as ações abertas do PAT relacionadas a este processo.');
   if(_revSt==='vencida') recomendacoes.push('Contatar o dono "'+esc(proc.dono||'—')+'" para realizar a revisão periódica vencida.');
-  return {riscos, indicadores, pubs, trilhasProc, atividadesPlano, atividadesAbertas, analise, vencido, sinais, recomendacoes};
+  return {riscos, indicadores, pubs, atividadesPlano, atividadesAbertas, analise, vencido, sinais, recomendacoes};
 }
 
 function buildPainelAlertasEPHTML(){
@@ -14725,7 +14627,7 @@ function buildPainelAlertasEPHTML(){
 }
 
 function _procCentralInteligenciaHTML(proc){
-  const {riscos, indicadores, pubs, trilhasProc, atividadesPlano, analise, vencido, sinais, recomendacoes} = _procIntelSnapshot(proc);
+  const {riscos, indicadores, pubs, atividadesPlano, analise, vencido, sinais, recomendacoes} = _procIntelSnapshot(proc);
   const _revSt = _revStatus(proc);
   const topGargalos = (analise.gargalos||[]).slice(0,2);
   const topOportunidades = (analise.oportunidades||[]).slice(0,2);
@@ -14748,7 +14650,6 @@ function _procCentralInteligenciaHTML(proc){
       <div><span style="font-weight:600;color:var(--ink2)">Indicadores:</span> <span style="color:var(--ink3)">${indicadores.length}</span></div>
       <div><span style="font-weight:600;color:var(--ink2)">Riscos:</span> <span style="color:var(--ink3)">${riscos.length}</span></div>
       <div><span style="font-weight:600;color:var(--ink2)">Publicações:</span> <span style="color:var(--ink3)">${pubs.length}</span></div>
-      <div><span style="font-weight:600;color:var(--ink2)">Trilhas:</span> <span style="color:var(--ink3)">${trilhasProc.length}</span></div>
       <div><span style="font-weight:600;color:var(--ink2)">PAT:</span> <span style="color:var(--ink3)">${atividadesPlano.length}</span></div>
     </div>
     ${topGargalos.length?`<div style="margin-top:.55rem;font-size:11px"><span style="font-weight:600;color:var(--red)">Gargalos:</span> <span style="color:var(--ink3)">${topGargalos.map(esc).join(' · ')}</span></div>`:''}
@@ -16789,7 +16690,6 @@ function exportarBackupJSON(){
     plano,
     plano_metas: PAT_METAS,
     publicacoes,
-    trilhas: TRILHAS,
     avisos: AVISOS,
     arquitetura: ARQUITETURA,
     usuarios: USUARIOS,
@@ -18861,7 +18761,6 @@ async function fbSaveAll(){
     if(isEP()){
       publicacoes.forEach(p => ops.push({ref: publicacoesRepository.ref(p.id), data: _fsClean(p)}));
       plano.forEach(a => ops.push({ref: planoRepository.ref(a.id), data: _fsClean(a)}));
-      TRILHAS.forEach(t => ops.push({ref: trilhasRepository.ref(t.id), data: _fsClean(t)}));
       PAT_METAS.forEach(m => ops.push({ref: planoMetasRepository.ref(m.id), data: _fsClean(m)}));
       ops.push(
         ...(_arqSaveEnabled ? [{ref: configRepository.ref('arquitetura'), data: {data: JSON.stringify(ARQUITETURA)}}] : []),
@@ -18944,13 +18843,6 @@ async function fbLoad(){
       avSnap.docs.forEach(d => AVISOS.push(d.data));
     }
 
-    // trilhas de capacitação
-    const trilhasSnap = await trilhasRepository.list();
-    if(!trilhasSnap.empty){
-      TRILHAS = [];
-      trilhasSnap.docs.forEach(d => TRILHAS.push(d.data));
-      _trilhaIdC = Math.max(...TRILHAS.map(t => t.id), 0) + 1;
-    }
 
     // metas do escritório
     const metasSnap = await planoMetasRepository.list();
@@ -19214,412 +19106,6 @@ async function excluirAvisoModal(){
 
 // ── AUTO-SAVE HOOKS ───────────────────────
 // Wrap key mutation functions to auto-save after changes
-
-// ═══════════════════════════════════════════
-// TRILHAS DE CAPACITAÇÃO
-// ═══════════════════════════════════════════
-
-// ── Render ────────────────────────────────
-function rTrilhas(){
-  const el = document.getElementById('trilhas-lista');
-  if(!el) return;
-  if(!TRILHAS.length){
-    el.innerHTML = '<div class="ib ibb">Nenhuma trilha cadastrada. Clique em "+ Nova trilha" para começar.</div>';
-    return;
-  }
-  el.innerHTML = TRILHAS.map(t => _trilhaCardHTML(t)).join('');
-}
-
-function _trilhaCardHTML(t){
-  const macroNome = _trilhaMacroNome(t.macro_id);
-  const procsVinc = (t.proc_ids||[]).map(pid => {
-    const p = processos.find(x => x.id === pid);
-    return p ? esc(p.nome) : '';
-  }).filter(Boolean);
-  const procsHtml = procsVinc.length
-    ? procsVinc.map(n => '<span class="badge bgr" style="font-size:10px;margin-right:3px">'+n+'</span>').join('')
-    : '<span style="font-size:12px;color:var(--ink3)">Nenhum processo vinculado</span>';
-  const niveisCount = (t.niveis||[]).length;
-  const compCount = (t.niveis||[]).reduce((acc, nv) => acc + (nv.competencias||[]).length, 0);
-  const btnsEP = isEP()
-    ? '<button type="button" class="btn" style="font-size:11px;padding:2px 8px" onclick="editarTrilha('+t.id+')">✎ Editar</button>'
-      + '<button type="button" class="btn" style="font-size:11px;padding:2px 8px;color:var(--red);border-color:var(--red)" onclick="excluirTrilha('+t.id+')" aria-label="Excluir trilha">✕</button>'
-    : '';
-  return '<div class="card" style="margin-bottom:1rem">'
-    + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:.5rem">'
-    + '<div>'
-    + '<div style="font-family:var(--fh);font-size:15px;font-weight:600;margin-bottom:2px">'+esc(t.nome)+'</div>'
-    + '<div style="font-size:12px;color:var(--ink3);margin-bottom:4px">'+esc(macroNome)+'</div>'
-    + (t.descricao ? '<div style="font-size:13px;color:var(--ink2);margin-bottom:6px">'+esc(t.descricao)+'</div>' : '')
-    + '<div style="margin-bottom:4px">'+procsHtml+'</div>'
-    + '<div style="font-size:11px;color:var(--ink3)">'+niveisCount+' nível(is) · '+compCount+' competência(s)</div>'
-    + '</div>'
-    + '<div style="display:flex;gap:4px;flex-shrink:0">'+btnsEP+'</div>'
-    + '</div>'
-    + '<div id="trilha-niveis-'+t.id+'" style="margin-top:.6rem">'
-    + _trilhaNiveisHTML(t)
-    + '</div>'
-    + '</div>';
-}
-
-function _trilhaNiveisHTML(t){
-  if(!(t.niveis||[]).length){ return ''; }
-  return t.niveis.map(nv => {
-    const compHtml = (nv.competencias||[]).length
-      ? nv.competencias.map(c => _trilhaCompHTML(c)).join('')
-      : '<div style="font-size:12px;color:var(--ink3);padding:.3rem 0">Nenhuma competência cadastrada.</div>';
-    return '<details style="margin-bottom:.4rem;border:1px solid var(--bdr);border-radius:var(--r)">'
-      + '<summary style="padding:.5rem .8rem;cursor:pointer;font-weight:600;font-size:13px;list-style:none;display:flex;align-items:center;gap:6px">'
-      + '<span style="background:var(--blue);color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0">'+nv.ordem+'</span>'
-      + esc(nv.nome)
-      + '</summary>'
-      + '<div style="padding:.6rem .8rem .8rem">'+compHtml+'</div>'
-      + '</details>';
-  }).join('');
-}
-
-function _trilhaCompHTML(c){
-  const cursosHtml = (c.cursos||[]).length
-    ? '<ul style="margin:.4rem 0 0 1rem;padding:0;font-size:12px;color:var(--ink2)">'
-      + c.cursos.map(cs => {
-        const link = safeUrl(cs.link);
-        const label = esc(cs.nome);
-        const tipoTag = cs.tipo ? ' <span style="font-size:10px;color:var(--ink3)">['+esc(cs.tipo)+']</span>' : '';
-        if(link){ return '<li><a href="'+link+'" target="_blank" rel="noopener noreferrer" style="color:var(--blue)">'+label+'</a>'+tipoTag+'</li>'; }
-        return '<li>'+label+tipoTag+'</li>';
-      }).join('')
-      + '</ul>'
-    : '';
-  return '<div style="padding:.4rem 0;border-bottom:1px solid var(--bdr)">'
-    + '<div style="font-size:13px;font-weight:500">'+esc(c.nome)+'</div>'
-    + (c.descricao ? '<div style="font-size:12px;color:var(--ink2);margin-top:2px">'+esc(c.descricao)+'</div>' : '')
-    + cursosHtml
-    + '</div>';
-}
-
-function _trilhaMacroNome(macroId){
-  const m = ARQUITETURA.find(x => x.id === macroId);
-  return m ? m.nome : '—';
-}
-
-// ── Abrir / Fechar Modal ───────────────────
-function abrirNovaTrilha(){
-  if(!isEP()){ toast('Ação restrita ao '+ORG_CONFIG.supportTeamLabel+'.','var(--amber)'); return; }
-  const modal = document.getElementById('trilha-modal');
-  if(!modal) return;
-  document.getElementById('trilha-modal-t').textContent = 'Nova trilha';
-  document.getElementById('trilha-edit-id').value = '';
-  document.getElementById('trilha-del-btn').style.display = 'none';
-  document.getElementById('trilha-nome').value = '';
-  document.getElementById('trilha-desc').value = '';
-  document.getElementById('trilha-niveis-num').value = '3';
-  _trilhaPopulateMacros('');
-  _trilhaBuildNiveisEditor([]);
-  modal.style.display = 'flex';
-}
-
-function editarTrilha(id){
-  if(!isEP()){ toast('Ação restrita ao '+ORG_CONFIG.supportTeamLabel+'.','var(--amber)'); return; }
-  const t = TRILHAS.find(x => x.id === id);
-  if(!t) return;
-  const modal = document.getElementById('trilha-modal');
-  document.getElementById('trilha-modal-t').textContent = 'Editar trilha';
-  document.getElementById('trilha-edit-id').value = String(id);
-  document.getElementById('trilha-del-btn').style.display = '';
-  document.getElementById('trilha-nome').value = t.nome;
-  document.getElementById('trilha-desc').value = t.descricao || '';
-  document.getElementById('trilha-niveis-num').value = String((t.niveis||[]).length || 3);
-  _trilhaPopulateMacros(t.macro_id||'');
-  trilhaPopulateProcs(t.proc_ids||[]);
-  _trilhaBuildNiveisEditor(t.niveis||[]);
-  modal.style.display = 'flex';
-}
-
-function _trilhaPopulateMacros(selectedId){
-  const sel = document.getElementById('trilha-macro');
-  if(!sel) return;
-  sel.innerHTML = '<option value="">Selecione...</option>'
-    + ARQUITETURA.map(m => '<option value="'+esc(m.id)+'"'+(m.id===selectedId?' selected':'')+'>'+esc(m.nome)+'</option>').join('');
-}
-
-function trilhaPopulateProcs(selectedIds){
-  const macroId = document.getElementById('trilha-macro')?.value;
-  const container = document.getElementById('trilha-procs-chk');
-  if(!container) return;
-  const checked = Array.isArray(selectedIds) ? selectedIds : [];
-  if(!macroId){
-    container.innerHTML = '<span style="font-size:12px;color:var(--ink3)">Selecione o macroprocesso primeiro.</span>';
-    return;
-  }
-  const macro = ARQUITETURA.find(m => m.id === macroId);
-  if(!macro || !(macro.processos||[]).length){
-    container.innerHTML = '<span style="font-size:12px;color:var(--ink3)">Nenhum processo neste macroprocesso.</span>';
-    return;
-  }
-  const items = [];
-  macro.processos.forEach(ap => {
-    if(ap.proc_id != null){
-      const pid = ap.proc_id;
-      const isChk = checked.includes(pid) ? ' checked' : '';
-      items.push('<label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:2px 0">'
-        + '<input type="checkbox" class="trilha-proc-chk" value="'+pid+'"'+isChk+'> '+esc(ap.nome)+'</label>');
-    }
-    (ap.subprocessos||[]).forEach(s => {
-      if(s.proc_id != null){
-        const pid = s.proc_id;
-        const isChk = checked.includes(pid) ? ' checked' : '';
-        items.push('<label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:2px 0;padding-left:16px">'
-          + '<input type="checkbox" class="trilha-proc-chk" value="'+pid+'"'+isChk+'> '+esc(s.nome)+'</label>');
-      }
-    });
-  });
-  container.innerHTML = items.length
-    ? items.join('')
-    : '<span style="font-size:12px;color:var(--ink3)">Nenhum processo cadastrado neste macroprocesso.</span>';
-}
-
-// ── Editor de Níveis (inline no modal) ─────
-function _trilhaBuildNiveisEditor(niveis){
-  globalThis._trilhaNiveisEdit = niveis.length
-    ? niveis.map(nv => ({
-        id:   nv.id   || ('nv_'+Date.now()+'_'+Array.from(crypto.getRandomValues(new Uint8Array(3))).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,4)),
-        nome: nv.nome || '',
-        ordem: nv.ordem || 1,
-        competencias: (nv.competencias||[]).map(c => ({
-          id:        c.id  || ('cp_'+Date.now()+'_'+Array.from(crypto.getRandomValues(new Uint8Array(3))).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,4)),
-          nome:      c.nome      || '',
-          descricao: c.descricao || '',
-          cursos:    (c.cursos||[]).map(cs => ({nome:cs.nome||'',link:cs.link||'',tipo:cs.tipo||''})),
-        })),
-      }))
-    : [];
-  const numInput = Number.parseInt(document.getElementById('trilha-niveis-num')?.value) || 3;
-  while(globalThis._trilhaNiveisEdit.length < numInput){
-    const ordem = globalThis._trilhaNiveisEdit.length + 1;
-    globalThis._trilhaNiveisEdit.push({
-      id: 'nv_'+Date.now()+'_'+Array.from(crypto.getRandomValues(new Uint8Array(3))).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,4),
-      nome: 'Nível '+ordem, ordem, competencias:[],
-    });
-  }
-  _trilhaRenderEditor();
-}
-
-function trilhaAddNivel(){
-  if(!globalThis._trilhaNiveisEdit){ globalThis._trilhaNiveisEdit = []; }
-  const ordem = globalThis._trilhaNiveisEdit.length + 1;
-  globalThis._trilhaNiveisEdit.push({
-    id: 'nv_'+Date.now()+'_'+Array.from(crypto.getRandomValues(new Uint8Array(3))).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,4),
-    nome: 'Nível '+ordem, ordem, competencias:[],
-  });
-  _trilhaRenderEditor();
-}
-
-function trilhaRemNivel(nvId){
-  if(!globalThis._trilhaNiveisEdit) return;
-  globalThis._trilhaNiveisEdit = globalThis._trilhaNiveisEdit.filter(n => n.id !== nvId);
-  globalThis._trilhaNiveisEdit.forEach((n, i) => { n.ordem = i + 1; });
-  _trilhaRenderEditor();
-}
-
-function trilhaAddComp(nvId){
-  if(!globalThis._trilhaNiveisEdit) return;
-  const nv = globalThis._trilhaNiveisEdit.find(n => n.id === nvId);
-  if(!nv) return;
-  nv.competencias.push({
-    id: 'cp_'+Date.now()+'_'+Array.from(crypto.getRandomValues(new Uint8Array(3))).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,4),
-    nome:'', descricao:'', cursos:[],
-  });
-  _trilhaRenderEditor();
-}
-
-function trilhaRemComp(nvId, cpId){
-  if(!globalThis._trilhaNiveisEdit) return;
-  const nv = globalThis._trilhaNiveisEdit.find(n => n.id === nvId);
-  if(!nv) return;
-  nv.competencias = nv.competencias.filter(c => c.id !== cpId);
-  _trilhaRenderEditor();
-}
-
-function trilhaAddCurso(nvId, cpId){
-  if(!globalThis._trilhaNiveisEdit) return;
-  const nv = globalThis._trilhaNiveisEdit.find(n => n.id === nvId);
-  if(!nv) return;
-  const cp = nv.competencias.find(c => c.id === cpId);
-  if(!cp) return;
-  cp.cursos.push({nome:'', link:'', tipo:''});
-  _trilhaRenderEditor();
-}
-
-function trilhaRemCurso(nvId, cpId, cidx){
-  if(!globalThis._trilhaNiveisEdit) return;
-  const nv = globalThis._trilhaNiveisEdit.find(n => n.id === nvId);
-  if(!nv) return;
-  const cp = nv.competencias.find(c => c.id === cpId);
-  if(!cp) return;
-  cp.cursos.splice(cidx, 1);
-  _trilhaRenderEditor();
-}
-
-function _trilhaFlushEditorInputs(){
-  if(!globalThis._trilhaNiveisEdit) return;
-  globalThis._trilhaNiveisEdit.forEach(nv => {
-    const nomeEl = document.getElementById('nvn-'+nv.id);
-    if(nomeEl){ nv.nome = nomeEl.value; }
-    nv.competencias.forEach(cp => {
-      const cpNomeEl = document.getElementById('cpn-'+cp.id);
-      const cpDescEl = document.getElementById('cpd-'+cp.id);
-      if(cpNomeEl){ cp.nome = cpNomeEl.value; }
-      if(cpDescEl){ cp.descricao = cpDescEl.value; }
-      cp.cursos.forEach((cs, i) => {
-        const csNomeEl = document.getElementById('csn-'+cp.id+'-'+i);
-        const csLinkEl = document.getElementById('csl-'+cp.id+'-'+i);
-        const csTipoEl = document.getElementById('cst-'+cp.id+'-'+i);
-        if(csNomeEl){ cs.nome = csNomeEl.value; }
-        if(csLinkEl){ cs.link = csLinkEl.value; }
-        if(csTipoEl){ cs.tipo = csTipoEl.value; }
-      });
-    });
-  });
-}
-
-function _trilhaRenderEditor(){
-  const container = document.getElementById('trilha-niveis-editor');
-  if(!container) return;
-  const niveis = globalThis._trilhaNiveisEdit || [];
-  if(!niveis.length){
-    container.innerHTML = '<div style="font-size:12px;color:var(--ink3);padding:.4rem 0">Nenhum nível. Clique em "+ Nível" acima.</div>';
-    return;
-  }
-  container.innerHTML = niveis.map(nv => _trilhaNivelEditorHTML(nv)).join('');
-}
-
-function _trilhaNivelEditorHTML(nv){
-  const compsEl = (nv.competencias||[]).map(c => _trilhaCompEditorHTML(nv.id, c)).join('');
-  return '<div style="border:1px solid var(--bdr);border-radius:var(--r);margin-bottom:.5rem;padding:.6rem .8rem">'
-    + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:.4rem">'
-    + '<span style="background:var(--blue);color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0">'+nv.ordem+'</span>'
-    + '<input class="fi" id="nvn-'+nv.id+'" value="'+esc(nv.nome)+'" placeholder="Nome do nível" style="flex:1;font-size:13px">'
-    + '<button type="button" class="btn" style="font-size:11px;padding:2px 7px;color:var(--red);border-color:var(--red)" onclick="trilhaFlushAndRemNivel(\''+nv.id+'\')" aria-label="Remover nível">✕</button>'
-    + '</div>'
-    + '<div style="margin-left:26px">'
-    + compsEl
-    + '<button type="button" class="btn" style="font-size:11px;padding:2px 8px;margin-top:.3rem" onclick="trilhaFlushAndAddComp(\''+nv.id+'\')">+ Competência</button>'
-    + '</div>'
-    + '</div>';
-}
-
-function _trilhaCompEditorHTML(nvId, c){
-  const cursosEl = (c.cursos||[]).map((cs, i) => _trilhaCursoEditorHTML(nvId, c.id, i, cs)).join('');
-  return '<div style="background:var(--bg2);border-radius:var(--r);padding:.5rem .6rem;margin-bottom:.4rem">'
-    + '<div style="display:flex;align-items:center;gap:4px;margin-bottom:.3rem">'
-    + '<input class="fi" id="cpn-'+c.id+'" value="'+esc(c.nome)+'" placeholder="Nome da competência*" style="flex:1;font-size:12px">'
-    + '<button type="button" class="btn" style="font-size:10px;padding:1px 6px;color:var(--red);border-color:var(--red)" onclick="trilhaFlushAndRemComp(\''+nvId+'\',\''+c.id+'\')" aria-label="Remover competência">✕</button>'
-    + '</div>'
-    + '<input class="fi" id="cpd-'+c.id+'" value="'+esc(c.descricao||'')+'" placeholder="Descrição (opcional)" style="font-size:12px;margin-bottom:.3rem">'
-    + cursosEl
-    + '<button type="button" class="btn" style="font-size:10px;padding:1px 7px;margin-top:.2rem" onclick="trilhaFlushAndAddCurso(\''+nvId+'\',\''+c.id+'\')">+ Sugestão de curso</button>'
-    + '</div>';
-}
-
-function _trilhaCursoEditorHTML(nvId, cpId, idx, cs){
-  return '<div style="display:flex;align-items:center;gap:4px;margin-bottom:.25rem">'
-    + '<input class="fi" id="csn-'+cpId+'-'+idx+'" value="'+esc(cs.nome||'')+'" placeholder="Nome do curso" style="flex:2;font-size:11px">'
-    + '<input class="fi" id="csl-'+cpId+'-'+idx+'" value="'+esc(cs.link||'')+'" placeholder="Link (opcional)" style="flex:2;font-size:11px">'
-    + '<input class="fi" id="cst-'+cpId+'-'+idx+'" value="'+esc(cs.tipo||'')+'" placeholder="Tipo (EAD, presencial...)" style="flex:1;font-size:11px">'
-    + '<button type="button" class="btn" style="font-size:10px;padding:1px 5px;color:var(--red);border-color:var(--red)" onclick="trilhaFlushAndRemCurso(\''+nvId+'\',\''+cpId+'\','+idx+')" aria-label="Remover curso">✕</button>'
-    + '</div>';
-}
-
-// Flush-and-mutate helpers (preserve input values before re-rendering)
-function trilhaFlushAndRemNivel(nvId){ _trilhaFlushEditorInputs(); trilhaRemNivel(nvId); }
-function trilhaFlushAndAddComp(nvId){ _trilhaFlushEditorInputs(); trilhaAddComp(nvId); }
-function trilhaFlushAndRemComp(nvId,cpId){ _trilhaFlushEditorInputs(); trilhaRemComp(nvId,cpId); }
-function trilhaFlushAndAddCurso(nvId,cpId){ _trilhaFlushEditorInputs(); trilhaAddCurso(nvId,cpId); }
-function trilhaFlushAndRemCurso(nvId,cpId,cidx){ _trilhaFlushEditorInputs(); trilhaRemCurso(nvId,cpId,cidx); }
-
-// ── Salvar ─────────────────────────────────
-function salvarTrilha(){
-  const nome = document.getElementById('trilha-nome').value.trim();
-  const macroId = document.getElementById('trilha-macro').value;
-  if(!nome){   toast('Informe o nome da trilha.','var(--amber)'); return; }
-  if(!macroId){ toast('Selecione o macroprocesso.','var(--amber)'); return; }
-
-  _trilhaFlushEditorInputs();
-
-  const niveis = (globalThis._trilhaNiveisEdit||[]).map((nv, i) => ({
-    id:   nv.id,
-    nome: nv.nome || 'Nível '+(i+1),
-    ordem: i + 1,
-    competencias: (nv.competencias||[])
-      .filter(c => c.nome.trim())
-      .map(c => ({
-        id:        c.id,
-        nome:      c.nome.trim(),
-        descricao: c.descricao.trim(),
-        cursos:    (c.cursos||[]).filter(cs => cs.nome.trim()).map(cs => ({
-          nome: cs.nome.trim(),
-          link: cs.link.trim(),
-          tipo: cs.tipo.trim(),
-        })),
-      })),
-  }));
-
-  const procIds = Array.from(
-    document.querySelectorAll('.trilha-proc-chk:checked')
-  ).map(chk => Number.parseInt(chk.value)).filter(v => !Number.isNaN(v));
-
-  const editId = document.getElementById('trilha-edit-id').value;
-  if(editId){
-    const idx = TRILHAS.findIndex(t => t.id === Number.parseInt(editId));
-    if(idx >= 0){
-      TRILHAS[idx] = {
-        ...TRILHAS[idx],
-        nome,
-        descricao: document.getElementById('trilha-desc').value.trim(),
-        macro_id: macroId,
-        proc_ids: procIds,
-        niveis,
-        atualizado_em: now(),
-      };
-    }
-  } else {
-    TRILHAS.push({
-      id: _trilhaIdC++,
-      nome,
-      descricao: document.getElementById('trilha-desc').value.trim(),
-      macro_id: macroId,
-      proc_ids: procIds,
-      niveis,
-      criado_em: now(),
-    });
-  }
-
-  document.getElementById('trilha-modal').style.display = 'none';
-  fbAutoSave('salvarTrilha');
-  rTrilhas();
-  toast('Trilha salva!','var(--teal)');
-}
-
-// ── Excluir ────────────────────────────────
-function excluirTrilha(id){
-  confirmar('Remover esta trilha de capacitação?', () => {
-    TRILHAS = TRILHAS.filter(t => t.id !== id);
-    if(fbReady()){
-      trilhasRepository.remove(id).catch(e => console.warn('deleteTrilha error:', e.message));
-    }
-    rTrilhas();
-    toast('Trilha removida.','var(--amber)');
-  });
-}
-
-function excluirTrilhaModal(){
-  const id = Number.parseInt(document.getElementById('trilha-edit-id').value);
-  if(!id) return;
-  document.getElementById('trilha-modal').style.display = 'none';
-  excluirTrilha(id);
-}
-
-// ── END TRILHAS ────────────────────────────
 
 // Auto-logout e detecção de edição concorrente extraídos para módulos em src/processos/.
 // Ver: src/processos/auto-logout.js e src/processos/concurrent-edit.js

@@ -66,7 +66,6 @@ graph LR
   subgraph NAV["Navegação (go('página', btn))"]
     PROC["Processos\ngo('processos')"]
     SOL["Solicitações\ngo('solicitacoes')"]
-    TRI["Trilhas\ngo('trilhas')"]
     FAQ["FAQ\ngo('faq')"]
     PLANO["PAT\ngo('plano')"]
     AUD["Análise de Aderência\ngo('auditoria')"]
@@ -76,7 +75,6 @@ graph LR
   subgraph FIRE["Coleções Firestore"]
     C1[("processos")]
     C2[("solicitacoes")]
-    C3[("trilhas")]
     C4[("plano\nplano_metas")]
     C5[("publicacoes")]
     C6[("kpis")]
@@ -91,8 +89,6 @@ graph LR
   PROC --> C6
   PROC --> C9
   SOL -->|"rSolicitacoes()"| C2
-  TRI -->|"rFaq() implícito"| C3
-  FAQ --> C3
   PLANO -->|"rDash()"| C4
   AUD -->|"rAuditoria()"| C1
   PUB --> C5
@@ -115,7 +111,6 @@ graph TD
     RP["processosRepository"]
     RK["kpisRepository"]
     RS["solicitacoesRepository"]
-    RT["trilhasRepository"]
     RPL["planoRepository / planoMetasRepository"]
     RPB["publicacoesRepository"]
     RA["avisosRepository"]
@@ -131,7 +126,6 @@ graph TD
     processos[("processos")]
     kpis[("kpis")]
     solicitacoes[("solicitacoes")]
-    trilhas[("trilhas")]
     plano[("plano")]
     plano_metas[("plano_metas")]
     publicacoes[("publicacoes")]
@@ -147,7 +141,6 @@ graph TD
   UI --> RP --> processos
   UI --> RK --> kpis
   UI --> RS --> solicitacoes
-  UI --> RT --> trilhas
   UI --> RPL --> plano & plano_metas
   UI --> RPB --> publicacoes
   UI --> RA --> avisos

@@ -57,7 +57,6 @@
 | 2 | 👤 Perfis/Usuários | ~80 | ⚪ Baixo | 🔥🔥🔥 Crítica | ❌ Criar | Firestore |
 | 3 | 🧭 Navegação/Hub | ~70 | ⚪ Baixo | 🔥🔥🔥 Crítica | ❌ Criar | Auth |
 | **FASE 1: Fundação (baixo risco, alto isolamento)** |
-| 4 | 🎓 Trilhas | ~800 | ⚪ Baixo | 🔥 Alta | ❌ Criar | - |
 | 5 | 📢 Notificações/Email | ~600 | ⚪ Baixo | 🔥 Alta | ❌ Criar | EmailJS |
 | 6 | 🔔 Avisos | ~400 | ⚪ Baixo | 🔥 Alta | ❌ Criar | - |
 | 7 | 📊 Auditoria | ~1.500 | ⚪ Baixo | 🔥 Alta | ✅ Existe | BPMN |
@@ -107,7 +106,6 @@ Extrair módulos isolados e de baixo risco
 
 **Semana 2:**
 - ✅ Estrutura base de modularização
-- 🎓 Módulo Trilhas (800 linhas)
 - 📢 Módulo Notificações (600 linhas)
 
 **Semana 3:**
@@ -196,11 +194,6 @@ src/
 │   │   ├── state-manager.js       # Store centralizado (criado gradualmente)
 │   │   ├── event-bus.js           # Sistema de eventos entre módulos
 │   │   └── router.js              # Navegação entre telas
-│   ├── trilhas/
-│   │   ├── trilhas-state.js       # Estado local do módulo
-│   │   ├── trilhas-renderer.js    # Renderização UI
-│   │   ├── trilhas-controller.js  # Lógica e eventos
-│   │   └── trilhas-types.js       # Tipos e constantes
 │   ├── notificacoes/
 │   │   ├── notificacoes-state.js
 │   │   ├── notificacoes-renderer.js

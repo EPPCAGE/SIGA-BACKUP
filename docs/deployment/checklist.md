@@ -24,7 +24,7 @@ Este checklist orienta a preparacao de uma nova instalacao do SIGA para outra or
 
 - Revisar arquitetura de processos inicial.
 - Revisar usuarios administradores iniciais.
-- Revisar publicacoes, trilhas, indicadores e plano anual padrao.
+- Revisar publicacoes, indicadores e plano anual padrao.
 - Remover dados de exemplo que sejam especificos da CAGE, se a instalacao for para outro cliente.
 
 ## 4. Validacao funcional

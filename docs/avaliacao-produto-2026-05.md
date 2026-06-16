@@ -151,7 +151,6 @@ isoladamente, propenso a regressões invisíveis.
 **Linha de corte para extração prioritária:**
 - Módulo de Auditoria
 - Módulo de Indicadores (KPIs)
-- Módulo de Trilhas
 - Lógica de mapeamento (pipeline AS-IS / TO-BE)
 
 Cada módulo deve virar um arquivo `.js` em `src/processos/` e ser carregado via

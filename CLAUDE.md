@@ -67,7 +67,6 @@ Perfis definidos em `src/processos/app-constants.js`. Verificação de perfil vi
 |------------------|-------------------------------------|
 | `processos`      | Mapeamentos (todas as etapas)       |
 | `kpis`           | Indicadores de desempenho           |
-| `trilhas`        | Trilhas de capacitação              |
 | `publicacoes`    | Metodologias publicadas             |
 | `plano`          | PAT — Plano Anual de Trabalho       |
 | `plano_metas`    | Metas estratégicas                  |

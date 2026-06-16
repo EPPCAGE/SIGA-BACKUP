@@ -65,7 +65,7 @@ O cliente nunca acessa o banco SQL diretamente — apenas via Cloud Functions (A
 │  CLOUD FUNCTIONS (API REST — Node 20)                               │
 │                      │                                              │
 │   /api/processos     │  /api/kpis    /api/projetos  /api/solicit.  │
-│   /api/arquitetura   │  /api/plano   /api/trilhas   /api/audit     │
+│   /api/arquitetura   │  /api/plano                  /api/audit     │
 │   /admin/*           │  /actions/*   /reports/*     /ai            │
 │                      │                                              │
 │   middleware: verificar token → resolver tenant → autorizar papel   │
@@ -211,7 +211,7 @@ permite testar unitariamente cada peça.
 | | `/admin/usuarios` | GET, PUT, DELETE | EP | 🟡 Média |
 | **Relatórios** | `/reports/exportar-pdf` | POST | Autenticado | 🟡 Média |
 | | `/reports/exportar-xlsx` | POST | EP | 🟡 Média |
-| **Conteúdo** | `/api/trilhas`, `/api/publicacoes` | GET, POST, PUT | EP | 🟡 Média |
+| **Conteúdo** | `/api/publicacoes` | GET, POST, PUT | EP | 🟡 Média |
 | | `/api/plano`, `/api/metas` | GET, POST, PUT | EP | 🟡 Média |
 | **Notificações** | `/notifications/enviar` | POST | Autenticado | 🟢 Baixa |
 
@@ -233,7 +233,6 @@ functions/
       kpis.js
       projetos.js
       solicitacoes.js
-      trilhas.js
       publicacoes.js
       plano.js
     actions/
@@ -320,7 +319,6 @@ Módulos simples, sem regra de negócio complexa. Migração de Firestore → SQ
 | Módulo | Linhas est. | Arquivo alvo | Tabela SQL alvo |
 |---|---|---|---|
 | Avisos | ~400 | `src/processos/avisos/` | `avisos` |
-| Trilhas de capacitação | ~800 | `src/processos/trilhas/` | `trilhas` |
 | Backup/Restore JSON | ~300 | `src/processos/backup/` | (export de SQL) |
 | Publicações/Metodologias | ~700 | `src/processos/publicacoes/` | `publicacoes` |
 
@@ -496,16 +494,6 @@ CREATE TABLE publicacoes (
   deleted_at  TIMESTAMPTZ
 );
 
--- ─── TRILHAS ──────────────────────────────────────────────────────────────
-CREATE TABLE trilhas (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id   TEXT NOT NULL REFERENCES tenants(id),
-  titulo      TEXT NOT NULL,
-  dados       JSONB NOT NULL DEFAULT '{}',
-  criado_em   TIMESTAMPTZ DEFAULT NOW(),
-  deleted_at  TIMESTAMPTZ
-);
-
 -- ─── PLANO ANUAL DE TRABALHO ───────────────────────────────────────────────
 CREATE TABLE plano (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -658,7 +646,7 @@ Firestore                   Cloud SQL
 | 5ª | `kpis`, `relatorios_ind` | `kpis` | Relatórios analíticos |
 | 6ª | `plano`, `plano_metas` | `plano`, `plano_metas` | PAT |
 | 7ª | `publicacoes` | `publicacoes` | Dependência de arquitetura |
-| 8ª | `trilhas`, `avisos` | `trilhas`, `avisos` | Independentes |
+| 8ª | `avisos` | `avisos` | Independente |
 | 9ª | `projPROJETOS` | `projetos` | Módulo separado |
 | 10ª | `projPROGRAMAS` | `programas` | Módulo separado |
 | Manter | `sessions/{uid}` | — | Real-time; permanece no Firestore |

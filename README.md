@@ -26,7 +26,6 @@ Usuários com perfil `ep` têm acesso total a ambos os módulos. Usuários podem
 | Processos em andamento | Todos | Lista de processos em mapeamento |
 | Arquitetura de processos | Todos | Macroprocesso → Processo → Subprocesso |
 | Indicadores (KPIs) | Todos | KPIs com filtros, importação xlsx e sincronização com Google Sheets |
-| Trilhas de capacitação | Todos | Trilhas por nível e competência, vinculadas à arquitetura |
 | FAQ | Todos | Perguntas e respostas frequentes |
 | PAT | EP | Plano Anual de Trabalho — atividades por trimestre |
 | Auditoria | EP | Auditorias de conformidade por processo |
@@ -148,7 +147,6 @@ Todas as chamadas requerem um Firebase ID token no campo `_token` do body (verif
 |---------|----------|
 | `processos/{id}` | Dados completos de cada processo em mapeamento |
 | `kpis/{id}` | Indicadores de desempenho (origem, meta, realizado, vínculo com processo) |
-| `trilhas/{id}` | Trilhas de capacitação (níveis, competências, cursos e processos vinculados) |
 | `publicacoes/{id}` | Metodologias e documentos publicados |
 | `plano/{id}` | Atividades do Plano Anual de Trabalho (PAT) |
 | `config/arquitetura` | JSON da arquitetura de processos (macros/processos/subprocessos) |

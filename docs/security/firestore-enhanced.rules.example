@@ -104,7 +104,6 @@ service cloud.firestore {
     // Conteúdo institucional — Apenas EP gerencia
     // ---------------------------------------------------------------------------
     match /plano/{id}       { allow read: if isAuth(); allow write: if isEP(); }
-    match /trilhas/{id}     { allow read: if isAuth(); allow write: if isEP(); }
     match /avisos/{id}      { allow read: if isAuth(); allow write: if isEP(); }
     match /arquitetura/{id} { allow read: if isAuth(); allow write: if isEP(); }
     match /plano_metas/{id} { allow read: if isAuth(); allow write: if isEP(); }
