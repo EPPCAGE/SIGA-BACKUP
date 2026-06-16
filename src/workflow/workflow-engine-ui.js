@@ -2546,8 +2546,8 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     if (!_wfConfigNos[noId].recorrencia) _wfConfigNos[noId].recorrencia = { ativo: true, tipo: 'diario', hora: 8 };
     _wfConfigNos[noId].recorrencia[campo] = valor;
     // Re-renderiza apenas o preview e campos extras sem perder o foco
-    const noEl = _wfModeloAtual?.canvas?.nos?.find(n => n.id === noId);
-    const nomeNo = noEl?.nome || noId;
+    const noEl = (_wfModeloAtual?.canvas?.nos || []).find(n => n.id === noId);
+    const nomeNo = noEl?.nome || document.querySelector(`[data-id="${noId}"] .djs-label`)?.textContent?.trim() || noId;
     const painel = document.getElementById('wf-designer-config');
     if (painel) _wfRenderPainelInicio(painel, noId, nomeNo);
   }
@@ -2997,8 +2997,11 @@ ${diShapes}${diEdges}  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
     }
     if (campo === 'tipo_disparo') {
       const painel = document.getElementById('wf-designer-config');
-      const noEl = _wfModeloAtual?.canvas?.nos?.find(n => n.id === noId);
-      if (painel && noEl) _wfRenderPainelInicio(painel, noId, noEl.nome || noId);
+      if (painel) {
+        const noEl = (_wfModeloAtual?.canvas?.nos || []).find(n => n.id === noId);
+        const nomeNo = noEl?.nome || document.querySelector(`[data-id="${noId}"] .djs-label`)?.textContent?.trim() || noId;
+        _wfRenderPainelInicio(painel, noId, nomeNo);
+      }
     }
     _wfMarcarDesignerSujo();
     _wfSalvarConfigNosImediato();
