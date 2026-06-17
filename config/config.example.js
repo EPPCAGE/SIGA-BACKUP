@@ -3,6 +3,11 @@
 // Nao versionar chaves reais em repositorios publicos.
 globalThis.CONFIG = {
   FIREBASE_API_KEY: '',
+  FIREBASE_AUTH_DOMAIN: '',
+  FIREBASE_PROJECT_ID: '',
+  FIREBASE_STORAGE_BUCKET: '',
+  FIREBASE_MESSAGING_SENDER_ID: '',
+  FIREBASE_APP_ID: '',
   AI_FUNCTION_URL: '',
   WORKFLOW_API_BASE_URL: '',
   // URL da Cloud Function checkEmail (público, sem auth).
